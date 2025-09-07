@@ -256,6 +256,14 @@ class VialKeyboardImageGenerator {
                 // 修飾キー
                 'LCTRL': 'LCtrl', 'LSHIFT': 'LShift', 'LALT': 'LAlt', 'LGUI': 'LGui',
                 'RCTRL': 'RCtrl', 'RSHIFT': 'RShift', 'RALT': 'RAlt', 'RGUI': 'RGui',
+                // ファンクションキー
+                'F1': 'F1', 'F2': 'F2', 'F3': 'F3', 'F4': 'F4', 'F5': 'F5', 'F6': 'F6',
+                'F7': 'F7', 'F8': 'F8', 'F9': 'F9', 'F10': 'F10', 'F11': 'F11', 'F12': 'F12',
+                // 矢印キー
+                'UP': '↑', 'DOWN': '↓', 'LEFT': '←', 'RIGHT': '→',
+                // ナビゲーションキー
+                'HOME': 'Home', 'END': 'End', 'PGUP': 'PgUp', 'PGDN': 'PgDn',
+                'INSERT': 'Ins', 'DELETE': 'Del',
                 // 日本語キー
                 'MHEN': 'MHEN', 'HENK': 'HENK', 'KANA': 'KANA'
             };
@@ -559,11 +567,11 @@ class VialKeyboardImageGenerator {
 // メイン実行
 function main(): void {
     const generator = new VialKeyboardImageGenerator();
-    const configPath = path.join(__dirname, '../data/yivu40-250906.vil');
+    const configPath = process.argv[2] || path.join(__dirname, '../data/yivu40-250906.vil');
+    const layerIndex = process.argv[3] ? parseInt(process.argv[3]) : 1;
     
-    // レイヤー1の画像を生成
-    const outputPath = path.join(__dirname, '../output/keyboard_layout_layer1_ts.png');
-    generator.generateKeyboardImage(configPath, outputPath, 1);
+    const outputPath = path.join(__dirname, `../output/keyboard_layout_layer${layerIndex}_ts.png`);
+    generator.generateKeyboardImage(configPath, outputPath, layerIndex);
 }
 
 if (require.main === module) {
