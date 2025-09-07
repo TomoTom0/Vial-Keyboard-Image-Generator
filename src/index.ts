@@ -6,7 +6,7 @@ import { createCanvas, CanvasRenderingContext2D, Canvas } from 'canvas';
 interface VialConfig {
     version: number;
     uid: number;
-    layout: string[][][];
+    layout: (string | number)[][][];
     tap_dance: string[][];
 }
 
@@ -53,6 +53,76 @@ class VialKeyboardImageGenerator {
         this.unitY = this.keyHeight + this.keyGap;
     }
 
+    // US配列から日本語配列への正確な変換
+    private convertUsToJis(keyStr: string): string {
+        // US配列の物理キー位置 → JIS配列での実際の文字
+        const usToJisMapping: { [key: string]: string } = {
+            // 数字行の記号
+            'KC_MINUS': 'KC_MINUS',        // - → - (同じ位置)
+            'KC_EQUAL': 'KC_EQUAL',        // = → = (JISでは^の位置だが、実際は=)
+            
+            // 上段記号行
+            'KC_LBRACKET': 'KC_AT',        // [ → @ (JIS配列の@位置)
+            'KC_RBRACKET': 'KC_RBRACKET',  // ] → [ (座標修正のためそのまま)  
+            'KC_BSLASH': 'KC_RBRACKET',    // \ → ] (JIS配列の]位置)
+            
+            // ホーム行記号
+            'KC_SCOLON': 'KC_SCOLON',      // ; → ; (JIS配列では+の位置だが、;として表示)
+            'KC_QUOTE': 'KC_QUOTE',        // ' → ' (JIS配列では*の位置だが、'として表示)
+            
+            // 下段記号
+            'KC_COMMA': 'KC_COMMA',        // , → , (同じ)
+            'KC_DOT': 'KC_DOT',            // . → . (同じ)
+            'KC_SLASH': 'KC_SLASH',        // / → / (同じ)
+            'KC_GRAVE': 'KC_GRAVE',        // ` → ` (JIS配列では別位置)
+        };
+
+        // LSFT+キーの変換（USキーボードの物理位置 → JIS配列での実際の出力文字）
+        if (keyStr.startsWith('LSFT(KC_')) {
+            const baseKeyMatch = keyStr.match(/LSFT\(KC_(.+)\)/);
+            if (baseKeyMatch) {
+                const baseKey = baseKeyMatch[1];
+                const shiftMapping: { [key: string]: string } = {
+                    // 数字キー - JIS配列での実際の出力
+                    '1': '!',          // Shift+1 = ! (同じ)
+                    '2': '"',          // Shift+2 = " (JIS配列) - 確認済み
+                    '3': '#',          // Shift+3 = # 
+                    '4': '$',          // Shift+4 = $ (同じ)
+                    '5': '%',          // Shift+5 = % (同じ)
+                    '6': '&',          // Shift+6 = & (JIS配列)
+                    '7': "'",          // Shift+7 = ' (元に戻す)
+                    '8': '(',          // Shift+8 = ( (JIS配列)
+                    '9': ')',          // Shift+9 = ) (JIS配列)
+                    '0': '0',          // Shift+0 = 0 (JIS配列では0のまま)
+                    
+                    // 記号キー (Geminiの正確なUS→JIS変換)
+                    'MINUS': '=',          // Shift+- → = (修正)
+                    'EQUAL': '~',          // Shift+= → ~ (JIS配列)
+                    'LBRACKET': '`',       // Shift+[ → ` (座標修正)
+                    'RBRACKET': '{',       // Shift+] → { (JIS配列)
+                    'BSLASH': '|',         // Shift+\ → | (JIS配列)
+                    'SCOLON': '+',         // Shift+; → + (JIS配列)
+                    'QUOTE': '*',          // Shift+' → * (JIS配列)
+                    'COMMA': '<',          // Shift+, → <
+                    'DOT': '>',            // Shift+. → >
+                    'SLASH': '?',          // Shift+/ → ?
+                    'GRAVE': '~',          // Shift+` → ~
+                    'JYEN': '|',           // Shift+JYEN → | (座標修正)
+                };
+                
+                return `SHIFT_${shiftMapping[baseKey] || baseKey}`;
+            }
+        }
+
+        // 通常キーの変換
+        if (usToJisMapping[keyStr]) {
+            return usToJisMapping[keyStr];
+        }
+
+        // 変換不要な場合はそのまま返す
+        return keyStr;
+    }
+
     // Vial設定ファイルを読み込み
     private loadVialConfig(filePath: string): VialConfig {
         const data = fs.readFileSync(filePath, 'utf8');
@@ -60,14 +130,26 @@ class VialKeyboardImageGenerator {
     }
 
     // キーコード文字列をラベルに変換（Rust版と同等の精度）
-    private keycodeToLabel(keycodeStr: string, config: VialConfig): KeyLabel {
-        if (!keycodeStr || keycodeStr === 'KC_NO' || keycodeStr === '') {
+    private keycodeToLabel(keycodeStr: string | number, config: VialConfig): KeyLabel {
+        // -1 や数値の場合は空キーとして処理
+        if (keycodeStr === -1 || keycodeStr === '' || keycodeStr === 'KC_NO') {
             return { mainText: '', subText: undefined, isSpecial: false };
+        }
+        
+        // 数値を文字列に変換
+        const keyStr = typeof keycodeStr === 'number' ? keycodeStr.toString() : keycodeStr;
+
+        // US配列から日本語配列への変換
+        const convertedKeyStr = this.convertUsToJis(keyStr);
+        
+        // デバッグ情報
+        if (keyStr.includes('NONUS_HASH') || keyStr.includes('RO') || keyStr.includes('LSFT(KC_7)') || keyStr.includes('LSFT(KC_9)')) {
+            console.log(`Debug: Original=${keyStr}, Converted=${convertedKeyStr}`);
         }
 
         // Tap Dance処理
-        if (keycodeStr.startsWith('TD(')) {
-            const match = keycodeStr.match(/TD\((\d+)\)/);
+        if (convertedKeyStr.startsWith('TD(')) {
+            const match = convertedKeyStr.match(/TD\((\d+)\)/);
             if (match) {
                 const tdIndex = parseInt(match[1]);
                 const tdInfo = this.getTapDanceInfo(tdIndex, config);
@@ -79,12 +161,12 @@ class VialKeyboardImageGenerator {
                     };
                 }
             }
-            return { mainText: keycodeStr, subText: undefined, isSpecial: true };
+            return { mainText: convertedKeyStr, subText: undefined, isSpecial: true };
         }
 
         // Layer Tap処理
-        if (keycodeStr.match(/^LT\d+\(/)) {
-            const match = keycodeStr.match(/^LT(\d+)\(KC_(.+)\)$/);
+        if (convertedKeyStr.match(/^LT\d+\(/)) {
+            const match = convertedKeyStr.match(/^LT(\d+)\(KC_(.+)\)$/);
             if (match) {
                 const layerNum = match[1];
                 const baseKey = match[2];
@@ -105,16 +187,52 @@ class VialKeyboardImageGenerator {
         }
 
         // TO(layer)処理
-        if (keycodeStr.startsWith('TO(')) {
-            const match = keycodeStr.match(/TO\((\d+)\)/);
+        if (convertedKeyStr.startsWith('TO(')) {
+            const match = convertedKeyStr.match(/TO\((\d+)\)/);
             if (match) {
                 return { mainText: `TO(${match[1]})`, subText: undefined, isSpecial: true };
             }
         }
 
-        // 基本キーマッピング（KC_プレフィックス付き）
-        if (keycodeStr.startsWith('KC_')) {
-            const baseKey = keycodeStr.substring(3);
+        // SHIFT_プレフィックス付きキーの処理
+        if (convertedKeyStr.startsWith('SHIFT_')) {
+            const shiftedChar = convertedKeyStr.substring(6); // "SHIFT_"を除去
+            // 特殊な変換
+            if (shiftedChar === 'RO') {
+                return { mainText: '_', subText: undefined, isSpecial: true }; // Shift+RO = _
+            }
+            if (shiftedChar === 'NONUS_HASH') {
+                return { mainText: '}', subText: undefined, isSpecial: true }; // Shift+NONUS_HASH = }
+            }
+            return { mainText: shiftedChar, subText: undefined, isSpecial: true };
+        }
+
+        // LSFT(key)処理 - 変換されなかった場合のフォールバック
+        if (convertedKeyStr.startsWith('LSFT(')) {
+            const match = convertedKeyStr.match(/LSFT\(KC_(.+)\)/);
+            if (match) {
+                return { mainText: `S+${match[1]}`, subText: undefined, isSpecial: true };
+            }
+        }
+
+        // 特殊な日本語配列キーの個別処理（正確な対応）
+        if (convertedKeyStr === 'KC_NONUS_HASH' || convertedKeyStr === 'NONUS_HASH') {
+            console.log(`Debug: KC_NONUS_HASH matched, returning ]`);
+            return { mainText: ']', subText: undefined, isSpecial: false };
+        }
+        if (convertedKeyStr === 'KC_RO' || convertedKeyStr === 'RO') {
+            return { mainText: '\\', subText: undefined, isSpecial: false };
+        }
+        if (convertedKeyStr === 'KC_JYEN' || convertedKeyStr === 'JYEN') {
+            return { mainText: '\\', subText: undefined, isSpecial: false };
+        }
+
+        // 基本キーマッピング（KC_プレフィックス付き） - 日本語配列対応
+        if (convertedKeyStr.startsWith('KC_')) {
+            const baseKey = convertedKeyStr.substring(3);
+            if (baseKey === 'NONUS_HASH') {
+                console.log(`Debug: Processing KC_NONUS_HASH, baseKey=${baseKey}`);
+            }
             const keyMapping: { [key: string]: string } = {
                 // アルファベット
                 'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'E': 'E', 'F': 'F', 'G': 'G', 'H': 'H', 'I': 'I', 'J': 'J',
@@ -123,10 +241,17 @@ class VialKeyboardImageGenerator {
                 // 数字
                 '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9', '0': '0',
                 // 特殊キー
-                'ENTER': 'Enter', 'ESC': 'Esc', 'BSPACE': 'Bksp', 'TAB': 'Tab', 'SPACE': 'Space',
-                // 記号
-                'MINUS': '-', 'EQUAL': '=', 'LBRACKET': '[', 'RBRACKET': ']', 'BSLASH': '\\',
-                'SCOLON': ';', 'QUOTE': '?', 'GRAVE': '`', 'COMMA': ',', 'DOT': '.', 'SLASH': '?/',
+                'ENTER': 'Enter', 'ESC': 'Esc', 'ESCAPE': 'Esc', 'BSPACE': 'Bksp', 'TAB': 'Tab', 'SPACE': 'Space',
+                // 記号 - JIS配列対応
+                'MINUS': '-', 'EQUAL': '^', 'BSLASH': '\\', 
+                'AT': '@', 'LBRACKET': '@', 'RBRACKET': '[',
+                'SCOLON': ';', 'QUOTE': ':', 'GRAVE': '`', 
+                'COMMA': ',', 'DOT': '.', 'SLASH': '/',
+                // 日本語配列特殊キー
+                'NONUS_HASH': ']',     // KC_NONUS_HASH → ] (大カッコ閉じる)
+                'RO': '\\',            // RO (日本語配列の\キー)
+                'INT1': '_',           // 日本語配列のアンダーバー位置
+                'INT3': '\\',          // 日本語配列のバックスラッシュ
                 'CAPSLOCK': 'Caps', 'PSCREEN': 'Print\nScreen',
                 // 修飾キー
                 'LCTRL': 'LCtrl', 'LSHIFT': 'LShift', 'LALT': 'LAlt', 'LGUI': 'LGui',
@@ -142,10 +267,13 @@ class VialKeyboardImageGenerator {
         }
 
         // その他の特殊処理
-        switch (keycodeStr) {
+        switch (convertedKeyStr) {
             case 'KC_RALT': return { mainText: 'RAlt', subText: undefined, isSpecial: false };
             default:
-                return { mainText: keycodeStr, subText: undefined, isSpecial: false };
+                if (convertedKeyStr.includes('NONUS_HASH')) {
+                    console.log(`Debug: Reached default case with ${convertedKeyStr}`);
+                }
+                return { mainText: convertedKeyStr, subText: undefined, isSpecial: false };
         }
     }
 
@@ -324,13 +452,14 @@ class VialKeyboardImageGenerator {
     }
 
     // キーボード画像を生成
-    public generateKeyboardImage(configPath: string, outputPath: string): void {
+    public generateKeyboardImage(configPath: string, outputPath: string, layerIndex: number = 0): void {
         console.log('Vial Keyboard Image Generator (TypeScript)');
         
         // Vial設定を読み込み
         const config = this.loadVialConfig(configPath);
         console.log(`読み込み成功: version=${config.version}, uid=${config.uid}`);
         console.log(`レイヤー数: ${config.layout.length}`);
+        console.log(`生成対象レイヤー: ${layerIndex}`);
 
         // 画像サイズを計算
         const contentWidth = this.unitX * 14.0 + 30.0 + this.keyWidth;
@@ -349,16 +478,16 @@ class VialKeyboardImageGenerator {
         // キー配置情報を取得
         const positions = this.getKeyPositions();
 
-        // レイヤー0のキーを描画
-        if (config.layout.length > 0) {
-            const layer0 = config.layout[0];
+        // 指定されたレイヤーのキーを描画
+        if (config.layout.length > layerIndex) {
+            const layer = config.layout[layerIndex];
 
             for (let rowIdx = 0; rowIdx < positions.length; rowIdx++) {
                 for (let colIdx = 0; colIdx < positions[rowIdx].length; colIdx++) {
                     const pos = positions[rowIdx][colIdx];
                     if (!pos) continue;
 
-                    const keycode = layer0[rowIdx]?.[colIdx] || '';
+                    const keycode = layer[rowIdx]?.[colIdx] || -1;
                     const label = this.keycodeToLabel(keycode, config);
 
                     // キーを描画
@@ -371,7 +500,59 @@ class VialKeyboardImageGenerator {
         // 画像を保存
         const buffer = canvas.toBuffer('image/png');
         fs.writeFileSync(outputPath, buffer);
+        // 座標とメイン文字の対応をファイルに出力
+        this.outputCoordinateMapping(config, layerIndex);
+        
         console.log(`キーボード画像を生成しました: ${outputPath}`);
+    }
+
+    // 座標とメイン文字の対応をファイルに出力
+    private outputCoordinateMapping(config: VialConfig, layerIndex: number): void {
+        const outputFile = path.join(__dirname, `../output/layer${layerIndex}_coordinates.txt`);
+        const positions = this.getKeyPositions();
+        
+        if (config.layout.length <= layerIndex) return;
+        const layer = config.layout[layerIndex];
+        
+        let output = `レイヤー${layerIndex}の座標とメイン文字の対応:\n\n`;
+        
+        // 左ブロック
+        output += "=== 左ブロック ===\n";
+        for (let rowIdx = 0; rowIdx < positions.length; rowIdx++) {
+            const row = positions[rowIdx];
+            if (!row) continue;
+            
+            for (let colIdx = 0; colIdx < row.length; colIdx++) {
+                const pos = row[colIdx];
+                if (!pos || pos.x > 400) continue; // 左側のみ
+                
+                const keycode = layer[rowIdx]?.[colIdx] || -1;
+                const label = this.keycodeToLabel(keycode, config);
+                if (label.mainText) {
+                    output += `左(${colIdx + 1},${rowIdx + 1}): ${label.mainText}\n`;
+                }
+            }
+        }
+        
+        output += "\n=== 右ブロック ===\n";
+        for (let rowIdx = 0; rowIdx < positions.length; rowIdx++) {
+            const row = positions[rowIdx];
+            if (!row) continue;
+            
+            for (let colIdx = 0; colIdx < row.length; colIdx++) {
+                const pos = row[colIdx];
+                if (!pos || pos.x <= 400) continue; // 右側のみ
+                
+                const keycode = layer[rowIdx]?.[colIdx] || -1;
+                const label = this.keycodeToLabel(keycode, config);
+                if (label.mainText) {
+                    output += `右(${colIdx + 1},${rowIdx + 1}): ${label.mainText}\n`;
+                }
+            }
+        }
+        
+        fs.writeFileSync(outputFile, output, 'utf8');
+        console.log(`座標マッピングを出力しました: ${outputFile}`);
     }
 }
 
@@ -379,9 +560,10 @@ class VialKeyboardImageGenerator {
 function main(): void {
     const generator = new VialKeyboardImageGenerator();
     const configPath = path.join(__dirname, '../data/yivu40-250906.vil');
-    const outputPath = path.join(__dirname, '../output/keyboard_layout_ts.png');
     
-    generator.generateKeyboardImage(configPath, outputPath);
+    // レイヤー1の画像を生成
+    const outputPath = path.join(__dirname, '../output/keyboard_layout_layer1_ts.png');
+    generator.generateKeyboardImage(configPath, outputPath, 1);
 }
 
 if (require.main === module) {
