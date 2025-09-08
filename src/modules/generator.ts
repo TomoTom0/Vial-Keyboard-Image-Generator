@@ -2,7 +2,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createCanvas } from 'canvas';
-import { VialConfig, COLORS } from './types';
+import { VialConfig, COLORS, RenderOptions, getThemeColors } from './types';
 import { Utils } from './utils';
 import { Parser } from './parser';
 import { Renderer } from './renderer';
@@ -70,7 +70,7 @@ export class VialKeyboardImageGenerator {
     }
 
     // キーボード画像を生成
-    public generateKeyboardImage(configPath: string, outputPath: string, layerIndex: number = 0): void {
+    public generateKeyboardImage(configPath: string, outputPath: string, layerIndex: number = 0, options: RenderOptions = {}): void {
         console.log('Vial Keyboard Image Generator (TypeScript)');
         
         // Vial設定を読み込み
@@ -78,6 +78,10 @@ export class VialKeyboardImageGenerator {
         console.log(`読み込み成功: version=${config.version}, uid=${config.uid}`);
         console.log(`レイヤー数: ${config.layout.length}`);
         console.log(`生成対象レイヤー: ${layerIndex}`);
+        
+        // Combo情報を解析
+        const combos = Parser.parseComboInfo(config);
+        console.log(`Combo数: ${combos.length}個`);
 
         // 画像サイズを計算
         const contentWidth = this.unitX * 14.0 + 30.0 + this.keyWidth;
@@ -89,8 +93,11 @@ export class VialKeyboardImageGenerator {
         const canvas = createCanvas(imgWidth, imgHeight);
         const ctx = canvas.getContext('2d');
 
+        // テーマ色を取得
+        const colors = getThemeColors(options.theme);
+        
         // 背景を塗りつぶし
-        ctx.fillStyle = COLORS.background;
+        ctx.fillStyle = options.backgroundColor || colors.background;
         ctx.fillRect(0, 0, imgWidth, imgHeight);
 
         // キー配置情報を取得
@@ -108,15 +115,16 @@ export class VialKeyboardImageGenerator {
                     const keycode = layer[rowIdx]?.[colIdx] || -1;
                     const label = Parser.keycodeToLabel(keycode, config);
 
-                    // キーを描画
-                    Renderer.drawKey(ctx, pos, label);
-                    Renderer.drawText(ctx, pos, label);
+                    // キーを描画（Combo情報付き）
+                    const stringKeycode = String(keycode);
+                    Renderer.drawKey(ctx, pos, label, stringKeycode, combos, options);
+                    Renderer.drawText(ctx, pos, label, stringKeycode, combos, options);
                 }
             }
         }
 
         // レイヤー番号を装飾付きで左下に表示
-        Renderer.drawLayerNumber(ctx, layerIndex, canvas.width, canvas.height);
+        Renderer.drawLayerNumber(ctx, layerIndex, canvas.width, canvas.height, options);
 
         // 画像を保存
         const buffer = canvas.toBuffer('image/png');

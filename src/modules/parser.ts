@@ -1,8 +1,37 @@
 // パーサーモジュール（相互依存）
-import { VialConfig, KeyLabel } from './types';
+import { VialConfig, KeyLabel, ComboInfo } from './types';
 import { Utils } from './utils';
 
 export class Parser {
+    // 文字列キーコードを数値に変換
+    static stringToKeycode(keyStr: string): number | undefined {
+        if (typeof keyStr === 'number') return keyStr;
+        
+        // KC_プレフィックスを除去
+        let cleanStr = keyStr;
+        if (cleanStr.startsWith('KC_')) {
+            cleanStr = cleanStr.substring(3);
+        }
+        
+        // 基本的なキーマッピング（実際のキーコード値）
+        const keycodeMap: { [key: string]: number } = {
+            'A': 4, 'B': 5, 'C': 6, 'D': 7, 'E': 8, 'F': 9, 'G': 10, 'H': 11,
+            'I': 12, 'J': 13, 'K': 14, 'L': 15, 'M': 16, 'N': 17, 'O': 18, 'P': 19,
+            'Q': 20, 'R': 21, 'S': 22, 'T': 23, 'U': 24, 'V': 25, 'W': 26, 'X': 27,
+            'Y': 28, 'Z': 29,
+            '1': 30, '2': 31, '3': 32, '4': 33, '5': 34, '6': 35, '7': 36, '8': 37,
+            '9': 38, '0': 39,
+            'ENTER': 40, 'RETURN': 40, 'ESC': 41, 'ESCAPE': 41, 'BSPC': 42, 'BSPACE': 42,
+            'TAB': 43, 'SPACE': 44, 'SPC': 44, 'CAPS': 57, 'CAPSLOCK': 57,
+            'F1': 58, 'F2': 59, 'F3': 60, 'F4': 61, 'F5': 62, 'F6': 63,
+            'F7': 64, 'F8': 65, 'F9': 66, 'F10': 67, 'F11': 68, 'F12': 69,
+            'HOME': 74, 'PGUP': 75, 'PGDN': 78, 'END': 77, 'DEL': 76, 'DELETE': 76,
+            'LCTRL': 224, 'LSHIFT': 225, 'LALT': 226, 'LGUI': 227,
+            'RCTRL': 228, 'RSHIFT': 229, 'RALT': 230, 'RGUI': 231
+        };
+        
+        return keycodeMap[cleanStr];
+    }
     // Tap Dance情報を取得
     static getTapDanceInfo(index: number, config: VialConfig): { tap: string; hold?: string; doubleTap?: string; tapHold?: string } | null {
         if (!config.tap_dance || index >= config.tap_dance.length) {
@@ -213,5 +242,58 @@ export class Parser {
                 }
                 return { mainText: convertedKeyStr, subText: undefined, isSpecial: false };
         }
+    }
+
+    // Combo情報を解析
+    static parseComboInfo(config: VialConfig): ComboInfo[] {
+        if (!config.combo) return [];
+
+        const combos: ComboInfo[] = [];
+        
+        for (let i = 0; i < config.combo.length; i++) {
+            const combo = config.combo[i];
+            if (combo.length < 5) continue;
+
+            // KC_NOでない有効なキーを抽出
+            const validKeys = combo.slice(0, 4).filter(key => key !== 'KC_NO' && key !== '');
+            if (validKeys.length === 0) continue;
+
+            const action = combo[4];
+            if (!action || action === 'KC_NO') continue;
+
+            // キー名を読みやすい形式に変換＆サブテキストも取得
+            const keyLabels: string[] = [];
+            const keySubTexts: (string[] | undefined)[] = [];
+            
+            validKeys.forEach(key => {
+                const label = Parser.keycodeToLabel(key, config);
+                keyLabels.push(label.mainText || key);
+                keySubTexts.push(label.subTexts);
+            });
+
+            // キーコードを文字列として保持（複合キーコードも処理）
+            const validKeycodes = validKeys.map(key => {
+                if (typeof key === 'string') {
+                    return key; // 文字列のキーコードをそのまま使用
+                }
+                return String(key);
+            });
+
+            // アクション名を読みやすい形式に変換
+            const actionLabel = Parser.keycodeToLabel(action, config);
+
+            
+            combos.push({
+                keys: keyLabels,
+                keycodes: validKeycodes,
+                keySubTexts: keySubTexts, // 各キーのサブテキスト
+                action: actionLabel.mainText || action,
+                description: `${keyLabels.join(' + ')} → ${actionLabel.mainText || action}`,
+                actionSubTexts: actionLabel.subTexts, // アクションのサブテキストも保存
+                index: i // 元のインデックス番号を保存
+            });
+        }
+
+        return combos;
     }
 }
