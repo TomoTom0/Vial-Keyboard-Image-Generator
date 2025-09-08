@@ -23,6 +23,7 @@ interface KeyPosition {
 interface KeyLabel {
     mainText: string;
     subText?: string;
+    subTexts?: string[]; // 複数のサブテキスト対応
     isSpecial: boolean;
 }
 
@@ -152,13 +153,29 @@ class VialKeyboardImageGenerator {
             const match = convertedKeyStr.match(/TD\((\d+)\)/);
             if (match) {
                 const tdIndex = parseInt(match[1]);
+                console.log(`Debug: Processing TD(${tdIndex})`);
                 const tdInfo = this.getTapDanceInfo(tdIndex, config);
                 if (tdInfo) {
+                    console.log(`Debug: TD(${tdIndex}) info:`, tdInfo);
+                    const subTexts: string[] = [];
+                    if (tdInfo.hold && tdInfo.hold !== 'KC_NO' && tdInfo.hold !== 'NO') {
+                        subTexts.push(tdInfo.hold);
+                    }
+                    if (tdInfo.doubleTap && tdInfo.doubleTap !== 'KC_NO' && tdInfo.doubleTap !== 'NO') {
+                        subTexts.push(tdInfo.doubleTap);
+                    }
+                    if (tdInfo.tapHold && tdInfo.tapHold !== 'KC_NO' && tdInfo.tapHold !== 'NO') {
+                        subTexts.push(tdInfo.tapHold);
+                    }
+                    console.log(`Debug: TD(${tdIndex}) subTexts:`, subTexts);
+                    
                     return {
                         mainText: tdInfo.tap,
-                        subText: tdInfo.hold,
+                        subTexts: subTexts.length > 0 ? subTexts : undefined,
                         isSpecial: true
                     };
+                } else {
+                    console.log(`Debug: No TD info found for TD(${tdIndex})`);
                 }
             }
             return { mainText: convertedKeyStr, subText: undefined, isSpecial: true };
@@ -180,7 +197,7 @@ class VialKeyboardImageGenerator {
                 
                 return {
                     mainText: keyName,
-                    subText: `LT${layerNum}`,
+                    subTexts: [`LT${layerNum}`],
                     isSpecial: true
                 };
             }
@@ -264,8 +281,15 @@ class VialKeyboardImageGenerator {
                 // ナビゲーションキー
                 'HOME': 'Home', 'END': 'End', 'PGUP': 'PgUp', 'PGDN': 'PgDn',
                 'INSERT': 'Ins', 'DELETE': 'Del',
+                // テンキー
+                'KP_0': '0', 'KP_1': '1', 'KP_2': '2', 'KP_3': '3', 'KP_4': '4',
+                'KP_5': '5', 'KP_6': '6', 'KP_7': '7', 'KP_8': '8', 'KP_9': '9',
+                'KP_DOT': '.', 'KP_SLASH': '/', 'KP_ASTERISK': '*', 'KP_MINUS': '-',
+                'KP_PLUS': '+', 'KP_EQUAL': '=', 'KP_ENTER': 'Enter',
                 // 日本語キー
-                'MHEN': 'MHEN', 'HENK': 'HENK', 'KANA': 'KANA'
+                'MHEN': 'MHEN', 'HENK': 'HENK', 'KANA': 'KANA',
+                // 透過キー
+                'TRNS': '▽'
             };
 
             const mappedKey = keyMapping[baseKey];
@@ -286,23 +310,36 @@ class VialKeyboardImageGenerator {
     }
 
     // Tap Dance情報を取得
-    private getTapDanceInfo(index: number, config: VialConfig): { tap: string; hold: string } | null {
+    private getTapDanceInfo(index: number, config: VialConfig): { tap: string; hold?: string; doubleTap?: string; tapHold?: string } | null {
         if (!config.tap_dance || index >= config.tap_dance.length) {
             return null;
         }
 
         const td = config.tap_dance[index];
-        if (td.length < 2) {
+        if (td.length < 1) {
             return null;
         }
 
-        const tapKey = this.keycodeToLabel(td[0], config);
-        const holdKey = this.keycodeToLabel(td[1], config);
-
-        return {
-            tap: tapKey.mainText,
-            hold: holdKey.mainText
+        const result: { tap: string; hold?: string; doubleTap?: string; tapHold?: string } = {
+            tap: this.keycodeToLabel(td[0], config).mainText
         };
+
+        // hold動作（2番目の要素）
+        if (td.length > 1 && td[1] && td[1] !== 'KC_NO') {
+            result.hold = this.keycodeToLabel(td[1], config).mainText;
+        }
+
+        // double tap動作（3番目の要素）
+        if (td.length > 2 && td[2] && td[2] !== 'KC_NO') {
+            result.doubleTap = this.keycodeToLabel(td[2], config).mainText;
+        }
+
+        // tap+hold動作（4番目の要素）
+        if (td.length > 3 && td[3] && td[3] !== 'KC_NO') {
+            result.tapHold = this.keycodeToLabel(td[3], config).mainText;
+        }
+
+        return result;
     }
 
     // キー位置の定義
@@ -353,43 +390,43 @@ class VialKeyboardImageGenerator {
 
         // 行4: 右上段
         positions[4] = [
-            { x: this.margin + this.unitX * 14.0, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // KC_NO
-            { x: this.margin + this.unitX * 13.0, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // P
-            { x: this.margin + this.unitX * 12.0, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // O
-            { x: this.margin + this.unitX * 11.0, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // I
-            { x: this.margin + this.unitX * 10.0, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // U
-            { x: this.margin + this.unitX * 9.0, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // Y
-            { x: this.margin + this.unitX * 8.0, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // RAlt
+            { x: this.margin + this.unitX * 13.5, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // KC_NO
+            { x: this.margin + this.unitX * 12.5, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // P
+            { x: this.margin + this.unitX * 11.5, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // O
+            { x: this.margin + this.unitX * 10.5, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // I
+            { x: this.margin + this.unitX * 9.5, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // U
+            { x: this.margin + this.unitX * 8.5, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // Y
+            { x: this.margin + this.unitX * 7.5, y: this.margin + 0.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // RAlt
         ];
 
         // 行5: 右中段
         positions[5] = [
-            { x: this.margin + this.unitX * 14.0, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // TD(0)
-            { x: this.margin + this.unitX * 13.0, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // Bksp
-            { x: this.margin + this.unitX * 12.0, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // L
-            { x: this.margin + this.unitX * 11.0, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // K
-            { x: this.margin + this.unitX * 10.0, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // J
-            { x: this.margin + this.unitX * 9.0, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // H
-            { x: this.margin + this.unitX * 8.0, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // RShift
+            { x: this.margin + this.unitX * 13.5, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // TD(0)
+            { x: this.margin + this.unitX * 12.5, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // Bksp
+            { x: this.margin + this.unitX * 11.5, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // L
+            { x: this.margin + this.unitX * 10.5, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // K
+            { x: this.margin + this.unitX * 9.5, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // J
+            { x: this.margin + this.unitX * 8.5, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // H
+            { x: this.margin + this.unitX * 7.5, y: this.margin + this.unitY * 1.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // RShift
         ];
 
         // 行6: 右下段
         positions[6] = [
-            { x: this.margin + this.unitX * 14.0, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // Enter
-            { x: this.margin + this.unitX * 13.0, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // ?
-            { x: this.margin + this.unitX * 12.0, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // ;
-            { x: this.margin + this.unitX * 11.0, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // M
-            { x: this.margin + this.unitX * 10.0, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // ,
-            { x: this.margin + this.unitX * 9.0, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // N
+            { x: this.margin + this.unitX * 13.5, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // Enter
+            { x: this.margin + this.unitX * 12.5, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // ?
+            { x: this.margin + this.unitX * 11.5, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // ;
+            { x: this.margin + this.unitX * 10.5, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // M
+            { x: this.margin + this.unitX * 9.5, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // ,
+            { x: this.margin + this.unitX * 8.5, y: this.margin + this.unitY * 2.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // N
             null,
         ];
 
         // 行7: 右親指部
         positions[7] = [
             null, null, null,
-            { x: this.margin + this.unitX * 11.0, y: this.margin + this.unitY * 3.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // RGui
-            { x: this.margin + this.unitX * 10.0, y: this.margin + this.unitY * 3.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // LT2 Space
-            { x: this.margin + this.unitX * 9.0 - this.keyWidth * 0.5, y: this.margin + this.unitY * 3.0, width: this.keyWidth * 1.5, height: this.keyHeight, rotation: 0.0 }, // LT3 Tab
+            { x: this.margin + this.unitX * 10.5, y: this.margin + this.unitY * 3.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // RGui
+            { x: this.margin + this.unitX * 9.5, y: this.margin + this.unitY * 3.0, width: this.keyWidth, height: this.keyHeight, rotation: 0.0 }, // LT2 Space
+            { x: this.margin + this.unitX * 8.5 - this.keyWidth * 0.5, y: this.margin + this.unitY * 3.0, width: this.keyWidth * 1.5, height: this.keyHeight, rotation: 0.0 }, // LT3 Tab
             null,
         ];
 
@@ -446,16 +483,47 @@ class VialKeyboardImageGenerator {
         ctx.fillStyle = mainColor;
         ctx.textAlign = 'center';
 
-        // メインテキストを常に中央に配置
-        const mainY = pos.y + pos.height / 2 + 6;
+        // メインテキストを上に寄せて配置
+        const mainY = pos.y + pos.height * 0.35;
         ctx.fillText(label.mainText, pos.x + pos.width / 2, mainY);
 
         // サブテキストの描画
-        if (label.subText) {
-            ctx.font = '14px Arial, sans-serif';
+        if (label.subTexts && label.subTexts.length > 0) {
             ctx.fillStyle = COLORS.textSub;
-            const subY = pos.y + pos.height * 0.85;
-            ctx.fillText(label.subText, pos.x + pos.width / 2, subY);
+            
+            if (label.subTexts.length === 1) {
+                // 単一のサブテキストは大きな文字で中央に表示
+                ctx.font = '14px Arial, sans-serif';
+                const y = pos.y + pos.height * 0.75;
+                ctx.fillText(label.subTexts[0], pos.x + pos.width / 2, y);
+            } else {
+                // 複数のサブテキストは一行に二個ずつ配置
+                const startY = pos.y + pos.height * 0.65;
+                const lineHeight = 13;
+                
+                for (let i = 0; i < label.subTexts.length; i += 2) {
+                    const row = Math.floor(i / 2);
+                    const y = startY + (row * lineHeight);
+                    
+                    if (i + 1 < label.subTexts.length) {
+                        // 一行に二個表示：左側は少し大きく、右側は通常サイズ
+                        const leftX = pos.x + pos.width * 0.25;
+                        const rightX = pos.x + pos.width * 0.75;
+                        
+                        // 左側（もう少し大きく）
+                        ctx.font = '13px Arial, sans-serif';
+                        ctx.fillText(label.subTexts[i], leftX, y);
+                        
+                        // 右側（通常サイズ）
+                        ctx.font = '11px Arial, sans-serif';
+                        ctx.fillText(label.subTexts[i + 1], rightX, y);
+                    } else {
+                        // 奇数個の場合、最後の一個は中央に表示
+                        ctx.font = '11px Arial, sans-serif';
+                        ctx.fillText(label.subTexts[i], pos.x + pos.width / 2, y);
+                    }
+                }
+            }
         }
     }
 
