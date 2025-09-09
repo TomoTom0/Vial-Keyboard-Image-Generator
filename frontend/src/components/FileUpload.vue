@@ -1,5 +1,5 @@
 <template>
-  <div class="file-upload-container">
+  <div class="file-upload">
     <div
       class="upload-area"
       :class="{ 'drag-over': isDragOver, 'has-file': uploadedFile }"
@@ -14,62 +14,24 @@
         type="file"
         accept=".vil"
         @change="handleFileSelect"
-        class="file-input"
         hidden
       />
       
-      <div v-if="!uploadedFile" class="upload-placeholder">
-        <div class="upload-icon">📁</div>
-        <p class="upload-text">
-          <strong>クリックしてファイルを選択</strong><br>
-          または<br>
-          <strong>.vilファイルをドラッグ&ドロップ</strong>
-        </p>
-        <p class="upload-hint">
-          最大ファイルサイズ: 10MB
-        </p>
+      <div v-if="!uploadedFile" class="placeholder">
+        <div class="icon">📁</div>
+        <div class="text">Drop .vil file or click to select</div>
       </div>
 
       <div v-else class="file-info">
-        <div class="file-icon">✅</div>
         <div class="file-details">
-          <p class="file-name">{{ uploadedFile.name }}</p>
-          <p class="file-size">{{ formatFileSize(uploadedFile.size) }}</p>
+          <div class="file-name">{{ uploadedFile.name }}</div>
+          <div class="file-size">{{ formatFileSize(uploadedFile.size) }}</div>
         </div>
-        <button 
-          @click.stop="removeFile"
-          class="remove-button"
-          title="ファイルを削除"
-        >
-          ❌
-        </button>
+        <button @click.stop="removeFile" class="remove-btn">×</button>
       </div>
     </div>
 
-    <div v-if="error" class="error-message">
-      ⚠️ {{ error }}
-    </div>
-
-    <div v-if="uploadProgress > 0 && uploadProgress < 100" class="progress-bar">
-      <div class="progress-fill" :style="{ width: uploadProgress + '%' }"></div>
-      <span class="progress-text">{{ uploadProgress }}%</span>
-    </div>
-
-    <!-- 最近使用したファイル -->
-    <div v-if="recentFiles.length > 0" class="recent-files">
-      <h3>最近使用したファイル</h3>
-      <div class="recent-files-list">
-        <div
-          v-for="file in recentFiles"
-          :key="file.id"
-          class="recent-file-item"
-          @click="selectRecentFile(file)"
-        >
-          <span class="recent-file-name">{{ file.name }}</span>
-          <span class="recent-file-date">{{ formatDate(file.timestamp) }}</span>
-        </div>
-      </div>
-    </div>
+    <div v-if="error" class="error">{{ error }}</div>
   </div>
 </template>
 
@@ -264,61 +226,51 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.file-upload-container {
-  width: 100%;
-  max-width: 600px;
+.file-upload {
+  /* No max-width to fill sidebar */
 }
 
 .upload-area {
-  border: 2px dashed #cbd5e0;
-  border-radius: 12px;
-  padding: 2rem;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  padding: 1.5rem;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s ease;
-  background: #f8fafc;
-  min-height: 200px;
+  transition: all 0.2s;
+  background: #f8f9fa;
+  min-height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .upload-area:hover {
-  border-color: #4299e1;
-  background: #ebf8ff;
+  border-color: #6c757d;
 }
 
 .upload-area.drag-over {
-  border-color: #4299e1;
-  background: #ebf8ff;
-  transform: scale(1.02);
+  border-color: #0d6efd;
+  background: #e7f1ff;
 }
 
 .upload-area.has-file {
-  border-color: #48bb78;
-  background: #f0fff4;
+  border-color: #198754;
+  background: #d1e7dd;
   cursor: default;
 }
 
-.upload-placeholder {
+.placeholder {
   width: 100%;
 }
 
-.upload-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-}
-
-.upload-text {
-  font-size: 1.1rem;
-  color: #4a5568;
+.icon {
+  font-size: 2rem;
   margin-bottom: 0.5rem;
-  line-height: 1.5;
 }
 
-.upload-hint {
+.text {
   font-size: 0.9rem;
-  color: #718096;
+  color: #6c757d;
 }
 
 .file-info {
@@ -328,131 +280,47 @@ onMounted(() => {
   width: 100%;
 }
 
-.file-icon {
-  font-size: 2rem;
-}
-
 .file-details {
   flex: 1;
   text-align: left;
 }
 
 .file-name {
-  font-weight: 600;
-  color: #2d3748;
+  font-weight: 500;
+  color: #212529;
+  font-size: 0.9rem;
   margin-bottom: 0.25rem;
+  word-break: break-all;
 }
 
 .file-size {
-  font-size: 0.9rem;
-  color: #718096;
+  font-size: 0.8rem;
+  color: #6c757d;
   margin: 0;
 }
 
-.remove-button {
+.remove-btn {
   background: none;
   border: none;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   cursor: pointer;
-  padding: 0.5rem;
+  padding: 0.25rem;
   border-radius: 4px;
-  transition: background-color 0.2s;
+  color: #dc3545;
+  line-height: 1;
 }
 
-.remove-button:hover {
-  background: rgba(255, 0, 0, 0.1);
+.remove-btn:hover {
+  background: rgba(220, 53, 69, 0.1);
 }
 
-.error-message {
+.error {
   margin-top: 1rem;
   padding: 0.75rem;
-  background: #fed7d7;
-  border: 1px solid #fc8181;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
   border-radius: 6px;
-  color: #c53030;
-  font-size: 0.9rem;
-}
-
-.progress-bar {
-  margin-top: 1rem;
-  position: relative;
-  height: 24px;
-  background: #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4299e1, #3182ce);
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #2d3748;
-}
-
-.recent-files {
-  margin-top: 2rem;
-}
-
-.recent-files h3 {
-  font-size: 1.1rem;
-  color: #4a5568;
-  margin-bottom: 1rem;
-}
-
-.recent-files-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.recent-file-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  background: #f7fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.recent-file-item:hover {
-  background: #edf2f7;
-  border-color: #cbd5e0;
-}
-
-.recent-file-name {
-  font-weight: 500;
-  color: #2d3748;
-}
-
-.recent-file-date {
-  font-size: 0.8rem;
-  color: #718096;
-}
-
-@media (max-width: 640px) {
-  .upload-area {
-    padding: 1.5rem;
-    min-height: 150px;
-  }
-  
-  .upload-text {
-    font-size: 1rem;
-  }
-  
-  .upload-icon {
-    font-size: 2.5rem;
-  }
+  color: #721c24;
+  font-size: 0.875rem;
 }
 </style>

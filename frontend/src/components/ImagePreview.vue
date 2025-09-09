@@ -1,143 +1,65 @@
 <template>
-  <div class="image-preview-container">
-    <!-- 生成中の状態 -->
-    <div v-if="isGenerating" class="generating-state">
-      <div class="loading-spinner"></div>
-      <h3>画像を生成中...</h3>
-      <p>しばらくお待ちください</p>
-      <div class="progress-bar">
-        <div class="progress-fill" :style="{ width: progress + '%' }"></div>
+  <div class="preview">
+    <!-- 生成中 -->
+    <div v-if="isGenerating" class="state generating">
+      <div class="spinner"></div>
+      <div>Generating images...</div>
+      <div class="progress">
+        <div class="progress-bar" :style="{ width: progress + '%' }"></div>
       </div>
     </div>
 
-    <!-- エラー状態 -->
-    <div v-else-if="error" class="error-state">
-      <div class="error-icon">❌</div>
-      <h3>エラーが発生しました</h3>
-      <p class="error-message">{{ error }}</p>
-      <button @click="$emit('retry')" class="retry-button">
-        🔄 再試行
-      </button>
+    <!-- エラー -->
+    <div v-else-if="error" class="state error">
+      <div class="message">{{ error }}</div>
+      <button @click="$emit('retry')" class="retry-btn">Retry</button>
     </div>
 
-    <!-- 画像表示状態 -->
-    <div v-else-if="images.length > 0" class="images-display">
-      <div class="preview-header">
-        <h3>生成された画像 ({{ images.length }}枚)</h3>
-        <div class="header-actions">
-          <button @click="downloadAll" class="download-all-button">
-            📦 全てダウンロード
-          </button>
-          <button @click="shareImages" class="share-button">
-            🔗 共有
-          </button>
-        </div>
+    <!-- 画像表示 -->
+    <div v-else-if="images.length > 0" class="images">
+      <div class="header">
+        <span>{{ images.length }} images</span>
+        <button @click="downloadAll" class="download-all">Download All</button>
       </div>
 
-      <!-- 画像グリッド -->
-      <div class="images-grid">
-        <div
-          v-for="image in images"
-          :key="image.id"
-          class="image-card"
-          :class="{ 'expanded': expandedImage === image.id }"
-        >
-          <div class="image-header">
-            <h4 class="image-title">{{ image.filename }}</h4>
-            <div class="image-meta">
-              <span class="image-type">{{ getImageTypeText(image) }}</span>
-              <span class="image-size">{{ formatFileSize(image.size) }}</span>
+      <div class="grid">
+        <div v-for="image in images" :key="image.id" class="image-item">
+          <img
+            :src="getImageUrl(image)"
+            :alt="image.filename"
+            class="image"
+            @click="showModal(image)"
+          />
+          <div class="info">
+            <div class="filename">{{ image.filename }}</div>
+            <div class="meta">
+              {{ getImageTypeText(image) }} • {{ formatFileSize(image.size) }}
             </div>
           </div>
-
-          <div class="image-content" @click="toggleImageExpand(image.id)">
-            <img
-              :src="getImageUrl(image)"
-              :alt="image.filename"
-              class="preview-image"
-              @load="onImageLoad(image)"
-              @error="onImageError(image)"
-            />
-            <div class="image-overlay">
-              <div class="overlay-actions">
-                <button class="overlay-button" title="拡大表示">
-                  🔍
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="image-actions">
-            <button
-              @click="downloadImage(image)"
-              class="action-button primary"
-            >
-              💾 ダウンロード
-            </button>
-            <button
-              @click="copyImageLink(image)"
-              class="action-button secondary"
-            >
-              📋 リンクをコピー
-            </button>
-            <button
-              @click="showImageInfo(image)"
-              class="action-button secondary"
-            >
-              ℹ️ 詳細
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 画像詳細モーダル -->
-      <div v-if="selectedImage" class="image-modal" @click="closeModal">
-        <div class="modal-content" @click.stop>
-          <div class="modal-header">
-            <h3>{{ selectedImage.filename }}</h3>
-            <button @click="closeModal" class="close-button">❌</button>
-          </div>
-          <div class="modal-body">
-            <img
-              :src="getImageUrl(selectedImage)"
-              :alt="selectedImage.filename"
-              class="modal-image"
-            />
-            <div class="image-details">
-              <div class="detail-item">
-                <strong>ファイル名:</strong> {{ selectedImage.filename }}
-              </div>
-              <div class="detail-item">
-                <strong>タイプ:</strong> {{ getImageTypeText(selectedImage) }}
-              </div>
-              <div class="detail-item">
-                <strong>サイズ:</strong> {{ formatFileSize(selectedImage.size) }}
-              </div>
-              <div class="detail-item">
-                <strong>作成日時:</strong> {{ formatDateTime(selectedImage.timestamp) }}
-              </div>
-              <div v-if="selectedImage.layer !== undefined" class="detail-item">
-                <strong>レイヤー:</strong> {{ selectedImage.layer }}
-              </div>
-            </div>
-          </div>
-          <div class="modal-actions">
-            <button @click="downloadImage(selectedImage)" class="modal-button primary">
-              💾 ダウンロード
-            </button>
-            <button @click="copyImageLink(selectedImage)" class="modal-button secondary">
-              📋 リンクをコピー
-            </button>
+          <div class="actions">
+            <button @click="downloadImage(image)" class="btn-download">↓</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 初期状態 -->
-    <div v-else class="empty-state">
-      <div class="empty-icon">🖼️</div>
-      <h3>画像をプレビューする準備ができました</h3>
-      <p>ファイルをアップロードして画像を生成してください</p>
+    <!-- 空状態 -->
+    <div v-else class="state empty">
+      <div class="message">No images generated yet</div>
+    </div>
+
+    <!-- モーダル -->
+    <div v-if="selectedImage" class="modal" @click="closeModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <span>{{ selectedImage.filename }}</span>
+          <button @click="closeModal" class="close">×</button>
+        </div>
+        <img :src="getImageUrl(selectedImage)" class="modal-image" />
+        <div class="modal-actions">
+          <button @click="downloadImage(selectedImage)" class="modal-btn">Download</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -278,8 +200,8 @@ const shareImages = async () => {
   }
 }
 
-// 画像詳細表示
-const showImageInfo = (image: GeneratedImage) => {
+// 画像詳細表示  
+const showModal = (image: GeneratedImage) => {
   selectedImage.value = image
 }
 
@@ -300,25 +222,31 @@ const onImageError = (image: GeneratedImage) => {
 </script>
 
 <style scoped>
-.image-preview-container {
-  width: 100%;
-  max-width: 1200px;
+.preview {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 生成中状態 */
-.generating-state {
+.state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 3rem 1rem;
+  padding: 2rem;
+  color: #6c757d;
 }
 
-.loading-spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #e2e8f0;
-  border-top: 4px solid #4299e1;
+.generating .spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e9ecef;
+  border-top: 3px solid #0d6efd;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin: 0 auto 1.5rem;
+  margin-bottom: 1rem;
 }
 
 @keyframes spin {
@@ -326,242 +254,125 @@ const onImageError = (image: GeneratedImage) => {
   100% { transform: rotate(360deg); }
 }
 
-.progress-bar {
-  width: 100%;
-  max-width: 300px;
-  height: 8px;
-  background: #e2e8f0;
-  border-radius: 4px;
-  margin: 1rem auto 0;
+.progress {
+  width: 200px;
+  height: 4px;
+  background: #e9ecef;
+  border-radius: 2px;
+  margin-top: 1rem;
   overflow: hidden;
 }
 
-.progress-fill {
+.progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #4299e1, #3182ce);
+  background: #0d6efd;
   transition: width 0.3s ease;
 }
 
-/* エラー状態 */
-.error-state {
-  text-align: center;
-  padding: 3rem 1rem;
-}
-
-.error-icon {
-  font-size: 3rem;
+.error .message {
+  color: #dc3545;
   margin-bottom: 1rem;
 }
 
-.error-message {
-  color: #e53e3e;
-  margin-bottom: 1.5rem;
-}
-
-.retry-button {
-  background: #4299e1;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 0.75rem 1.5rem;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-/* 空状態 */
-.empty-state {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: #718096;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
-}
-
-/* 画像表示 */
-.images-display {
-  width: 100%;
-}
-
-.preview-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.preview-header h3 {
-  color: #2d3748;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.download-all-button,
-.share-button {
-  background: #4299e1;
+.retry-btn {
+  background: #0d6efd;
   color: white;
   border: none;
   border-radius: 6px;
   padding: 0.5rem 1rem;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: background-color 0.2s;
 }
 
-.download-all-button:hover,
-.share-button:hover {
-  background: #3182ce;
+.images {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
-.images-grid {
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 1rem;
+}
+
+.download-all {
+  background: #198754;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  flex: 1;
 }
 
-.image-card {
+.image-item {
   background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  transition: box-shadow 0.2s;
 }
 
-.image-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+.image-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.image-header {
-  padding: 1rem;
-  border-bottom: 1px solid #f1f5f9;
+.image {
+  width: 100%;
+  height: auto;
+  cursor: pointer;
+  display: block;
 }
 
-.image-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0 0 0.5rem 0;
+.info {
+  padding: 0.75rem;
+}
+
+.filename {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #212529;
+  margin-bottom: 0.25rem;
   word-break: break-all;
 }
 
-.image-meta {
-  display: flex;
-  gap: 1rem;
+.meta {
   font-size: 0.8rem;
-  color: #718096;
+  color: #6c757d;
 }
 
-.image-content {
-  position: relative;
-  cursor: pointer;
-  overflow: hidden;
+.actions {
+  padding: 0 0.75rem 0.75rem;
 }
 
-.preview-image {
-  width: 100%;
-  height: auto;
-  display: block;
-  transition: transform 0.3s ease;
-}
-
-.image-content:hover .preview-image {
-  transform: scale(1.05);
-}
-
-.image-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.image-content:hover .image-overlay {
-  opacity: 1;
-}
-
-.overlay-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.overlay-button {
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  cursor: pointer;
-  font-size: 1.2rem;
-  transition: background-color 0.2s;
-}
-
-.overlay-button:hover {
-  background: white;
-}
-
-.image-actions {
-  padding: 1rem;
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.action-button {
-  flex: 1;
-  min-width: 80px;
-  padding: 0.5rem 0.75rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  transition: all 0.2s;
-}
-
-.action-button.primary {
-  background: #4299e1;
+.btn-download {
+  background: #0d6efd;
   color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
 }
 
-.action-button.primary:hover {
-  background: #3182ce;
-}
-
-.action-button.secondary {
-  background: #f7fafc;
-  color: #4a5568;
-  border: 1px solid #e2e8f0;
-}
-
-.action-button.secondary:hover {
-  background: #edf2f7;
-}
-
-/* モーダル */
-.image-modal {
+.modal {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -571,7 +382,7 @@ const onImageError = (image: GeneratedImage) => {
 
 .modal-content {
   background: white;
-  border-radius: 12px;
+  border-radius: 8px;
   max-width: 90vw;
   max-height: 90vh;
   overflow: auto;
@@ -581,84 +392,37 @@ const onImageError = (image: GeneratedImage) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 1rem;
+  border-bottom: 1px solid #e9ecef;
 }
 
-.close-button {
+.close {
   background: none;
   border: none;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   cursor: pointer;
-}
-
-.modal-body {
-  padding: 1.5rem;
+  color: #6c757d;
 }
 
 .modal-image {
   width: 100%;
   height: auto;
-  margin-bottom: 1rem;
-  border-radius: 8px;
-}
-
-.image-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.detail-item {
-  font-size: 0.9rem;
-  color: #4a5568;
+  display: block;
 }
 
 .modal-actions {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e2e8f0;
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
+  padding: 1rem;
+  border-top: 1px solid #e9ecef;
+  text-align: center;
 }
 
-.modal-button {
-  padding: 0.5rem 1rem;
+.modal-btn {
+  background: #0d6efd;
+  color: white;
   border: none;
   border-radius: 6px;
+  padding: 0.5rem 1rem;
   cursor: pointer;
   font-size: 0.9rem;
-}
-
-.modal-button.primary {
-  background: #4299e1;
-  color: white;
-}
-
-.modal-button.secondary {
-  background: #f7fafc;
-  color: #4a5568;
-  border: 1px solid #e2e8f0;
-}
-
-@media (max-width: 768px) {
-  .images-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .preview-header {
-    flex-direction: column;
-    align-items: stretch;
-    text-align: center;
-  }
-  
-  .header-actions {
-    justify-content: center;
-  }
-  
-  .modal-content {
-    max-width: 95vw;
-    max-height: 95vh;
-  }
 }
 </style>
