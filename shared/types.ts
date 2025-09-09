@@ -10,6 +10,21 @@ export interface GenerationOptions {
     };
     showComboInfo?: boolean;
     fileLabel?: string;
+    imageOptions?: ImageOutputOptions;
+}
+
+export interface ImageOutputOptions {
+    // プレビュー版設定
+    generatePreview?: boolean;
+    previewMaxWidth?: number;
+    previewQuality?: number;
+    
+    // フル版設定
+    fullQuality?: number;
+    fullFormat?: 'png' | 'jpeg';
+    
+    // 共通設定
+    compressionLevel?: number;
 }
 
 export interface GenerationRequest {
@@ -31,7 +46,9 @@ export interface GeneratedImage {
     layer?: number;
     format: string;
     url: string;
+    previewUrl?: string;  // プレビュー版のURL
     size: number;
+    previewSize?: number; // プレビュー版のサイズ
     timestamp: Date;
 }
 

@@ -112,3 +112,7 @@ Thumbs.db
 
 # Optional stylelint cache
 .stylelintcache
+
+# Test files and directories
+tests/
+test_*.js

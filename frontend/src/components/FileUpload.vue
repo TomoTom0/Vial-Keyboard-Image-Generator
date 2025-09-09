@@ -1,8 +1,12 @@
 <template>
   <div class="file-upload">
     <div
-      class="upload-area"
-      :class="{ 'drag-over': isDragOver, 'has-file': uploadedFile }"
+      class="upload-zone"
+      :class="{ 
+        'drag-active': isDragOver, 
+        'has-file': uploadedFile,
+        'upload-error': error 
+      }"
       @drop="handleDrop"
       @dragover.prevent="handleDragOver"
       @dragenter.prevent="handleDragEnter"
@@ -17,21 +21,37 @@
         hidden
       />
       
-      <div v-if="!uploadedFile" class="placeholder">
-        <div class="icon">📁</div>
-        <div class="text">Drop .vil file or click to select</div>
+      <div v-if="!uploadedFile" class="upload-content">
+        <div class="upload-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17,8 12,3 7,8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="upload-text">
+          <div class="primary-text">upload</div>
+        </div>
       </div>
 
-      <div v-else class="file-info">
+      <div v-else class="file-preview">
+        <div class="file-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+          </svg>
+        </div>
         <div class="file-details">
           <div class="file-name">{{ uploadedFile.name }}</div>
           <div class="file-size">{{ formatFileSize(uploadedFile.size) }}</div>
         </div>
-        <button @click.stop="removeFile" class="remove-btn">×</button>
+        <button @click.stop="removeFile" class="remove-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
       </div>
     </div>
-
-    <div v-if="error" class="error">{{ error }}</div>
   </div>
 </template>
 
@@ -227,100 +247,147 @@ onMounted(() => {
 
 <style scoped>
 .file-upload {
-  /* No max-width to fill sidebar */
+  width: 100%;
 }
 
-.upload-area {
-  border: 2px dashed #dee2e6;
+.upload-zone {
+  border: 2px dashed #d1d5db;
   border-radius: 8px;
-  padding: 1.5rem;
+  padding: 12px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s;
-  background: #f8f9fa;
-  min-height: 120px;
+  transition: all 0.25s ease;
+  background: #fafbfc;
+  min-height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
-.upload-area:hover {
-  border-color: #6c757d;
+.upload-zone:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
 }
 
-.upload-area.drag-over {
-  border-color: #0d6efd;
-  background: #e7f1ff;
+.upload-zone.drag-active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  border-style: solid;
+  transform: scale(1.02);
 }
 
-.upload-area.has-file {
-  border-color: #198754;
-  background: #d1e7dd;
-  cursor: default;
+.upload-zone.has-file {
+  border-color: #10b981;
+  background: #f0fdf4;
+  border-style: solid;
 }
 
-.placeholder {
-  width: 100%;
+.upload-zone.upload-error {
+  border-color: #ef4444;
+  background: #fef2f2;
 }
 
-.icon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
-.text {
-  font-size: 0.9rem;
-  color: #6c757d;
+.upload-icon {
+  color: #6b7280;
+  transition: color 0.2s;
 }
 
-.file-info {
+.upload-zone:hover .upload-icon {
+  color: #4b5563;
+}
+
+.upload-zone.drag-active .upload-icon {
+  color: #3b82f6;
+}
+
+.upload-text {
+  text-align: center;
+}
+
+.primary-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 1px;
+}
+
+.secondary-text {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.file-preview {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 8px;
   width: 100%;
+  padding: 2px;
+}
+
+.file-icon {
+  color: #10b981;
+  flex-shrink: 0;
 }
 
 .file-details {
   flex: 1;
   text-align: left;
+  min-width: 0;
 }
 
 .file-name {
   font-weight: 500;
-  color: #212529;
-  font-size: 0.9rem;
-  margin-bottom: 0.25rem;
+  color: #111827;
+  font-size: 12px;
+  margin-bottom: 1px;
   word-break: break-all;
+  line-height: 1.3;
 }
 
 .file-size {
-  font-size: 0.8rem;
-  color: #6c757d;
-  margin: 0;
+  font-size: 10px;
+  color: #6b7280;
 }
 
 .remove-btn {
   background: none;
   border: none;
-  font-size: 1.25rem;
   cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 4px;
-  color: #dc3545;
-  line-height: 1;
+  padding: 6px;
+  border-radius: 6px;
+  color: #6b7280;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .remove-btn:hover {
-  background: rgba(220, 53, 69, 0.1);
+  background: #f3f4f6;
+  color: #ef4444;
 }
 
-.error {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  background: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 6px;
-  color: #721c24;
-  font-size: 0.875rem;
+@media (max-width: 768px) {
+  .upload-zone {
+    padding: 16px;
+    min-height: 80px;
+  }
+  
+  .primary-text {
+    font-size: 14px;
+  }
+  
+  .secondary-text {
+    font-size: 12px;
+  }
 }
 </style>

@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 
 import { apiRouter } from './routes/api';
+import { previewRouter } from './routes/preview';
 import { config } from './config';
 
 const app = express();
@@ -37,8 +38,12 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // 静的ファイル配信（生成された画像）
 app.use('/images', express.static(path.join(__dirname, '../uploads')));
 
+// サンプル画像の静的配信
+app.use('/api/sample', express.static(path.join(__dirname, '../public/sample')));
+
 // API routes
 app.use('/api', apiRouter);
+app.use('/api/preview', previewRouter);
 
 // ヘルスチェック
 app.get('/health', (req, res) => {

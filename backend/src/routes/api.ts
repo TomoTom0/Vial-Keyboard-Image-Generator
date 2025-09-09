@@ -50,7 +50,15 @@ router.post('/generate', upload.single('file'), async (req, res) => {
             format: req.body.format || config.defaultFormat,
             layerRange: req.body.layerRange ? JSON.parse(req.body.layerRange) : config.defaultLayerRange,
             showComboInfo: req.body.showComboInfo === 'true',
-            fileLabel: req.body.fileLabel || req.file.originalname
+            fileLabel: req.body.fileLabel || req.file.originalname,
+            imageOptions: req.body.imageOptions ? JSON.parse(req.body.imageOptions) : {
+                generatePreview: true,
+                previewMaxWidth: 400,
+                previewQuality: 0.7,
+                fullQuality: 1.0,
+                fullFormat: 'png',
+                compressionLevel: 6
+            }
         };
 
         console.log('📁 File received:', req.file.originalname);
@@ -107,19 +115,49 @@ router.post('/generate', upload.single('file'), async (req, res) => {
 router.get('/download/:imageId', async (req, res) => {
     try {
         const { imageId } = req.params;
-        const imagePath = path.join(config.cacheDir, `${imageId}.png`);
-
-        if (!fs.existsSync(imagePath)) {
-            return res.status(404).json({ error: 'Image not found' });
+        
+        // プレビュー画像のチェック（_previewサフィックス）
+        if (imageId.endsWith('_preview')) {
+            const previewPath = path.join(config.cacheDir, `${imageId}.jpeg`);
+            if (fs.existsSync(previewPath)) {
+                const stats = fs.statSync(previewPath);
+                res.setHeader('Content-Length', stats.size);
+                res.setHeader('Content-Type', 'image/jpeg');
+                res.setHeader('Content-Disposition', `attachment; filename="${imageId}.jpeg"`);
+                
+                const fileStream = fs.createReadStream(previewPath);
+                fileStream.pipe(res);
+                return;
+            }
+        }
+        
+        // フル画像のチェック（PNG形式）
+        const pngPath = path.join(config.cacheDir, `${imageId}.png`);
+        if (fs.existsSync(pngPath)) {
+            const stats = fs.statSync(pngPath);
+            res.setHeader('Content-Length', stats.size);
+            res.setHeader('Content-Type', 'image/png');
+            res.setHeader('Content-Disposition', `attachment; filename="${imageId}.png"`);
+            
+            const fileStream = fs.createReadStream(pngPath);
+            fileStream.pipe(res);
+            return;
+        }
+        
+        // フル画像のチェック（JPEG形式）
+        const jpegPath = path.join(config.cacheDir, `${imageId}.jpeg`);
+        if (fs.existsSync(jpegPath)) {
+            const stats = fs.statSync(jpegPath);
+            res.setHeader('Content-Length', stats.size);
+            res.setHeader('Content-Type', 'image/jpeg');
+            res.setHeader('Content-Disposition', `attachment; filename="${imageId}.jpeg"`);
+            
+            const fileStream = fs.createReadStream(jpegPath);
+            fileStream.pipe(res);
+            return;
         }
 
-        const stats = fs.statSync(imagePath);
-        res.setHeader('Content-Length', stats.size);
-        res.setHeader('Content-Type', 'image/png');
-        res.setHeader('Content-Disposition', `attachment; filename="${imageId}.png"`);
-
-        const fileStream = fs.createReadStream(imagePath);
-        fileStream.pipe(res);
+        return res.status(404).json({ error: 'Image not found' });
 
     } catch (error) {
         console.error('❌ Download error:', error);

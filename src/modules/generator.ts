@@ -70,7 +70,7 @@ export class VialKeyboardImageGenerator {
     }
 
     // キーボード画像を生成
-    public generateKeyboardImage(configPath: string, outputPath: string, layerIndex: number = 0, options: RenderOptions = {}): void {
+    public generateKeyboardImage(configPath: string, outputPath: string, layerIndex: number = 0, options: RenderOptions = {}, scale: number = 1.0): void {
         console.log('Vial Keyboard Image Generator (TypeScript)');
         
         // Vial設定を読み込み
@@ -86,19 +86,31 @@ export class VialKeyboardImageGenerator {
         // 画像サイズを計算
         const contentWidth = this.unitX * 14.0 + 30.0 + this.keyWidth;
         const contentHeight = this.unitY * 3.0 + this.keyHeight;
-        const imgWidth = Math.ceil(contentWidth + this.margin * 2);
-        const imgHeight = Math.ceil(contentHeight + this.margin * 2);
+        const baseImgWidth = Math.ceil(contentWidth + this.margin * 2);
+        const baseImgHeight = Math.ceil(contentHeight + this.margin * 2);
+        
+        // スケールを適用
+        const imgWidth = Math.floor(baseImgWidth * scale);
+        const imgHeight = Math.floor(baseImgHeight * scale);
 
         // Canvasを作成
         const canvas = createCanvas(imgWidth, imgHeight);
         const ctx = canvas.getContext('2d');
+        
+        // 低品質の場合は描画品質を下げる
+        if (scale < 1.0) {
+            ctx.imageSmoothingEnabled = false; // アンチエイリアシング無効化
+        }
+        
+        // スケーリング変換を適用
+        ctx.scale(scale, scale);
 
         // テーマ色を取得
         const colors = getThemeColors(options.theme);
         
-        // 背景を塗りつぶし
+        // 背景を塗りつぶし（スケール前のサイズで）
         ctx.fillStyle = options.backgroundColor || colors.background;
-        ctx.fillRect(0, 0, imgWidth, imgHeight);
+        ctx.fillRect(0, 0, baseImgWidth, baseImgHeight);
 
         // キー配置情報を取得
         const positions = Utils.getKeyPositions(this.keyWidth, this.keyHeight, this.keyGap, this.margin);
@@ -123,8 +135,8 @@ export class VialKeyboardImageGenerator {
             }
         }
 
-        // レイヤー番号を装飾付きで左下に表示
-        Renderer.drawLayerNumber(ctx, layerIndex, canvas.width, canvas.height, options);
+        // レイヤー番号を装飾付きで左下に表示（スケール前のサイズで）
+        Renderer.drawLayerNumber(ctx, layerIndex, baseImgWidth, baseImgHeight, options);
 
         // 画像を保存
         const buffer = canvas.toBuffer('image/png');

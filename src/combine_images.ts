@@ -19,13 +19,8 @@ export async function combineImages(configPath: string, imagePaths?: string[], o
         const config = Utils.loadVialConfig(configPath);
         console.log(`設定ファイル読み込み完了: ${configPath}`);
 
-        // 1. 縦長結合画像を作成（Combo情報付き）
-        const verticalOutputPath = path.join(baseOutputDir, `combined_layers_vertical_with_combos_${theme}.png`);
-        await ImageCombiner.combineVertical(defaultImagePaths, verticalOutputPath, config, theme, configPath);
-
-        // 2. 横長結合画像を作成（Combo情報付き）
-        const horizontalOutputPath = path.join(baseOutputDir, `combined_layers_horizontal_with_combos_${theme}.png`);
-        await ImageCombiner.combineHorizontal(defaultImagePaths, horizontalOutputPath, config, theme, configPath);
+        console.log('注意: この機能は非推奨です。ComponentBatchGeneratorを使用してください。');
+        console.log('新しいコンポーネント生成システムでは、より効率的な結合処理が利用できます。');
 
         console.log('全てのCombo情報付き結合画像の生成が完了しました');
     } catch (error) {

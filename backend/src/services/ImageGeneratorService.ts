@@ -1,10 +1,12 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { Canvas, loadImage } from 'canvas';
 import { generateAllLayers } from '../modules/generator';
 import { combineImages } from '../modules/combiner';
 import { GenerationOptions, GeneratedImage } from '../../../shared/types';
 import { config } from '../config';
+import { ImageProcessingService, ProcessedImageResult } from './ImageProcessingService';
 
 export class ImageGeneratorService {
     /**
@@ -54,26 +56,54 @@ export class ImageGeneratorService {
                     
                     await generator.generateKeyboardImage(filePath, outputPath, layer, renderOptions);
                     
-                    // GeneratedImageオブジェクトを作成
+                    // 生成された画像をCanvasとして読み込み
+                    const sourceImage = await loadImage(outputPath);
+                    const { createCanvas } = await import('canvas');
+                    const sourceCanvas = createCanvas(sourceImage.width, sourceImage.height);
+                    const ctx = sourceCanvas.getContext('2d');
+                    ctx.drawImage(sourceImage, 0, 0);
+                    
+                    // 画像処理サービスで最適化処理
                     const imageId = `${uuidv4()}-layer${layer}`;
-                    const stats = fs.statSync(outputPath);
+                    const baseFilename = `${path.basename(originalFilename, '.vil')}_layer${layer}`;
                     
-                    // 画像をキャッシュディレクトリにコピー
-                    const cachedPath = path.join(config.cacheDir, `${imageId}.png`);
-                    fs.copyFileSync(outputPath, cachedPath);
+                    const processResult = await ImageProcessingService.processImage(
+                        sourceCanvas,
+                        baseFilename,
+                        config.cacheDir,
+                        options.imageOptions
+                    );
                     
-                    generatedImages.push({
+                    // GeneratedImageオブジェクトを作成
+                    const generatedImage: GeneratedImage = {
                         id: imageId,
-                        filename: `${path.basename(originalFilename, '.vil')}_layer${layer}.png`,
+                        filename: path.basename(processResult.fullPath),
                         type: 'layer',
                         layer: layer,
-                        format: 'png',
+                        format: options.imageOptions?.fullFormat || 'png',
                         url: `/api/download/${imageId}`,
-                        size: stats.size,
+                        size: processResult.fullSize,
                         timestamp: new Date()
-                    });
+                    };
                     
-                    console.log(`✅ Generated layer ${layer}: ${outputPath}`);
+                    // プレビュー画像が生成されている場合
+                    if (processResult.previewPath && processResult.previewSize) {
+                        const previewId = `${imageId}_preview`;
+                        generatedImage.previewUrl = `/api/download/${previewId}`;
+                        generatedImage.previewSize = processResult.previewSize;
+                        
+                        // プレビュー画像をキャッシュディレクトリにコピー
+                        const cachedPreviewPath = path.join(config.cacheDir, `${previewId}.jpeg`);
+                        fs.copyFileSync(processResult.previewPath, cachedPreviewPath);
+                    }
+                    
+                    // フル画像をキャッシュディレクトリにコピー
+                    const cachedPath = path.join(config.cacheDir, `${imageId}.${generatedImage.format}`);
+                    fs.copyFileSync(processResult.fullPath, cachedPath);
+                    
+                    generatedImages.push(generatedImage);
+                    
+                    console.log(`✅ Generated layer ${layer}: Full=${ImageProcessingService.formatFileSize(processResult.fullSize)}, Preview=${processResult.previewSize ? ImageProcessingService.formatFileSize(processResult.previewSize) : 'None'}`);
                 }
             }
 
@@ -96,22 +126,53 @@ export class ImageGeneratorService {
                     
                     await ImageCombiner.combineVertical(layerImages, verticalPath, vialConfig, options.theme, filePath);
                     
+                    // 生成された結合画像をCanvasとして読み込み
+                    const sourceImage = await loadImage(verticalPath);
+                    const { createCanvas } = await import('canvas');
+                    const sourceCanvas = createCanvas(sourceImage.width, sourceImage.height);
+                    const ctx = sourceCanvas.getContext('2d');
+                    ctx.drawImage(sourceImage, 0, 0);
+                    
+                    // 画像処理サービスで最適化処理
                     const imageId = `${uuidv4()}-vertical`;
-                    const stats = fs.statSync(verticalPath);
-                    const cachedPath = path.join(config.cacheDir, `${imageId}.png`);
-                    fs.copyFileSync(verticalPath, cachedPath);
+                    const baseFilename = `${path.basename(originalFilename, '.vil')}_combined_vertical`;
                     
-                    generatedImages.push({
+                    const processResult = await ImageProcessingService.processImage(
+                        sourceCanvas,
+                        baseFilename,
+                        config.cacheDir,
+                        options.imageOptions
+                    );
+                    
+                    // GeneratedImageオブジェクトを作成
+                    const generatedImage: GeneratedImage = {
                         id: imageId,
-                        filename: `${path.basename(originalFilename, '.vil')}_combined_vertical.png`,
+                        filename: path.basename(processResult.fullPath),
                         type: 'combined',
-                        format: 'png',
+                        format: options.imageOptions?.fullFormat || 'png',
                         url: `/api/download/${imageId}`,
-                        size: stats.size,
+                        size: processResult.fullSize,
                         timestamp: new Date()
-                    });
+                    };
                     
-                    console.log(`✅ Generated vertical combined image: ${verticalPath}`);
+                    // プレビュー画像が生成されている場合
+                    if (processResult.previewPath && processResult.previewSize) {
+                        const previewId = `${imageId}_preview`;
+                        generatedImage.previewUrl = `/api/download/${previewId}`;
+                        generatedImage.previewSize = processResult.previewSize;
+                        
+                        // プレビュー画像をキャッシュディレクトリにコピー
+                        const cachedPreviewPath = path.join(config.cacheDir, `${previewId}.jpeg`);
+                        fs.copyFileSync(processResult.previewPath, cachedPreviewPath);
+                    }
+                    
+                    // フル画像をキャッシュディレクトリにコピー
+                    const cachedPath = path.join(config.cacheDir, `${imageId}.${generatedImage.format}`);
+                    fs.copyFileSync(processResult.fullPath, cachedPath);
+                    
+                    generatedImages.push(generatedImage);
+                    
+                    console.log(`✅ Generated vertical combined image: Full=${ImageProcessingService.formatFileSize(processResult.fullSize)}, Preview=${processResult.previewSize ? ImageProcessingService.formatFileSize(processResult.previewSize) : 'None'}`);
                 }
 
                 if (options.format === 'horizontal') {
@@ -120,22 +181,53 @@ export class ImageGeneratorService {
                     
                     await ImageCombiner.combineHorizontal(layerImages, horizontalPath, vialConfig, options.theme, filePath);
                     
+                    // 生成された結合画像をCanvasとして読み込み
+                    const sourceImage = await loadImage(horizontalPath);
+                    const { createCanvas } = await import('canvas');
+                    const sourceCanvas = createCanvas(sourceImage.width, sourceImage.height);
+                    const ctx = sourceCanvas.getContext('2d');
+                    ctx.drawImage(sourceImage, 0, 0);
+                    
+                    // 画像処理サービスで最適化処理
                     const imageId = `${uuidv4()}-horizontal`;
-                    const stats = fs.statSync(horizontalPath);
-                    const cachedPath = path.join(config.cacheDir, `${imageId}.png`);
-                    fs.copyFileSync(horizontalPath, cachedPath);
+                    const baseFilename = `${path.basename(originalFilename, '.vil')}_combined_horizontal`;
                     
-                    generatedImages.push({
+                    const processResult = await ImageProcessingService.processImage(
+                        sourceCanvas,
+                        baseFilename,
+                        config.cacheDir,
+                        options.imageOptions
+                    );
+                    
+                    // GeneratedImageオブジェクトを作成
+                    const generatedImage: GeneratedImage = {
                         id: imageId,
-                        filename: `${path.basename(originalFilename, '.vil')}_combined_horizontal.png`,
+                        filename: path.basename(processResult.fullPath),
                         type: 'combined',
-                        format: 'png',
+                        format: options.imageOptions?.fullFormat || 'png',
                         url: `/api/download/${imageId}`,
-                        size: stats.size,
+                        size: processResult.fullSize,
                         timestamp: new Date()
-                    });
+                    };
                     
-                    console.log(`✅ Generated horizontal combined image: ${horizontalPath}`);
+                    // プレビュー画像が生成されている場合
+                    if (processResult.previewPath && processResult.previewSize) {
+                        const previewId = `${imageId}_preview`;
+                        generatedImage.previewUrl = `/api/download/${previewId}`;
+                        generatedImage.previewSize = processResult.previewSize;
+                        
+                        // プレビュー画像をキャッシュディレクトリにコピー
+                        const cachedPreviewPath = path.join(config.cacheDir, `${previewId}.jpeg`);
+                        fs.copyFileSync(processResult.previewPath, cachedPreviewPath);
+                    }
+                    
+                    // フル画像をキャッシュディレクトリにコピー
+                    const cachedPath = path.join(config.cacheDir, `${imageId}.${generatedImage.format}`);
+                    fs.copyFileSync(processResult.fullPath, cachedPath);
+                    
+                    generatedImages.push(generatedImage);
+                    
+                    console.log(`✅ Generated horizontal combined image: Full=${ImageProcessingService.formatFileSize(processResult.fullSize)}, Preview=${processResult.previewSize ? ImageProcessingService.formatFileSize(processResult.previewSize) : 'None'}`);
                 }
             }
 

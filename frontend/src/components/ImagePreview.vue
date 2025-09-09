@@ -19,7 +19,15 @@
     <div v-else-if="images.length > 0" class="images">
       <div class="header">
         <span>{{ images.length }} images</span>
-        <button @click="downloadAll" class="download-all">Download All</button>
+        <div class="header-controls">
+          <div class="view-toggle" v-if="images.some(img => img.previewUrl)">
+            <label class="toggle-label">
+              <input type="checkbox" v-model="showPreview" />
+              <span>Preview Mode</span>
+            </label>
+          </div>
+          <button @click="downloadAll" class="download-all">Download All</button>
+        </div>
       </div>
 
       <div class="grid">
@@ -33,7 +41,8 @@
           <div class="info">
             <div class="filename">{{ image.filename }}</div>
             <div class="meta">
-              {{ getImageTypeText(image) }} • {{ formatFileSize(image.size) }}
+              {{ getImageTypeText(image) }} • {{ formatFileSize(getCurrentImageSize(image)) }}
+              <span v-if="showPreview && image.previewUrl" class="preview-indicator">• Preview</span>
             </div>
           </div>
           <div class="actions">
@@ -74,7 +83,9 @@ interface GeneratedImage {
   layer?: number
   format: string
   url: string
+  previewUrl?: string
   size: number
+  previewSize?: number
   timestamp: Date
 }
 
@@ -92,6 +103,7 @@ const emit = defineEmits<{
 
 const expandedImage = ref<string | null>(null)
 const selectedImage = ref<GeneratedImage | null>(null)
+const showPreview = ref<boolean>(true)
 
 // 画像タイプのテキスト表示
 const getImageTypeText = (image: GeneratedImage): string => {
@@ -103,13 +115,20 @@ const getImageTypeText = (image: GeneratedImage): string => {
   return '画像'
 }
 
-// 画像URLを取得
+// 画像URLを取得（プレビュー/フル切り替え対応）
 const getImageUrl = (image: GeneratedImage): string => {
+  const targetUrl = (showPreview.value && image.previewUrl) ? image.previewUrl : image.url
+  
   // 開発環境では相対パスを絶対パスに変換
-  if (image.url.startsWith('/api/')) {
-    return `http://localhost:3001${image.url}`
+  if (targetUrl.startsWith('/api/')) {
+    return `http://localhost:3001${targetUrl}`
   }
-  return image.url
+  return targetUrl
+}
+
+// 現在表示中の画像サイズを取得
+const getCurrentImageSize = (image: GeneratedImage): number => {
+  return (showPreview.value && image.previewSize) ? image.previewSize : image.size
 }
 
 // ファイルサイズフォーマット
@@ -299,6 +318,26 @@ const onImageError = (image: GeneratedImage) => {
   margin-bottom: 1rem;
 }
 
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.view-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #6c757d;
+  cursor: pointer;
+}
+
 .download-all {
   background: #198754;
   color: white;
@@ -350,6 +389,11 @@ const onImageError = (image: GeneratedImage) => {
 .meta {
   font-size: 0.8rem;
   color: #6c757d;
+}
+
+.preview-indicator {
+  color: #0d6efd;
+  font-weight: 500;
 }
 
 .actions {

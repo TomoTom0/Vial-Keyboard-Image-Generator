@@ -1,7 +1,7 @@
 // 新しい位置ベースのキーボード画像生成器
 import * as fs from 'fs';
 import { createCanvas } from 'canvas';
-import { VialConfig, COLORS, RenderOptions, ComboInfo } from './types';
+import { VialConfig, COLORS, RenderOptions, ComboInfo, getThemeColors } from './types';
 import { Utils } from './utils';
 import { Parser } from './parser';
 import { Renderer } from './renderer';
@@ -36,7 +36,8 @@ export class NewVialKeyboardImageGenerator {
         const ctx = canvas.getContext('2d');
 
         // 背景を塗りつぶし
-        ctx.fillStyle = COLORS.background;
+        const colors = getThemeColors(options.theme);
+        ctx.fillStyle = colors.background;
         ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
         // 位置ベースでキーを描画
