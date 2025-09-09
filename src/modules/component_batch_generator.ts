@@ -108,46 +108,57 @@ export class ComponentBatchGenerator {
         fs.writeFileSync(comboWidePath, comboWideBuffer);
         console.log(`コンボ情報（wide）生成完了: ${comboWidePath}`);
 
-        // 3. レイアウト見出し画像を生成（normal幅とwide幅）
-        // normal幅ヘッダー
-        const headerNormalBuffer = await ImageCombiner.generateHeaderImage(
+        // 3. レイアウト見出し画像を生成（1x, 2x, 3x幅）
+        // 1x幅ヘッダー
+        const header1xBuffer = await ImageCombiner.generateHeaderImage(
             baseImageWidth,
             colorMode,
             path.basename(configPath),
             scale
         );
-        const headerNormalPath = path.join(outputDir, `header-normal-${quality}.png`);
-        fs.writeFileSync(headerNormalPath, headerNormalBuffer);
-        console.log(`レイアウト見出し画像（normal）生成完了: ${headerNormalPath}`);
+        const header1xPath = path.join(outputDir, `header-1x-${quality}.png`);
+        fs.writeFileSync(header1xPath, header1xBuffer);
+        console.log(`レイアウト見出し画像（1x）生成完了: ${header1xPath}`);
 
-        // wide幅ヘッダー
-        const headerWideBuffer = await ImageCombiner.generateHeaderImage(
+        // 2x幅ヘッダー
+        const header2xBuffer = await ImageCombiner.generateHeaderImage(
             baseImageWidth * 2,
             colorMode,
             path.basename(configPath),
             scale
         );
-        const headerWidePath = path.join(outputDir, `header-wide-${quality}.png`);
-        fs.writeFileSync(headerWidePath, headerWideBuffer);
-        console.log(`レイアウト見出し画像（wide）生成完了: ${headerWidePath}`);
+        const header2xPath = path.join(outputDir, `header-2x-${quality}.png`);
+        fs.writeFileSync(header2xPath, header2xBuffer);
+        console.log(`レイアウト見出し画像（2x）生成完了: ${header2xPath}`);
+
+        // 3x幅ヘッダー
+        const header3xBuffer = await ImageCombiner.generateHeaderImage(
+            baseImageWidth * 3,
+            colorMode,
+            path.basename(configPath),
+            scale
+        );
+        const header3xPath = path.join(outputDir, `header-3x-${quality}.png`);
+        fs.writeFileSync(header3xPath, header3xBuffer);
+        console.log(`レイアウト見出し画像（3x）生成完了: ${header3xPath}`);
 
         // 4. 結合画像を生成（生成済みコンポーネントを使用）
-        // 縦配置結合（normal幅ヘッダーを使用）
+        // 縦配置結合（1x幅ヘッダーを使用）
         const combinedVerticalPath = path.join(outputDir, `combined-vertical-${quality}.png`);
         await ImageCombiner.combineVerticalFromComponents(
             layerPaths,
-            headerNormalPath,
+            header1xPath,
             comboNormalPath,
             combinedVerticalPath,
             colorMode
         );
         console.log(`縦配置結合画像生成完了: ${combinedVerticalPath}`);
 
-        // 横配置結合（wide幅ヘッダーを使用）
+        // 横配置結合（3x幅ヘッダーを使用）
         const combinedHorizontalPath = path.join(outputDir, `combined-horizontal-${quality}.png`);
         await ImageCombiner.combineHorizontalFromComponents(
             layerPaths,
-            headerWidePath,
+            header3xPath,
             comboWidePath,
             combinedHorizontalPath,
             colorMode

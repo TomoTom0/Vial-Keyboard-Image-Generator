@@ -84,16 +84,16 @@ export class ComboRenderer {
                         const leftX = x + buttonWidth * 0.25;
                         const rightX = x + buttonWidth * 0.75;
                         
-                        // 左側（もう少し大きく）
-                        ctx.font = `${Math.floor(13 * scale)}px Arial, sans-serif`;
+                        // 左側（もう少し大きく、太字で視認性向上）
+                        ctx.font = `bold ${Math.floor(13 * scale)}px Arial, sans-serif`;
                         ctx.fillText(subTexts[i], leftX, subY);
                         
-                        // 右側（通常サイズ）
-                        ctx.font = `${Math.floor(11 * scale)}px Arial, sans-serif`;
+                        // 右側（通常サイズ、太字で視認性向上）
+                        ctx.font = `bold ${Math.floor(11 * scale)}px Arial, sans-serif`;
                         ctx.fillText(subTexts[i + 1], rightX, subY);
                     } else {
-                        // 奇数個の場合、最後の一個は中央に表示
-                        ctx.font = `${Math.floor(11 * scale)}px Arial, sans-serif`;
+                        // 奇数個の場合、最後の一個は中央に表示（太字で視認性向上）
+                        ctx.font = `bold ${Math.floor(11 * scale)}px Arial, sans-serif`;
                         ctx.fillText(subTexts[i], x + buttonWidth / 2, subY);
                     }
                 }
@@ -142,7 +142,7 @@ export class ComboRenderer {
         // 描画サイズを計算
         const margin = 15;
         const lineHeight = 70; // キーボードボタン高さ60px + 余白10px
-        const headerHeight = 30;
+        const headerHeight = 45;  // 見出しフォントサイズ拡大に合わせて高さも拡大
         
         // 短いCombo（2-3個の入力キー）の列数設定
         // 横長レイアウトの場合は6列、縦長は3列  
@@ -180,22 +180,22 @@ export class ComboRenderer {
         ctx.fillStyle = colors.background;
         ctx.fillRect(0, 0, scaledWidth, scaledHeight);
 
-        // ヘッダー背景を描画
+        // ヘッダー背景を描画（高さを拡大）
         ctx.fillStyle = colors.headerBackground;
-        ctx.fillRect(0, 0, scaledWidth, Math.floor(22 * scale));
+        ctx.fillRect(0, 0, scaledWidth, Math.floor(37 * scale));
 
-        // ヘッダーを描画（フォントサイズもスケール）
-        ctx.font = `bold ${Math.floor(16 * scale)}px Arial, sans-serif`;
+        // ヘッダーを描画（フォントサイズを2倍に拡大）
+        ctx.font = `bold ${Math.floor(32 * scale)}px Arial, sans-serif`;
         ctx.fillStyle = colors.headerText;
         ctx.textAlign = 'left';
-        ctx.fillText('COMBOS', Math.floor(15 * scale), Math.floor(16 * scale));
+        ctx.fillText('COMBOS', Math.floor(15 * scale), Math.floor(28 * scale));
 
-        // 区切り線を描画
+        // 区切り線を描画（位置を拡大されたヘッダーに合わせて調整）
         ctx.strokeStyle = colors.headerBorder;
         ctx.lineWidth = Math.max(1, Math.floor(1 * scale));
         ctx.beginPath();
-        ctx.moveTo(Math.floor(15 * scale), Math.floor(22 * scale));
-        ctx.lineTo(scaledWidth - Math.floor(15 * scale), Math.floor(22 * scale));
+        ctx.moveTo(Math.floor(15 * scale), Math.floor(37 * scale));
+        ctx.lineTo(scaledWidth - Math.floor(15 * scale), Math.floor(37 * scale));
         ctx.stroke();
 
         // 短いCombo（2-3個の入力キー）を縦優先で配置

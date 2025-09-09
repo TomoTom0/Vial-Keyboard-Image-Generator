@@ -138,16 +138,16 @@ export class Renderer {
                         const leftX = pos.x + pos.width * 0.25;
                         const rightX = pos.x + pos.width * 0.75;
                         
-                        // 左側（もう少し大きく）
-                        ctx.font = '13px Arial, sans-serif';
+                        // 左側（もう少し大きく、太字で視認性向上）
+                        ctx.font = 'bold 13px Arial, sans-serif';
                         ctx.fillText(label.subTexts[i], leftX, y);
                         
-                        // 右側（通常サイズ）
-                        ctx.font = '11px Arial, sans-serif';
+                        // 右側（通常サイズ、太字で視認性向上）
+                        ctx.font = 'bold 11px Arial, sans-serif';
                         ctx.fillText(label.subTexts[i + 1], rightX, y);
                     } else {
-                        // 奇数個の場合、最後の一個は中央に表示
-                        ctx.font = '11px Arial, sans-serif';
+                        // 奇数個の場合、最後の一個は中央に表示（太字で視認性向上）
+                        ctx.font = 'bold 11px Arial, sans-serif';
                         ctx.fillText(label.subTexts[i], pos.x + pos.width / 2, y);
                     }
                 }
