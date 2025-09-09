@@ -18,9 +18,10 @@ interface RecentFile {
 }
 
 interface AdvancedSettings {
-  highlightComboKeys: boolean
-  highlightSubtextKeys: boolean
-  outputFormat: 'separated' | 'vertical' | 'horizontal'
+  highlightEnabled: boolean
+  showCombos: boolean
+  showHeader: boolean
+  outputFormat: 'separated' | 'vertical' | 'rectangular'
 }
 
 interface LayerSelection {
@@ -37,8 +38,9 @@ const recentFiles = ref<RecentFile[]>([])
 
 // Settings
 const advancedSettings = ref<AdvancedSettings>({
-  highlightComboKeys: false,
-  highlightSubtextKeys: false,
+  highlightEnabled: false,
+  showCombos: true,
+  showHeader: true,
   outputFormat: 'separated'
 })
 
@@ -46,7 +48,9 @@ const layerSelection = ref<LayerSelection>({
   0: true,
   1: true,
   2: true,
-  3: true
+  3: true,
+  4: true,
+  5: true
 })
 
 // Preview and output data
@@ -144,18 +148,18 @@ const handleAdvancedSettingsChanged = (settings: AdvancedSettings) => {
   generatePreviewImages()
 }
 
-const updateOutputFormat = (format: 'separated' | 'vertical' | 'horizontal') => {
+const updateOutputFormat = (format: 'separated' | 'vertical' | 'rectangular') => {
   advancedSettings.value.outputFormat = format
   generatePreviewImages()
 }
 
-const toggleComboHighlight = () => {
-  advancedSettings.value.highlightComboKeys = !advancedSettings.value.highlightComboKeys
+const toggleHighlight = () => {
+  advancedSettings.value.highlightEnabled = !advancedSettings.value.highlightEnabled
   generatePreviewImages()
 }
 
-const toggleSubtextHighlight = () => {
-  advancedSettings.value.highlightSubtextKeys = !advancedSettings.value.highlightSubtextKeys
+const toggleCombos = () => {
+  advancedSettings.value.showCombos = !advancedSettings.value.showCombos
   generatePreviewImages()
 }
 
@@ -177,6 +181,16 @@ const handleDisplayFileChanged = (fileName: string) => {
 // Layer selection
 const handleLayerSelectionChanged = (selection: LayerSelection) => {
   layerSelection.value = selection
+  generatePreviewImages()
+}
+
+const handleComboToggled = (enabled: boolean) => {
+  advancedSettings.value.showCombos = enabled
+  generatePreviewImages()
+}
+
+const handleHeaderToggled = (enabled: boolean) => {
+  advancedSettings.value.showHeader = enabled
   generatePreviewImages()
 }
 
@@ -250,7 +264,7 @@ const handleGenerate = async () => {
       theme: currentTheme.value,
       format: advancedSettings.value.outputFormat as any,
       layerRange: getSelectedLayerRange(),
-      showComboInfo: advancedSettings.value.highlightComboKeys,
+      showComboInfo: advancedSettings.value.highlightEnabled,
       imageOptions: {
         generatePreview: true,
         previewMaxWidth: 400,
@@ -344,10 +358,10 @@ onMounted(() => {
       </div>
       
       <div class="panel-section layout-section">
-        <div class="layout-title">layout title</div>
+        <div class="layout-title">split_40</div>
         <div class="layout-preview">
           <div class="layout-sample-small">
-            <span>layout sample small image</span>
+            <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
           </div>
         </div>
         <ColorModeSelector
@@ -384,8 +398,8 @@ onMounted(() => {
               </div>
             </div>
           </button>
-          <button :class="['format-btn', { active: advancedSettings.outputFormat === 'horizontal' }]" @click="updateOutputFormat('horizontal')">
-            <span class="format-label">Horizontal</span>
+          <button :class="['format-btn', { active: advancedSettings.outputFormat === 'rectangular' }]" @click="updateOutputFormat('rectangular')">
+            <span class="format-label">Rectangular</span>
             <div class="format-diagram">
               <div class="diagram-horizontal">
                 <div class="horizontal-grid">
@@ -400,35 +414,9 @@ onMounted(() => {
           </button>
         </div>
         <div class="highlight-section">
-          <div class="highlight-title">Highlight</div>
-          <div class="highlight-buttons">
-            <button :class="['highlight-btn', { active: advancedSettings.highlightComboKeys }]" @click="toggleComboHighlight">
-              <div class="highlight-content">
-                <span class="highlight-label">Combo Input</span>
-                <div class="highlight-diagram">
-                  <div class="key-box combo-highlight">
-                    <div class="combo-marker"></div>
-                    J
-                  </div>
-                  <div class="key-box">K</div>
-                  <div class="key-box combo-highlight">
-                    <div class="combo-marker"></div>
-                    L
-                  </div>
-                </div>
-              </div>
-            </button>
-            <button :class="['highlight-btn', { active: advancedSettings.highlightSubtextKeys }]" @click="toggleSubtextHighlight">
-              <div class="highlight-content">
-                <span class="highlight-label">Has Subtext</span>
-                <div class="highlight-diagram">
-                  <div class="key-box subtext-highlight">A<br><small>α</small></div>
-                  <div class="key-box">S</div>
-                  <div class="key-box subtext-highlight">D<br><small>δ</small></div>
-                </div>
-              </div>
-            </button>
-          </div>
+          <button :class="['highlight-toggle-btn', { active: advancedSettings.highlightEnabled }]" @click="toggleHighlight">
+            Highlight {{ advancedSettings.highlightEnabled ? 'あり' : 'なし' }}
+          </button>
         </div>
       </div>
     </header>
@@ -460,15 +448,23 @@ onMounted(() => {
           :layer-selection="layerSelection"
           :output-format="advancedSettings.outputFormat"
           :theme="currentTheme"
+          :highlight-enabled="advancedSettings.highlightEnabled"
+          :show-combos="advancedSettings.showCombos"
+          :show-header="advancedSettings.showHeader"
           @layer-selection-changed="handleLayerSelectionChanged"
+          @combo-toggled="handleComboToggled"
+          @header-toggled="handleHeaderToggled"
         />
         
         <PreviewTab
           v-show="currentTab === 'preview'"
-          :preview-images="previewImages"
-          :is-generating="isGenerating"
+          :selected-file="selectedDisplayFile"
+          :layer-selection="layerSelection"
           :output-format="advancedSettings.outputFormat"
           :theme="currentTheme"
+          :highlight-enabled="advancedSettings.highlightEnabled"
+          :show-combos="advancedSettings.showCombos"
+          :show-header="advancedSettings.showHeader"
           @generate="handleGenerate"
         />
         
@@ -530,12 +526,13 @@ onMounted(() => {
   color: #212529;
 }
 
+
 .layout-preview {
-  margin: 15px 0;
+  margin: 8px 0;
 }
 
 .layout-sample-small {
-  width: 200px;
+  width: 320px;
   height: 100px;
   border: 1px dashed #ccc;
   display: flex;
@@ -545,6 +542,13 @@ onMounted(() => {
   font-size: 12px;
   color: #666;
   background: #f9f9f9;
+  overflow: hidden;
+}
+
+.sample-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .format-title {
@@ -561,10 +565,35 @@ onMounted(() => {
   margin-bottom: 15px;
 }
 
+.highlight-section {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.highlight-toggle-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: white;
+  color: #212529;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: all 0.2s;
+  width: 100%;
+  max-width: 200px;
+}
+
+.highlight-toggle-btn.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
 .format-btn {
   padding: 8px 6px;
   border: 1px solid #ddd;
   background: white;
+  color: #333;
   cursor: pointer;
   font-size: 10px;
   border-radius: 4px;
@@ -680,6 +709,7 @@ onMounted(() => {
   display: flex;
   flex-direction: row;
   gap: 8px;
+  justify-content: center;
 }
 
 .highlight-btn {
@@ -765,6 +795,7 @@ onMounted(() => {
 .key-box.subtext-highlight small {
   color: #1976d2;
 }
+
 
 
 /* メインワークエリア */

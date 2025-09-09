@@ -1,6 +1,19 @@
 <template>
   <div class="select-tab">
-    <div class="layers-display">
+    <div class="image-container">
+      <!-- Header image -->
+      <div v-if="outputFormat !== 'separated'"
+           :class="['header-image-section', { 'header-disabled': !props.showHeader }]"
+           @click="toggleHeader">
+        <img 
+          :src="getHeaderImageUrl()"
+          alt="Layout header"
+          class="header-image"
+          @error="handleHeaderImageError"
+        />
+      </div>
+      
+      <!-- Layers grid -->
       <div :class="getLayersLayoutClass()">
         <div 
           v-for="layer in getOrderedLayers()"
@@ -20,8 +33,10 @@
         </div>
       </div>
       
-      <!-- Combo section as image - directly within layers-display -->
-      <div v-if="showCombos && (outputFormat === 'vertical' || outputFormat === 'horizontal')" class="combos-image-section">
+      <!-- Combo section -->
+      <div v-if="outputFormat !== 'separated'"
+           :class="['combos-image-section', { 'combos-disabled': !props.showCombos }]"
+           @click="toggleCombos">
         <img 
           :src="getComboImageUrl()"
           alt="Combo information"
@@ -35,6 +50,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { LAYERS } from '../constants/layout'
 
 interface LayerSelection {
   [layerId: number]: boolean
@@ -43,27 +59,21 @@ interface LayerSelection {
 const props = defineProps<{
   selectedFile: string
   layerSelection: LayerSelection
-  outputFormat?: 'separated' | 'vertical' | 'horizontal'
+  outputFormat?: 'separated' | 'vertical' | 'rectangular'
   theme?: 'light' | 'dark'
+  highlightEnabled?: boolean
+  showCombos?: boolean
+  showHeader?: boolean
 }>()
 
 const emit = defineEmits<{
   layerSelectionChanged: [selection: LayerSelection]
+  comboToggled: [enabled: boolean]
+  headerToggled: [enabled: boolean]
 }>()
 
-// Available layers (0-3 for most keyboards)
-const availableLayers = [0, 1, 2, 3]
-
-// Show combos in the layout (like in the design image)
-const showCombos = ref(true)
-
-// Sample combo data (like shown in design)
-const sampleCombos = ref([
-  { id: 1, number: '#0', keys: ['MO(1)', 'SPACE'], result: 'J' },
-  { id: 2, number: '#1', keys: ['MO(1)', 'SPACE'], result: 'F' },
-  { id: 3, number: '#2', keys: ['Esc', 'Caps', 'F'], result: '#2' },
-  { id: 4, number: '#3', keys: ['KANA', 'Caps', 'D'], result: '#3' }
-])
+// Available layers
+const availableLayers = LAYERS.AVAILABLE
 
 const toggleLayer = (layer: number, selected: boolean) => {
   const newSelection = {
@@ -73,36 +83,78 @@ const toggleLayer = (layer: number, selected: boolean) => {
   emit('layerSelectionChanged', newSelection)
 }
 
+const toggleCombos = () => {
+  const newState = !props.showCombos
+  emit('comboToggled', newState)
+}
+
+const toggleHeader = () => {
+  const newState = !props.showHeader
+  emit('headerToggled', newState)
+}
+
 const getLayersLayoutClass = (): string => {
   const format = props.outputFormat || 'separated'
   
   if (format === 'vertical') {
     return 'layers-vertical'
-  } else if (format === 'horizontal') {
-    return 'layers-horizontal'
+  } else if (format === 'rectangular') {
+    // SelectTabでは全レイヤー（6層）を3列で表示: L0,L1,L2 / L3,L4,L5
+    return 'layers-rectangular-3col'
   }
   return 'layers-separated'
 }
 
-const getOrderedLayers = () => {
-  if (props.outputFormat === 'horizontal') {
-    // horizontal配置: [L0左上, L1左下, L2右上, L3右下] の順序
-    return [0, 2, 1, 3]
+const getContentLayoutClass = (): string => {
+  const format = props.outputFormat || 'separated'
+  
+  if (format === 'vertical') {
+    return 'content-vertical'
+  } else if (format === 'horizontal') {
+    return 'content-horizontal'
   }
-  // vertical, separated: 通常順序
-  return [0, 1, 2, 3]
+  return 'content-separated'
+}
+
+const getOrderedLayers = () => {
+  return LAYERS.DISPLAY_ORDER
 }
 
 const getLayerImageUrl = (layer: number): string => {
   if (props.selectedFile === 'sample') {
-    return `/images/sample/keyboard_layout_layer${layer}_modular.png`
+    const theme = props.theme || 'dark'
+    const highlight = props.highlightEnabled ? '1-1' : '0-0'
+    return `/assets/sample/keyboard/${theme}/${highlight}/layer${layer}-low.png`
   }
   return ''
 }
 
 const getComboImageUrl = (): string => {
   if (props.selectedFile === 'sample') {
-    return `/images/sample/combo_info_${props.theme || 'dark'}.png`
+    const theme = props.theme || 'dark'
+    const highlight = props.highlightEnabled ? '1-1' : '0-0'
+    const comboType = (props.outputFormat === 'rectangular') ? 'wide' : 'normal'
+    return `/assets/sample/keyboard/${theme}/${highlight}/combo-${comboType}-low.png`
+  }
+  return ''
+}
+
+const getHeaderImageUrl = (): string => {
+  if (props.selectedFile === 'sample') {
+    const theme = props.theme || 'dark'
+    const highlight = props.highlightEnabled ? '1-1' : '0-0'
+    
+    // ヘッダーサイズを決定
+    let headerSize = '1x'  // デフォルト
+    if (props.outputFormat === 'vertical') {
+      headerSize = '1x'
+    } else if (props.outputFormat === 'rectangular') {
+      headerSize = '3x'
+    } else { // separated
+      headerSize = '2x'
+    }
+    
+    return `/assets/sample/keyboard/${theme}/${highlight}/header-${headerSize}-low.png`
   }
   return ''
 }
@@ -114,86 +166,91 @@ const handleImageError = (event: Event) => {
 const handleComboImageError = (event: Event) => {
   console.warn('Failed to load combo image')
 }
+
+const handleHeaderImageError = (event: Event) => {
+  console.warn('Failed to load header image')
+}
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@import '../styles/layout.scss';
+
+// Variables
+$primary-color: #007bff;
+$primary-hover: #0056b3;
+$border-color: #dee2e6;
+$transition-duration: 0.2s;
+$background-light: #f5f5f5;
+
 .select-tab {
   height: 100%;
-  padding: 20px;
-  background: #f5f5f5;
+  padding: 10px;
+  background: $background-light;
 }
 
-.layers-display {
+.image-container {
   background: white;
-  border: 1px solid #ddd;
+  border: 1px solid $border-color;
   border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 0;
-  min-height: auto;
-}
-
-.layers-separated {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 15px;
+  padding: 15px;
+  margin: 5px auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 98%;
+  max-height: 80vh;
   width: fit-content;
-  margin: 0 auto;
+  transition: all 0.3s ease-in-out;
 }
 
-.layers-vertical {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  align-items: center;
-  width: fit-content;
-  margin: 0 auto;
-}
-
-.layers-horizontal {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 0;
-  width: fit-content;
-  margin: 0 auto;
-}
-
-.layer-item {
-  cursor: pointer;
-  transition: all 0.2s;
-  border-radius: 6px;
-  overflow: hidden;
-  position: relative;
-}
-
-.layer-item:not(.layer-selected) {
-  opacity: 0.4;
-  filter: grayscale(0.7);
-}
-
-.layer-item:not(.layer-selected):hover {
-  opacity: 0.6;
-  filter: grayscale(0.5);
-}
-
-.layer-item.layer-selected {
-  opacity: 1;
-  filter: none;
-  box-shadow: 0 0 0 3px #007bff;
-}
-
-.layer-item.layer-selected:hover {
-  box-shadow: 0 0 0 3px #0056b3;
-}
-
-
-.layer-preview {
+// Mixin for common image styles
+@mixin image-base {
   width: 100%;
   height: auto;
   object-fit: contain;
   display: block;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  transition: all $transition-duration;
 }
+
+
+.header-image {
+  @include image-base;
+  border-radius: 8px 8px 0 0;
+}
+
+.combo-image {
+  @include image-base;
+  border-radius: 0 0 8px 8px;
+}
+
+.layer-preview {
+  @include image-base;
+}
+
+
+
+.layers-separated {
+  @include layers-grid-3x2-separated;
+  padding: 0;
+  margin: 10px;
+}
+
+.layers-vertical {
+  @include layers-vertical-layout;
+}
+
+.layers-rectangular-2col {
+  @include layers-grid-2col;
+}
+
+.layers-rectangular-3col {
+  @include layers-grid-3x2;
+}
+
+
+
+
 
 .layer-placeholder {
   color: #999;
@@ -201,17 +258,74 @@ const handleComboImageError = (event: Event) => {
 }
 
 
-.combos-image-section {
-  text-align: center;
+// 非選択/無効状態の共通スタイル
+@mixin inactive-state {
+  opacity: 0.3;
+  filter: grayscale(1) brightness(0.7);
+
+  &:hover {
+    opacity: 0.5;
+    filter: grayscale(0.8) brightness(0.8);
+  }
 }
 
-.combo-image {
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
-  display: block;
-  margin: 0 auto;
+// 選択/有効状態の共通スタイル
+@mixin active-state {
+  opacity: 1;
+  filter: none;
+
+  img {
+    outline-color: $primary-color;
+  }
+
+  &:hover img {
+    outline-color: $primary-hover;
+  }
 }
+
+// 共通のインタラクション要素mixin
+@mixin interactive-element {
+  cursor: pointer;
+  transition: all $transition-duration;
+
+  // 共通の画像アウトラインスタイル
+  img {
+    outline: 2px solid $border-color;
+    outline-offset: -2px;
+  }
+}
+
+// レイヤーアイテム
+.layer-item {
+  @include interactive-element;
+  position: relative;
+
+  &:not(.layer-selected) {
+    @include inactive-state;
+  }
+
+  &.layer-selected {
+    @include active-state;
+  }
+}
+
+// ヘッダーとコンボセクション
+.header-image-section,
+.combos-image-section {
+  @include interactive-element;
+  width: 100%;
+
+  &.header-disabled,
+  &.combos-disabled {
+    @include inactive-state;
+  }
+
+  &:not(.header-disabled):not(.combos-disabled) {
+    @include active-state;
+  }
+}
+
+
 
 @media (max-width: 768px) {
   .select-tab {

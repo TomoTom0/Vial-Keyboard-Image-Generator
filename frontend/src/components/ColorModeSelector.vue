@@ -40,9 +40,9 @@ const selectTheme = (theme: 'light' | 'dark') => {
 }
 
 .mode-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: 0.5rem;
+  justify-content: center;
 }
 
 .mode-btn {
@@ -53,11 +53,14 @@ const selectTheme = (theme: 'light' | 'dark') => {
   justify-content: center;
   border: 1px solid #ddd;
   border-radius: 6px;
-  background: white;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 18px;
-  margin: 0 2px;
+}
+
+.mode-btn {
+  background: white;
+  color: #333;
 }
 
 .mode-btn:hover {
@@ -67,7 +70,24 @@ const selectTheme = (theme: 'light' | 'dark') => {
 
 .mode-btn.active {
   border-color: #007bff;
-  background: #e7f3ff;
+  border-width: 2px;
+  background: rgba(0, 123, 255, 0.1);
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
 }
+
+/* Dark mode button styling */
+.mode-btn:nth-child(2) {
+  background: #2d3748;
+  color: white;
+}
+
+.mode-btn:nth-child(2).active {
+  background: #1a202c;
+  border-color: #007bff;
+  border-width: 2px;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+}
+
+/* Active state - only show border highlight without background changes */
 
 </style>

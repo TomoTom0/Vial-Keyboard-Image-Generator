@@ -1,84 +1,117 @@
 <template>
   <div class="preview-tab">
-    <div class="main-keyboard-display">
-      <img 
-        :src="getPreviewImageUrl()"
-        alt="Preview keyboard layout"
-        class="main-keyboard-image"
+    <div class="preview-container">
+      <!-- Header image -->
+      <img v-if="showHeader && outputFormat !== 'separated'"
+        :src="getHeaderImageUrl()"
+        alt="Layout header"
+        class="preview-header-image"
       />
-    </div>
-    
-    <!-- Combo section like in the design -->
-    <div class="combos-section">
-      <div class="combo-header">COMBOS</div>
-      <div class="combo-list">
-        <div class="combo-item">
-          <span class="combo-number">#0</span>
-          <div class="combo-keys">
-            <span class="combo-key">MO(1)</span>
-            <span class="combo-key">SPACE</span>
+      
+      <!-- Layers grid -->
+      <div :class="getLayersLayoutClass()">
+        <div 
+          v-for="layer in getOrderedLayers()"
+          :key="layer"
+          v-show="layerSelection[layer]"
+          class="layer-item"
+        >
+          <img 
+            :src="getLayerImageUrl(layer)"
+            :alt="`Layer ${layer}`"
+            class="layer-preview"
+            @error="handleImageError"
+          />
+          <div v-if="!getLayerImageUrl(layer)" class="layer-placeholder">
+            <div class="placeholder-text">Layer {{ layer }}</div>
           </div>
-          <span class="combo-result">J</span>
-        </div>
-        <div class="combo-item">
-          <span class="combo-number">#1</span>
-          <div class="combo-keys">
-            <span class="combo-key">MO(1)</span>
-            <span class="combo-key">SPACE</span>
-          </div>
-          <span class="combo-result">F</span>
-        </div>
-        <div class="combo-item">
-          <span class="combo-number">#2</span>
-          <div class="combo-keys">
-            <span class="combo-key">Esc</span>
-            <span class="combo-key">Caps</span>
-            <span class="combo-key">F</span>
-          </div>
-          <span class="combo-result">#2</span>
-        </div>
-        <div class="combo-item">
-          <span class="combo-number">#3</span>
-          <div class="combo-keys">
-            <span class="combo-key">KANA</span>
-            <span class="combo-key">Caps</span>
-            <span class="combo-key">D</span>
-          </div>
-          <span class="combo-result">#3</span>
         </div>
       </div>
+      
+      <!-- Combo section -->
+      <img v-if="showCombos && outputFormat !== 'separated'"
+        :src="getComboImageUrl()"
+        alt="Combo information"
+        class="preview-combo-image"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-interface PreviewImage {
-  id: string
-  layer: number
-  url: string
-  type: string
+import { LAYERS } from '../constants/layout'
+
+interface LayerSelection {
+  [layerId: number]: boolean
 }
 
 const props = defineProps<{
-  previewImages: PreviewImage[]
-  isGenerating: boolean
-  outputFormat?: 'separated' | 'vertical' | 'horizontal'
+  selectedFile: string
+  layerSelection: LayerSelection
+  outputFormat?: 'separated' | 'vertical' | 'rectangular'
   theme?: 'light' | 'dark'
+  highlightEnabled?: boolean
+  showCombos?: boolean
+  showHeader?: boolean
 }>()
 
-const getPreviewImageUrl = (): string => {
+const getOrderedLayers = () => {
+  return LAYERS.DISPLAY_ORDER
+}
+
+const getLayersLayoutClass = (): string => {
   const format = props.outputFormat || 'separated'
-  const theme = props.theme || 'dark'
   
-  if (format === 'separated') {
-    return `/images/sample/keyboard_layout_layer0_modular.png`
-  } else if (format === 'vertical') {
-    return `/images/sample/combined_layers_vertical_with_combos_${theme}.png`
-  } else if (format === 'horizontal') {
-    return `/images/sample/combined_layers_horizontal_with_combos_${theme}.png`
+  if (format === 'vertical') {
+    return 'layers-vertical'
+  } else if (format === 'rectangular') {
+    // レイヤー数に応じてグリッド列数を決定
+    const selectedCount = Object.values(props.layerSelection).filter(Boolean).length
+    return selectedCount <= 4 ? 'layers-rectangular-2col' : 'layers-rectangular-3col'
   }
-  
-  return `/images/sample/keyboard_layout_layer0_modular.png`
+  return 'layers-separated'
+}
+
+const getLayerImageUrl = (layer: number): string => {
+  if (props.selectedFile === 'sample') {
+    const theme = props.theme || 'dark'
+    const highlight = props.highlightEnabled ? '1-1' : '0-0'
+    return `/assets/sample/keyboard/${theme}/${highlight}/layer${layer}-low.png`
+  }
+  return ''
+}
+
+const getHeaderImageUrl = (): string => {
+  if (props.selectedFile === 'sample') {
+    const theme = props.theme || 'dark'
+    const highlight = props.highlightEnabled ? '1-1' : '0-0'
+    
+    let headerSize = '1x'
+    if (props.outputFormat === 'vertical') {
+      headerSize = '1x'
+    } else if (props.outputFormat === 'rectangular') {
+      headerSize = '3x'
+    } else {
+      headerSize = '2x'
+    }
+    
+    return `/assets/sample/keyboard/${theme}/${highlight}/header-${headerSize}-low.png`
+  }
+  return ''
+}
+
+const getComboImageUrl = (): string => {
+  if (props.selectedFile === 'sample') {
+    const theme = props.theme || 'dark'
+    const highlight = props.highlightEnabled ? '1-1' : '0-0'
+    const comboType = (props.outputFormat === 'rectangular') ? 'wide' : 'normal'
+    return `/assets/sample/keyboard/${theme}/${highlight}/combo-${comboType}-low.png`
+  }
+  return ''
+}
+
+const handleImageError = (event: Event) => {
+  console.warn('Failed to load layer image')
 }
 
 const emit = defineEmits<{
@@ -86,96 +119,91 @@ const emit = defineEmits<{
 }>()
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@import '../styles/layout.scss';
+
+// Variables
+$primary-color: #007bff;
+$border-color: #dee2e6;
+$background-light: #f5f5f5;
+$transition-duration: 0.2s;
+
 .preview-tab {
   height: 100%;
-  padding: 20px;
-  background: #f5f5f5;
+  padding: 10px;
+  background: $background-light;
 }
 
-.main-keyboard-display {
+.preview-container {
   background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-  text-align: center;
-  min-height: 400px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.main-keyboard-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-.combos-section {
-  background: #2d2d2d;
+  border: 1px solid $border-color;
   border-radius: 8px;
   padding: 15px;
-  color: white;
+  margin: 5px auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-width: 98%;
+  max-height: 80vh;
+  width: fit-content;
+  transition: all 0.3s ease-in-out;
 }
 
-.combo-header {
-  font-size: 14px;
-  font-weight: bold;
-  margin-bottom: 10px;
-  color: #aaa;
+// Common image styles
+@mixin preview-image-base {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-sizing: border-box;
+  transition: all $transition-duration;
 }
 
-.combo-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.preview-header-image {
+  @include preview-image-base;
+  border-radius: 8px 8px 0 0;
 }
 
-.combo-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+.preview-combo-image {
+  @include preview-image-base;
+  border-radius: 0 0 8px 8px;
 }
 
-.combo-number {
-  background: #555;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 12px;
-  font-weight: bold;
-  min-width: 30px;
-  text-align: center;
+.preview-layer-image {
+  @include preview-image-base;
 }
 
-.combo-keys {
-  display: flex;
-  gap: 4px;
-  flex: 1;
+.layers-separated {
+  @include layers-grid-3x2-separated;
+  padding: 0;
+  margin: 10px;
 }
 
-.combo-key {
-  background: #666;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 3px;
+.layers-vertical {
+  @include layers-vertical-layout;
+}
+
+.layers-rectangular-2col {
+  @include layers-grid-2col;
+}
+
+.layers-rectangular-3col {
+  @include layers-grid-3x2;
+}
+
+.layer-item {
+  transition: all $transition-duration;
+  position: relative;
+}
+
+.layer-preview {
+  @include preview-image-base;
+}
+
+.layer-placeholder {
+  color: #999;
   font-size: 11px;
-  font-family: monospace;
-}
-
-.combo-result {
-  background: #007bff;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 3px;
-  font-size: 12px;
-  font-weight: bold;
-  min-width: 40px;
-  text-align: center;
 }
 
 @media (max-width: 768px) {
@@ -183,15 +211,8 @@ const emit = defineEmits<{
     padding: 10px;
   }
   
-  .main-keyboard-display {
-    min-height: 300px;
-    padding: 15px;
-  }
-  
-  .combo-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
+  .preview-container {
+    max-width: 98%;
   }
 }
 </style>
