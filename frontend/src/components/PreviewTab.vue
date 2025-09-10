@@ -17,14 +17,12 @@
           class="layer-item"
         >
           <img 
+            v-if="getLayerImageUrl(layer)"
             :src="getLayerImageUrl(layer)"
             :alt="`Layer ${layer}`"
             class="layer-preview"
             @error="handleImageError"
           />
-          <div v-if="!getLayerImageUrl(layer)" class="layer-placeholder">
-            <div class="placeholder-text">Layer {{ layer }}</div>
-          </div>
         </div>
       </div>
       
@@ -50,7 +48,9 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
 import { LAYERS } from '../constants/layout'
+import { getCanvasImageUrl } from '../utils/imageUtils'
 
 interface LayerSelection {
   [layerId: number]: boolean
@@ -67,9 +67,25 @@ const props = defineProps<{
   generatedImages?: any[]
 }>()
 
+// 画面幅を監視してレイアウト変更をトリガー
+const screenWidth = ref(window.innerWidth)
+
+const updateScreenWidth = () => {
+  screenWidth.value = window.innerWidth
+}
+
+onMounted(() => {
+  window.addEventListener('resize', updateScreenWidth)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateScreenWidth)
+})
+
 const getOrderedLayers = () => {
   return LAYERS.DISPLAY_ORDER
 }
+
 
 const getLayersLayoutClass = (): string => {
   const format = props.outputFormat || 'separated'
@@ -80,6 +96,16 @@ const getLayersLayoutClass = (): string => {
     // レイヤー数に応じてグリッド列数を決定
     const selectedCount = Object.values(props.layerSelection).filter(Boolean).length
     return selectedCount <= 4 ? 'layers-rectangular-2col' : 'layers-rectangular-3col'
+  } else if (format === 'separated') {
+    // separatedの場合は有効なレイヤー数と画面幅に応じて列数を決定
+    const selectedCount = Object.values(props.layerSelection).filter(Boolean).length
+    if (selectedCount <= 1 || screenWidth.value < 600) {
+      return 'layers-separated-1col'
+    } else if (selectedCount <= 4 || screenWidth.value < 900) {
+      return 'layers-separated-2col' 
+    } else {
+      return 'layers-separated-3col'
+    }
   }
   return 'layers-separated'
 }
@@ -104,7 +130,17 @@ const getLayerImageUrl = (layer: number): string => {
 }
 
 const getHeaderImageUrl = (): string => {
-  // ヘッダー画像は現在利用不可
+  if (props.selectedFile === 'sample') {
+    return `/assets/sample/keyboard/dark/0-0/header-normal-low.png`
+  } else if (props.selectedFile && props.generatedImages) {
+    return getCanvasImageUrl(
+      'header',
+      props.generatedImages,
+      props.outputFormat || 'separated',
+      false, // PreviewTabでは有効レイヤー数を使用
+      props.layerSelection
+    )
+  }
   return ''
 }
 
@@ -112,17 +148,13 @@ const getComboImageUrl = (): string => {
   if (props.selectedFile === 'sample') {
     return `/assets/sample/keyboard/dark/0-0/combo-normal-low.png`
   } else if (props.selectedFile && props.generatedImages) {
-    // 生成された画像からコンボ画像を探す
-    const comboImage = props.generatedImages.find(img => 
-      img.type === 'combined' || (img.type === 'combo' as any)
+    return getCanvasImageUrl(
+      'combo',
+      props.generatedImages,
+      props.outputFormat || 'separated',
+      false, // PreviewTabでは有効レイヤー数を使用
+      props.layerSelection
     )
-    
-    // Canvas要素が存在する場合は、Data URLに変換
-    if (comboImage?.canvas) {
-      return comboImage.canvas.toDataURL()
-    }
-    
-    return comboImage ? comboImage.url : ''
   }
   return ''
 }
@@ -164,13 +196,15 @@ $transition-duration: 0.2s;
   padding: 15px;
   margin: 5px auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: 98%;
-  max-height: 80vh;
+  max-width: calc(100vw - 20px);
   width: fit-content;
   transition: all 0.3s ease-in-out;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
   
-  // ウィンドウサイズ基準の共通画像倍率
-  --image-scale: clamp(2.5, 5vw, 4.5);
+  // ウィンドウサイズ基準の共通画像倍率（余裕がある場合はより大きく）
+  --image-scale: clamp(0.8, 2.5vw, 2.0);
 }
 
 // Common image styles
@@ -187,7 +221,7 @@ $transition-duration: 0.2s;
   
   // ウィンドウサイズ基準の共通倍率を適用
   transform: scale(var(--image-scale));
-  transform-origin: center;
+  transform-origin: top left;
 }
 
 .preview-header-image {
@@ -205,6 +239,24 @@ $transition-duration: 0.2s;
 }
 
 .layers-separated {
+  @include layout.layers-grid-3x2-separated;
+  padding: 0;
+  margin: 10px;
+}
+
+.layers-separated-1col {
+  @include layout.layers-grid-1col-separated;
+  padding: 0;
+  margin: 10px;
+}
+
+.layers-separated-2col {
+  @include layout.layers-grid-2col-separated;
+  padding: 0;
+  margin: 10px;
+}
+
+.layers-separated-3col {
   @include layout.layers-grid-3x2-separated;
   padding: 0;
   margin: 10px;
@@ -233,7 +285,20 @@ $transition-duration: 0.2s;
 
 .layer-placeholder {
   color: #999;
-  font-size: 11px;
+  font-size: 24px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 60px;
+  width: 100%;
+}
+
+.placeholder-text {
+  text-align: center;
+  width: 100%;
+  display: block;
 }
 
 .generate-section {

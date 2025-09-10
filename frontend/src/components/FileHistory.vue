@@ -90,15 +90,13 @@ const deleteFile = (file: RecentFile) => {
 }
 
 .file-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  display: contents;
 }
 
 .file-item {
   width: 100%;
   text-align: left;
-  border: 1px solid transparent;
+  border: 1px solid #e5e7eb;
   border-radius: 6px;
   padding: 8px 10px;
   background: #fafbfc;

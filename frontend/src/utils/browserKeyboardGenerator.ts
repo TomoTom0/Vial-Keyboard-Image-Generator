@@ -3,6 +3,7 @@ import type { VialConfig, RenderOptions, KeyPosition, KeyLabel, ComboInfo } from
 import { getThemeColors } from './types'
 import { Utils } from './utils'
 import { Parser } from './parser'
+import { KEYBOARD_CONSTANTS } from '../constants/keyboard'
 
 export interface GenerationOptions {
   layerRange?: { start: number; end: number }
@@ -17,17 +18,13 @@ export interface GenerationResult {
 }
 
 export class BrowserVialKeyboardImageGenerator {
-  private readonly keyWidth = 78
-  private readonly keyHeight = 60
-  private readonly keyGap = 4
-  private readonly unitX: number
-  private readonly unitY: number
-  private readonly margin = 10
-
-  constructor() {
-    this.unitX = this.keyWidth + this.keyGap
-    this.unitY = this.keyHeight + this.keyGap
-  }
+  // 共通定数を使用
+  private get keyWidth() { return KEYBOARD_CONSTANTS.keyWidth }
+  private get keyHeight() { return KEYBOARD_CONSTANTS.keyHeight }
+  private get keyGap() { return KEYBOARD_CONSTANTS.keyGap }
+  private get unitX() { return KEYBOARD_CONSTANTS.unitX }
+  private get unitY() { return KEYBOARD_CONSTANTS.unitY }
+  private get margin() { return KEYBOARD_CONSTANTS.margin }
 
   // メイン関数：ファイルデータとオプションを受け取って全canvasを返す
   public generateAllLayerCanvases(

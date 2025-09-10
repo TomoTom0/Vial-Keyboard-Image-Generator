@@ -61,7 +61,7 @@ export const COLORS = {
         borderEmpty: '#32353d',
         textNormal: '#f0f6fc',
         textSpecial: '#9cdcfe',
-        textSub: '#e5e7eb',  // より明るく、高コントラストに変更
+        textSub: '#e5e7eb',
         headerBackground: '#2a2d35',
         headerBorder: '#4a5568',
         headerText: '#ffffff'
@@ -76,7 +76,7 @@ export const COLORS = {
         borderEmpty: '#c6c6c6',
         textNormal: '#212529',
         textSpecial: '#1976d2',
-        textSub: '#343a40',  // より濃く、高コントラストに変更
+        textSub: '#343a40',
         headerBackground: '#ffffff',
         headerBorder: '#dee2e6',
         headerText: '#212529'

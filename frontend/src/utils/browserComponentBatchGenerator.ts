@@ -1,8 +1,17 @@
 // ブラウザ対応版 ComponentBatchGenerator
-import { VialConfig, RenderOptions, ComboInfo } from './types'
+import type { VialConfig, RenderOptions, ComboInfo } from './types'
 import { Utils } from './utils'
 import { Parser } from './parser'
-import { CanvasDrawingUtils, CanvasAdapter } from './canvasDrawingUtils'
+import { CanvasDrawingUtils, type CanvasAdapter } from './canvasDrawingUtils'
+import { KEYBOARD_CONSTANTS } from '../constants/keyboard'
+
+// バックエンドの共通モジュールをインポート
+import { getThemeColors } from '../../../backend/src/modules/types'
+import { Utils as BackendUtils } from '../../../backend/src/modules/utils'
+import { Parser as BackendParser } from '../../../backend/src/modules/parser'
+
+// Rendererだけは型の問題があるので、描画ロジックを直接コピー
+// （実際のCanvas APIは同じなので、型だけの問題）
 
 interface ComponentGeneratorOptions {
     configPath: string;
@@ -36,12 +45,21 @@ class BrowserCanvasAdapter implements CanvasAdapter {
 
 export class BrowserComponentBatchGenerator {
     private static adapter = new BrowserCanvasAdapter();
+    
+    // 共通定数を使用
+    private static get keyWidth() { return KEYBOARD_CONSTANTS.keyWidth }
+    private static get keyHeight() { return KEYBOARD_CONSTANTS.keyHeight }
+    private static get keyGap() { return KEYBOARD_CONSTANTS.keyGap }
+    private static get unitX() { return KEYBOARD_CONSTANTS.unitX }
+    private static get unitY() { return KEYBOARD_CONSTANTS.unitY }
+    private static get margin() { return KEYBOARD_CONSTANTS.margin }
     // 全コンポーネント画像を一括生成してcanvas配列を返す
     static async generateAllComponents(
         vilFileContent: string,
         options: ComponentGeneratorOptions
     ): Promise<GeneratedComponent[]> {
         const {
+            configPath,
             colorMode,
             comboHighlight,
             subtextHighlight,
@@ -50,13 +68,12 @@ export class BrowserComponentBatchGenerator {
 
         const components: GeneratedComponent[] = [];
 
-        console.log(`ブラウザ版コンポーネント一括生成開始`);
 
         // Vial設定を読み込み
         const config = Utils.loadVialConfigFromContent(vilFileContent);
         
         // 品質設定に応じてスケール倍率を決定
-        const scale = quality === 'low' ? 0.5 : 1.0;
+        const scale = quality === 'low' ? 0.3 : 1.0;
         
         // レンダリングオプションを設定
         const renderOptions: RenderOptions = {
@@ -66,27 +83,21 @@ export class BrowserComponentBatchGenerator {
             showComboMarkers: comboHighlight
         };
 
-        // 基準画像幅（元実装から）
-        const baseImageWidth = 1276;
+        // 基準画像幅（レイヤー画像と統一した計算）
+        const baseContentWidth = this.unitX * 13.5 + this.keyWidth;
+        const baseImageWidth = Math.ceil(baseContentWidth + this.margin * 2);
         const imageWidth = Math.floor(baseImageWidth * scale);
 
-        // 1. 個別レイヤー画像を生成
+        // 1. 個別レイヤー画像を生成（バックエンドと同じロジックを使用）
         const layerCanvases: HTMLCanvasElement[] = [];
         for (let layerIndex = 0; layerIndex < config.layout.length; layerIndex++) {
-            const canvas = CanvasDrawingUtils.drawKeyboardImage(
-                this.adapter,
-                config,
-                layerIndex,
-                renderOptions,
-                scale
-            );
+            const canvas = this.generateLayerCanvas(config, layerIndex, renderOptions, scale);
             layerCanvases.push(canvas);
             components.push({
                 canvas,
                 type: 'layer',
                 name: `layer${layerIndex}-${quality}`
             });
-            console.log(`レイヤー${layerIndex}生成完了`);
         }
 
         // 2. コンボ情報画像を生成（1x, 2x, 3x幅）
@@ -100,15 +111,14 @@ export class BrowserComponentBatchGenerator {
             false, // isWideLayout
             colorMode, 
             scale, 
-            false, // highlightComboKeys（背景色ハイライトは無効）
-            comboHighlight // showComboMarkers（三角マーカーのみ）
+            comboHighlight, // highlightComboKeys
+            comboHighlight // showComboMarkers
         );
         components.push({
             canvas: combo1xResult.canvas,
             type: 'combo',
             name: `combo-1x-${quality}`
         });
-        console.log(`コンボ情報（1x）生成完了`);
 
         // 2x幅でコンボ情報生成
         const combo2xResult = CanvasDrawingUtils.drawCombos(
@@ -118,15 +128,14 @@ export class BrowserComponentBatchGenerator {
             true, // isWideLayout
             colorMode, 
             scale, 
-            false, // highlightComboKeys（背景色ハイライトは無効）
-            comboHighlight // showComboMarkers（三角マーカーのみ）
+            comboHighlight, // highlightComboKeys
+            comboHighlight // showComboMarkers
         );
         components.push({
             canvas: combo2xResult.canvas,
             type: 'combo',
             name: `combo-2x-${quality}`
         });
-        console.log(`コンボ情報（2x）生成完了`);
 
         // 3x幅でコンボ情報生成
         const combo3xResult = CanvasDrawingUtils.drawCombos(
@@ -136,15 +145,14 @@ export class BrowserComponentBatchGenerator {
             true, // isWideLayout
             colorMode, 
             scale, 
-            false, // highlightComboKeys（背景色ハイライトは無効）
-            comboHighlight // showComboMarkers（三角マーカーのみ）
+            comboHighlight, // highlightComboKeys
+            comboHighlight // showComboMarkers
         );
         components.push({
             canvas: combo3xResult.canvas,
             type: 'combo',
             name: `combo-3x-${quality}`
         });
-        console.log(`コンボ情報（3x）生成完了`);
 
         // 3. レイアウト見出し画像を生成（1x, 2x, 3x幅）
         // 1x幅ヘッダー
@@ -152,7 +160,7 @@ export class BrowserComponentBatchGenerator {
             this.adapter,
             baseImageWidth,
             colorMode,
-            'config.vil', // 仮のファイル名
+            configPath, // 実際のファイル名を使用
             scale
         );
         components.push({
@@ -160,14 +168,13 @@ export class BrowserComponentBatchGenerator {
             type: 'header',
             name: `header-1x-${quality}`
         });
-        console.log(`レイアウト見出し画像（1x）生成完了`);
 
         // 2x幅ヘッダー
         const header2xCanvas = CanvasDrawingUtils.generateHeaderImage(
             this.adapter,
             baseImageWidth * 2,
             colorMode,
-            'config.vil',
+            configPath,
             scale
         );
         components.push({
@@ -175,14 +182,13 @@ export class BrowserComponentBatchGenerator {
             type: 'header',
             name: `header-2x-${quality}`
         });
-        console.log(`レイアウト見出し画像（2x）生成完了`);
 
         // 3x幅ヘッダー
         const header3xCanvas = CanvasDrawingUtils.generateHeaderImage(
             this.adapter,
             baseImageWidth * 3,
             colorMode,
-            'config.vil',
+            configPath,
             scale
         );
         components.push({
@@ -190,16 +196,65 @@ export class BrowserComponentBatchGenerator {
             type: 'header',
             name: `header-3x-${quality}`
         });
-        console.log(`レイアウト見出し画像（3x）生成完了`);
 
         // 4. 結合画像を生成（TODO: 必要に応じて実装）
         // 縦配置結合と横配置結合は別途実装
 
-        console.log(`全コンポーネント生成完了: ${components.length}個`);
         return components;
     }
 
+    // バックエンドと同じレイヤー画像生成ロジック（ブラウザCanvasAdapter使用）
+    private static generateLayerCanvas(config: VialConfig, layerIndex: number, options: RenderOptions, scale: number): HTMLCanvasElement {
+        // Combo情報を解析（バックエンドの共通モジュールを使用）
+        const combos = BackendParser.parseComboInfo(config);
 
+        // 画像サイズを計算（左右に適切な余白を含む）
+        const contentWidth = this.unitX * 13.5 + this.keyWidth;
+        const contentHeight = this.unitY * 3.0 + this.keyHeight;
+        const imgWidth = Math.ceil((contentWidth + this.margin * 2) * scale);
+        const imgHeight = Math.ceil((contentHeight + this.margin * 2) * scale);
 
+        // ブラウザCanvasを作成
+        const canvas = this.adapter.createCanvas(imgWidth, imgHeight);
+        const ctx = this.adapter.getContext(canvas);
 
+        // スケール適用
+        ctx.scale(scale, scale);
+
+        // テーマ色を取得（バックエンドの共通関数を使用）
+        const colors = getThemeColors(options.theme);
+        
+        // 背景を塗りつぶし
+        ctx.fillStyle = options.backgroundColor || colors.background;
+        ctx.fillRect(0, 0, imgWidth / scale, imgHeight / scale);
+
+        // キー配置情報を取得（バックエンドの共通モジュールを使用）
+        const positions = BackendUtils.getKeyPositions(this.keyWidth, this.keyHeight, this.keyGap, this.margin);
+
+        // 指定されたレイヤーのキーを描画
+        if (config.layout.length > layerIndex) {
+            const layer = config.layout[layerIndex];
+
+            for (let rowIdx = 0; rowIdx < positions.length; rowIdx++) {
+                for (let colIdx = 0; colIdx < positions[rowIdx].length; colIdx++) {
+                    const pos = positions[rowIdx][colIdx];
+                    if (!pos) continue;
+
+                    const keycode = layer[rowIdx]?.[colIdx] || -1;
+                    const label = BackendParser.keycodeToLabel(keycode, config);
+
+                    // キーを描画（フロントエンド独自canvasDrawingUtilsを使用）
+                    const stringKeycode = String(keycode);
+                    const colors = getThemeColors(options.theme);
+                    CanvasDrawingUtils.drawKey(ctx, pos, label, stringKeycode, options, colors, combos);
+                    CanvasDrawingUtils.drawText(ctx, pos, label, stringKeycode, options, colors, combos);
+                }
+            }
+        }
+
+        // レイヤー番号を装飾付きで描画（フロントエンド独自canvasDrawingUtilsを使用）
+        CanvasDrawingUtils.drawLayerNumber(ctx, layerIndex, canvas.width / scale, canvas.height / scale, colors);
+
+        return canvas;
+    }
 }

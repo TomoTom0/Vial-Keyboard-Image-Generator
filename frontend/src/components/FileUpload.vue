@@ -22,15 +22,8 @@
       />
       
       <div v-if="!uploadedFile" class="upload-content">
-        <div class="upload-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17,8 12,3 7,8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-        </div>
         <div class="upload-text">
-          <div class="primary-text">upload</div>
+          <div class="primary-text">Upload .vil file from vial.rocks</div>
         </div>
       </div>
 
@@ -247,52 +240,56 @@ onMounted(() => {
 
 <style scoped>
 .file-upload {
-  width: 100%;
+  display: contents;
 }
 
 .upload-zone {
-  border: 2px dashed #d1d5db;
-  border-radius: 8px;
-  padding: 8px;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  padding: 8px 10px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
   background: #fafbfc;
-  min-height: 40px;
+  height: 50px;
+  box-sizing: border-box;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
+  align-items: center;
   position: relative;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
 }
 
 .upload-zone:hover {
-  border-color: #9ca3af;
-  background: #f9fafb;
+  background: #f3f4f6;
+  border-color: #e5e7eb;
 }
 
 .upload-zone.drag-active {
   border-color: #3b82f6;
   background: #eff6ff;
-  border-style: solid;
-  transform: scale(1.02);
+  color: #3b82f6;
 }
 
 .upload-zone.has-file {
   border-color: #10b981;
   background: #f0fdf4;
-  border-style: solid;
+  color: #10b981;
 }
 
 .upload-zone.upload-error {
   border-color: #ef4444;
   background: #fef2f2;
+  color: #ef4444;
 }
 
 .upload-content {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 0;
 }
 
 .upload-icon {
@@ -315,8 +312,8 @@ onMounted(() => {
 .primary-text {
   font-size: 12px;
   font-weight: 500;
-  color: #374151;
-  margin-bottom: 1px;
+  color: #111827;
+  margin-bottom: 0;
 }
 
 .secondary-text {
@@ -327,9 +324,9 @@ onMounted(() => {
 .file-preview {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  padding: 2px;
+  padding: 0;
 }
 
 .file-icon {
@@ -346,10 +343,13 @@ onMounted(() => {
 .file-name {
   font-weight: 500;
   color: #111827;
-  font-size: 12px;
-  margin-bottom: 1px;
+  font-size: 13px;
+  margin-bottom: 0;
   word-break: break-all;
-  line-height: 1.3;
+  line-height: 1.2;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .file-size {
@@ -378,15 +378,16 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .upload-zone {
-    padding: 16px;
-    min-height: 80px;
+    padding: 8px 12px;
+    height: 50px;
+    font-size: 11px;
   }
   
   .primary-text {
-    font-size: 14px;
+    font-size: 13px;
   }
   
-  .secondary-text {
+  .file-name {
     font-size: 12px;
   }
 }

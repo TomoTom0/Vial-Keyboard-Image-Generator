@@ -96,4 +96,65 @@ export class VialKeyboardImageGenerator {
         
         console.log(`キーボード画像を生成しました: ${outputPath}`);
     }
+
+    // canvasを直接返すメソッド（ファイル保存なし）
+    public generateKeyboardCanvas(config: VialConfig, layerIndex: number = 0, options: RenderOptions = {}, scale: number = 1.0): any {
+        console.log(`レイヤー${layerIndex} canvas生成開始`);
+        
+        // Combo情報を解析
+        const combos = Parser.parseComboInfo(config);
+
+        // 画像サイズを計算
+        const contentWidth = this.unitX * 14.0 + 30.0 + this.keyWidth;
+        const contentHeight = this.unitY * 3.0 + this.keyHeight;
+        const baseImgWidth = Math.ceil(contentWidth + this.margin * 2);
+        const baseImgHeight = Math.ceil(contentHeight + this.margin * 2);
+        
+        const imgWidth = Math.ceil(baseImgWidth * scale);
+        const imgHeight = Math.ceil(baseImgHeight * scale);
+
+        // Canvasを作成
+        const canvas = createCanvas(imgWidth, imgHeight);
+        const ctx = canvas.getContext('2d');
+
+        // スケールを適用
+        if (scale !== 1.0) {
+            ctx.scale(scale, scale);
+        }
+
+        // テーマ色を取得
+        const colors = getThemeColors(options.theme);
+        
+        // 背景を塗りつぶし
+        ctx.fillStyle = options.backgroundColor || colors.background;
+        ctx.fillRect(0, 0, baseImgWidth, baseImgHeight);
+
+        // キー配置情報を取得
+        const positions = Utils.getKeyPositions(this.keyWidth, this.keyHeight, this.keyGap, this.margin);
+
+        // 指定されたレイヤーのキーを描画
+        if (config.layout.length > layerIndex) {
+            const layer = config.layout[layerIndex];
+
+            for (let rowIdx = 0; rowIdx < positions.length; rowIdx++) {
+                for (let colIdx = 0; colIdx < positions[rowIdx].length; colIdx++) {
+                    const pos = positions[rowIdx][colIdx];
+                    if (!pos) continue;
+
+                    const keycode = layer[rowIdx]?.[colIdx] || -1;
+                    const label = Parser.keycodeToLabel(keycode, config);
+
+                    // キーを描画（Combo情報付き）
+                    const stringKeycode = String(keycode);
+                    Renderer.drawKey(ctx, pos, label, stringKeycode, combos, options);
+                    Renderer.drawText(ctx, pos, label, stringKeycode, combos, options);
+                }
+            }
+        }
+
+        // レイヤー番号を装飾付きで表示
+        Renderer.drawLayerNumber(ctx, layerIndex, baseImgWidth, baseImgHeight, options);
+
+        return canvas;
+    }
 }

@@ -21,6 +21,19 @@ export class ImageCombiner {
         return canvas.toBuffer('image/png');
     }
 
+    // レイアウト見出しcanvasを生成する（canvas返却版）
+    static generateHeaderCanvas(width: number, theme: 'dark' | 'light' = 'dark', label?: string, scale: number = 1): any {
+        const scaledWidth = Math.floor(width * scale);
+        const scaledHeight = Math.floor(45 * scale);  // ヘッダー画像の高さも拡大
+        
+        const canvas = createCanvas(scaledWidth, scaledHeight);
+        const ctx = canvas.getContext('2d');
+        
+        this.drawHeader(ctx, 'LAYOUTS', 0, 0, scaledWidth, theme, label, scale);
+        
+        return canvas;
+    }
+
     // 生成済みコンポーネント画像を使用して縦結合
     static async combineVerticalFromComponents(
         layerPaths: string[], 

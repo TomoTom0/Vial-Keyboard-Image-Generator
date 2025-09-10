@@ -2,7 +2,7 @@
   <div class="select-tab">
     <div class="image-container">
       <!-- Header image -->
-      <div v-if="outputFormat !== 'separated'"
+      <div v-if="outputFormat !== 'separated' && (selectedFile === 'sample' || (selectedFile && generatedImages && generatedImages.length > 0))"
            :class="['header-image-section', { 'header-disabled': !props.showHeader }]"
            @click="toggleHeader">
         <img 
@@ -22,12 +22,20 @@
           @click="toggleLayer(layer, !layerSelection[layer])"
         >
           <img 
+            v-if="selectedFile === 'sample'"
             :src="getLayerImageUrl(layer)"
             :alt="`Layer ${layer}`"
             class="layer-preview"
             @error="handleImageError"
           />
-          <div v-if="!getLayerImageUrl(layer)" class="layer-placeholder">
+          <img 
+            v-else-if="selectedFile && generatedImages && generatedImages.length > 0 && getLayerImageUrl(layer)"
+            :src="getLayerImageUrl(layer)"
+            :alt="`Layer ${layer}`"
+            class="layer-preview"
+            @error="handleImageError"
+          />
+          <div v-else-if="selectedFile === 'sample'" class="layer-placeholder">
             <div class="placeholder-text">Layer {{ layer }}</div>
           </div>
         </div>
@@ -49,8 +57,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { LAYERS } from '../constants/layout'
+import { getCanvasImageUrl } from '../utils/imageUtils'
 
 interface LayerSelection {
   [layerId: number]: boolean
@@ -75,6 +84,21 @@ const emit = defineEmits<{
 
 // Available layers
 const availableLayers = LAYERS.AVAILABLE
+
+// 画面幅を監視してレイアウト変更をトリガー
+const screenWidth = ref(window.innerWidth)
+
+const updateScreenWidth = () => {
+  screenWidth.value = window.innerWidth
+}
+
+onMounted(() => {
+  window.addEventListener('resize', updateScreenWidth)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateScreenWidth)
+})
 
 const toggleLayer = (layer: number, selected: boolean) => {
   const newSelection = {
@@ -102,6 +126,15 @@ const getLayersLayoutClass = (): string => {
   } else if (format === 'rectangular') {
     // SelectTabでは全レイヤー（6層）を3列で表示: L0,L1,L2 / L3,L4,L5
     return 'layers-rectangular-3col'
+  } else if (format === 'separated') {
+    // separatedの場合は画面幅に応じて動的に列数を決定
+    if (screenWidth.value < 600) {
+      return 'layers-separated-1col'
+    } else if (screenWidth.value < 900) {
+      return 'layers-separated-2col' 
+    } else {
+      return 'layers-separated-3col'
+    }
   }
   return 'layers-separated'
 }
@@ -145,23 +178,27 @@ const getComboImageUrl = (): string => {
   if (props.selectedFile === 'sample') {
     return `/assets/sample/keyboard/dark/0-0/combo-normal-low.png`
   } else if (props.selectedFile && props.generatedImages) {
-    // 生成された画像からコンボ画像を探す
-    const comboImage = props.generatedImages.find(img => 
-      img.type === 'combined' || (img.type === 'combo' as any)
+    return getCanvasImageUrl(
+      'combo',
+      props.generatedImages,
+      props.outputFormat || 'separated',
+      true // SelectTabでは全レイヤー数を使用
     )
-    
-    // Canvas要素が存在する場合は、Data URLに変換
-    if (comboImage?.canvas) {
-      return comboImage.canvas.toDataURL()
-    }
-    
-    return comboImage ? comboImage.url : ''
   }
   return ''
 }
 
 const getHeaderImageUrl = (): string => {
-  // ヘッダー画像は現在利用不可
+  if (props.selectedFile === 'sample') {
+    return `/assets/sample/keyboard/dark/0-0/header-normal-low.png`
+  } else if (props.selectedFile && props.generatedImages) {
+    return getCanvasImageUrl(
+      'header',
+      props.generatedImages,
+      props.outputFormat || 'separated',
+      true // SelectTabでは全レイヤー数を使用
+    )
+  }
   return ''
 }
 
@@ -202,13 +239,15 @@ $background-light: #f5f5f5;
   padding: 15px;
   margin: 5px auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: 98%;
-  max-height: 80vh;
+  max-width: calc(100vw - 20px);
   width: fit-content;
   transition: all 0.3s ease-in-out;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
   
-  // ウィンドウサイズ基準の共通画像倍率
-  --image-scale: clamp(2.5, 5vw, 4.5);
+  // ウィンドウサイズ基準の共通画像倍率（余裕がある場合はより大きく）
+  --image-scale: clamp(0.4, 2vw, 1.2);
 }
 
 // Mixin for common image styles
@@ -224,7 +263,7 @@ $background-light: #f5f5f5;
   
   // ウィンドウサイズ基準の共通倍率を適用
   transform: scale(var(--image-scale));
-  transform-origin: center;
+  transform-origin: top left;
 }
 
 
@@ -250,6 +289,24 @@ $background-light: #f5f5f5;
   margin: 10px;
 }
 
+.layers-separated-1col {
+  @include layout.layers-grid-1col-separated;
+  padding: 0;
+  margin: 10px;
+}
+
+.layers-separated-2col {
+  @include layout.layers-grid-2col-separated;
+  padding: 0;
+  margin: 10px;
+}
+
+.layers-separated-3col {
+  @include layout.layers-grid-3x2-separated;
+  padding: 0;
+  margin: 10px;
+}
+
 .layers-vertical {
   @include layout.layers-vertical-layout;
 }
@@ -268,7 +325,20 @@ $background-light: #f5f5f5;
 
 .layer-placeholder {
   color: #999;
-  font-size: 11px;
+  font-size: 24px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 60px;
+  width: 100%;
+}
+
+.placeholder-text {
+  text-align: center;
+  width: 100%;
+  display: block;
 }
 
 
