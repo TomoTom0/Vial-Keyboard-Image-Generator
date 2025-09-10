@@ -1,25 +1,5 @@
 import { ref, computed } from 'vue'
-
-export interface GeneratedImage {
-  id: string
-  filename: string
-  type: 'combined' | 'layer'
-  layer?: number
-  format: string
-  url: string
-  size: number
-  timestamp: Date
-}
-
-export interface GenerationOptions {
-  theme: 'dark' | 'light'
-  format: 'vertical' | 'horizontal' | 'individual'
-  layerRange?: {
-    start: number
-    end: number
-  }
-  showComboInfo?: boolean
-}
+import { BrowserImageGenerator, type GeneratedImage, type GenerationOptions } from '../utils/imageGenerator'
 
 export function useImageGeneration() {
   const images = ref<GeneratedImage[]>([])
@@ -59,17 +39,6 @@ export function useImageGeneration() {
     progress.value = 0
 
     try {
-      // FormDataを作成
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('theme', options.theme)
-      formData.append('format', options.format)
-      formData.append('showComboInfo', String(options.showComboInfo || false))
-      
-      if (options.layerRange) {
-        formData.append('layerRange', JSON.stringify(options.layerRange))
-      }
-
       // 進捗をシミュレート
       const progressInterval = setInterval(() => {
         if (progress.value < 90) {
@@ -78,50 +47,32 @@ export function useImageGeneration() {
         }
       }, 200)
 
-      console.log('🚀 Starting image generation...')
+      console.log('🚀 ブラウザ内で画像生成を開始...')
       
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        body: formData
-      })
-
+      // ファイル内容を読み取り
+      const fileContent = await readFileAsDataURL(file)
+      
       clearInterval(progressInterval)
       progress.value = 95
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
-      }
+      // ブラウザ内で画像生成
+      const newImages = await BrowserImageGenerator.generateFromContent(
+        fileContent,
+        file.name,
+        options
+      )
 
-      const result = await response.json()
       progress.value = 100
 
-      if (!result.success) {
-        throw new Error(result.error || '画像生成に失敗しました')
-      }
-
-      // 生成された画像を追加
-      const newImages: GeneratedImage[] = result.images.map((img: any) => ({
-        ...img,
-        timestamp: new Date(img.timestamp)
-      }))
-
-      // キャッシュされた結果かどうかをログ出力
-      if (result.cached) {
-        console.log('📦 Used cached result')
-      } else {
-        console.log('✨ Generated new images')
-      }
-
       images.value = newImages
-      console.log(`✅ Generation completed: ${newImages.length} images`)
+      console.log(`✅ 画像生成完了: ${newImages.length}個の画像を生成しました`)
 
       return newImages
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '画像生成中に不明なエラーが発生しました'
       error.value = errorMessage
-      console.error('❌ Generation failed:', errorMessage)
+      console.error('❌ 画像生成に失敗:', errorMessage)
       throw err
     } finally {
       isGenerating.value = false
@@ -130,6 +81,18 @@ export function useImageGeneration() {
         progress.value = 0
       }, 1000)
     }
+  }
+
+  /**
+   * ファイルをData URLとして読み取り
+   */
+  const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
   }
 
   /**

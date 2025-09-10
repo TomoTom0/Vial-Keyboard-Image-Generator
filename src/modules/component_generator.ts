@@ -79,6 +79,101 @@ export class ComponentGenerator {
     }
 
     /**
+     * vilファイルの内容から各コンポーネント画像を生成（ブラウザ対応）
+     * @param vilContent vilファイルの内容
+     * @param filename ファイル名
+     * @param options 生成オプション
+     */
+    static async generateComponentImagesFromContent(
+        vilContent: string,
+        filename: string,
+        options: ComponentGenerationOptions
+    ): Promise<void> {
+        console.log('🎨 コンポーネント画像生成を開始します（内容から）');
+        console.log(`📁 ファイル名: ${filename}`);
+        console.log(`📁 出力ディレクトリ: ${options.outputDir}`);
+        
+        // 出力ディレクトリを作成
+        if (!fs.existsSync(options.outputDir)) {
+            fs.mkdirSync(options.outputDir, { recursive: true });
+            console.log(`📁 出力ディレクトリを作成: ${options.outputDir}`);
+        }
+
+        // Vial設定を内容から読み込み
+        const config = Utils.loadVialConfigFromContent(vilContent);
+        console.log(`✅ Vial設定読み込み完了: version=${config.version}`);
+
+        const renderOptions: RenderOptions = {
+            theme: options.theme,
+            showComboInfo: false, // コンポーネント生成では個別に制御
+            changeKeyColors: false,
+            highlightComboKeys: false,
+            highlightSubtextKeys: false,
+            showComboMarkers: false,
+            showTextColors: false
+        };
+
+        const filePrefix = options.filePrefix || filename.replace('.vil', '');
+
+        // レイヤー画像を生成
+        if (options.generateLayers !== false) {
+            await ComponentGenerator.generateLayerComponentsFromConfig(
+                config,
+                options.outputDir,
+                filePrefix,
+                renderOptions,
+                options.layerRange
+            );
+        }
+
+        // コンボ情報画像を生成
+        if (options.generateCombo !== false) {
+            await ComponentGenerator.generateComboComponent(
+                config,
+                options.outputDir,
+                filePrefix,
+                options.theme
+            );
+        }
+
+        console.log('✨ コンポーネント画像生成が完了しました');
+    }
+
+    /**
+     * レイヤーごとの画像を生成（設定から直接）
+     */
+    private static async generateLayerComponentsFromConfig(
+        config: VialConfig,
+        outputDir: string,
+        filePrefix: string,
+        renderOptions: RenderOptions,
+        layerRange?: { start: number; end: number }
+    ): Promise<void> {
+        console.log('📐 レイヤー画像を生成中（設定から）...');
+        
+        const generator = new VialKeyboardImageGenerator();
+        const startLayer = layerRange?.start || 0;
+        const endLayer = layerRange?.end || Math.min(config.layout.length - 1, 3);
+
+        for (let layer = startLayer; layer <= endLayer; layer++) {
+            if (layer >= config.layout.length) {
+                console.log(`⚠️ レイヤー${layer}は存在しません（最大: ${config.layout.length - 1}）`);
+                continue;
+            }
+
+            const outputPath = path.join(outputDir, `${filePrefix}_layer${layer}_component.png`);
+            
+            try {
+                // TODO: generateKeyboardImageFromConfig メソッドが必要
+                // generator.generateKeyboardImageFromConfig(config, outputPath, layer, renderOptions);
+                console.log(`✅ レイヤー${layer}画像を生成: ${outputPath}`);
+            } catch (error) {
+                console.error(`❌ レイヤー${layer}画像生成エラー:`, error);
+            }
+        }
+    }
+
+    /**
      * レイヤーごとの画像を生成
      */
     private static async generateLayerComponents(

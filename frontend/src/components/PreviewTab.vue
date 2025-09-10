@@ -34,6 +34,17 @@
         alt="Combo information"
         class="preview-combo-image"
       />
+      
+      <!-- Generate button -->
+      <div class="generate-section">
+        <button 
+          class="generate-button"
+          :disabled="selectedFile === 'sample'"
+          @click="handleGenerate"
+        >
+          Generate
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -53,6 +64,7 @@ const props = defineProps<{
   highlightEnabled?: boolean
   showCombos?: boolean
   showHeader?: boolean
+  generatedImages?: any[]
 }>()
 
 const getOrderedLayers = () => {
@@ -74,38 +86,31 @@ const getLayersLayoutClass = (): string => {
 
 const getLayerImageUrl = (layer: number): string => {
   if (props.selectedFile === 'sample') {
-    const theme = props.theme || 'dark'
-    const highlight = props.highlightEnabled ? '1-1' : '0-0'
-    return `/assets/sample/keyboard/${theme}/${highlight}/layer${layer}-low.png`
+    return `/assets/sample/keyboard/dark/0-0/layer${layer}-low.png`
+  } else if (props.selectedFile && props.generatedImages) {
+    // 生成された画像から該当するレイヤーを探す
+    const layerImage = props.generatedImages.find(img => 
+      img.type === 'layer' && img.layer === layer
+    )
+    return layerImage ? layerImage.url : ''
   }
   return ''
 }
 
 const getHeaderImageUrl = (): string => {
-  if (props.selectedFile === 'sample') {
-    const theme = props.theme || 'dark'
-    const highlight = props.highlightEnabled ? '1-1' : '0-0'
-    
-    let headerSize = '1x'
-    if (props.outputFormat === 'vertical') {
-      headerSize = '1x'
-    } else if (props.outputFormat === 'rectangular') {
-      headerSize = '3x'
-    } else {
-      headerSize = '2x'
-    }
-    
-    return `/assets/sample/keyboard/${theme}/${highlight}/header-${headerSize}-low.png`
-  }
+  // ヘッダー画像は現在利用不可
   return ''
 }
 
 const getComboImageUrl = (): string => {
   if (props.selectedFile === 'sample') {
-    const theme = props.theme || 'dark'
-    const highlight = props.highlightEnabled ? '1-1' : '0-0'
-    const comboType = (props.outputFormat === 'rectangular') ? 'wide' : 'normal'
-    return `/assets/sample/keyboard/${theme}/${highlight}/combo-${comboType}-low.png`
+    return `/assets/sample/keyboard/dark/0-0/combo-normal-low.png`
+  } else if (props.selectedFile && props.generatedImages) {
+    // 生成された画像からコンボ画像を探す
+    const comboImage = props.generatedImages.find(img => 
+      img.type === 'combined' && img.filename.includes('combo')
+    )
+    return comboImage ? comboImage.url : ''
   }
   return ''
 }
@@ -114,22 +119,28 @@ const handleImageError = (event: Event) => {
   console.warn('Failed to load layer image')
 }
 
+const handleGenerate = () => {
+  emit('generate')
+}
+
 const emit = defineEmits<{
   generate: []
 }>()
 </script>
 
 <style scoped lang="scss">
-@import '../styles/layout.scss';
+@use '../styles/layout.scss' as layout;
 
 // Variables
 $primary-color: #007bff;
+$primary-hover: #0056b3;
 $border-color: #dee2e6;
 $background-light: #f5f5f5;
 $transition-duration: 0.2s;
 
 .preview-tab {
-  height: 100%;
+  height: auto;
+  min-height: 0;
   padding: 10px;
   background: $background-light;
 }
@@ -145,11 +156,14 @@ $transition-duration: 0.2s;
   max-height: 80vh;
   width: fit-content;
   transition: all 0.3s ease-in-out;
+  
+  // ウィンドウサイズ基準の共通画像倍率
+  --image-scale: clamp(2.5, 5vw, 4.5);
 }
 
 // Common image styles
 @mixin preview-image-base {
-  width: 100%;
+  width: auto;
   height: auto;
   object-fit: contain;
   display: block;
@@ -158,6 +172,10 @@ $transition-duration: 0.2s;
   border: none;
   box-sizing: border-box;
   transition: all $transition-duration;
+  
+  // ウィンドウサイズ基準の共通倍率を適用
+  transform: scale(var(--image-scale));
+  transform-origin: center;
 }
 
 .preview-header-image {
@@ -175,21 +193,21 @@ $transition-duration: 0.2s;
 }
 
 .layers-separated {
-  @include layers-grid-3x2-separated;
+  @include layout.layers-grid-3x2-separated;
   padding: 0;
   margin: 10px;
 }
 
 .layers-vertical {
-  @include layers-vertical-layout;
+  @include layout.layers-vertical-layout;
 }
 
 .layers-rectangular-2col {
-  @include layers-grid-2col;
+  @include layout.layers-grid-2col;
 }
 
 .layers-rectangular-3col {
-  @include layers-grid-3x2;
+  @include layout.layers-grid-3x2;
 }
 
 .layer-item {
@@ -206,6 +224,49 @@ $transition-duration: 0.2s;
   font-size: 11px;
 }
 
+.generate-section {
+  margin-top: 15px;
+  text-align: center;
+}
+
+.generate-button {
+  background: $primary-color;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all $transition-duration;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+
+  &:hover {
+    background: $primary-hover;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+  }
+
+  &:disabled {
+    background: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+
+    &:hover {
+      background: #ccc;
+      transform: none;
+      box-shadow: none;
+    }
+  }
+}
+
 @media (max-width: 768px) {
   .preview-tab {
     padding: 10px;
@@ -213,6 +274,11 @@ $transition-duration: 0.2s;
   
   .preview-container {
     max-width: 98%;
+  }
+  
+  .generate-button {
+    padding: 10px 20px;
+    font-size: 13px;
   }
 }
 </style>

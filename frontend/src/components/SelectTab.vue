@@ -64,6 +64,7 @@ const props = defineProps<{
   highlightEnabled?: boolean
   showCombos?: boolean
   showHeader?: boolean
+  generatedImages?: any[]
 }>()
 
 const emit = defineEmits<{
@@ -122,40 +123,33 @@ const getOrderedLayers = () => {
 
 const getLayerImageUrl = (layer: number): string => {
   if (props.selectedFile === 'sample') {
-    const theme = props.theme || 'dark'
-    const highlight = props.highlightEnabled ? '1-1' : '0-0'
-    return `/assets/sample/keyboard/${theme}/${highlight}/layer${layer}-low.png`
+    // サンプルファイルの場合は静的画像
+    return `/assets/sample/keyboard/dark/0-0/layer${layer}-low.png`
+  } else if (props.selectedFile && props.generatedImages) {
+    // 生成された画像から該当するレイヤーを探す
+    const layerImage = props.generatedImages.find(img => 
+      img.type === 'layer' && img.layer === layer
+    )
+    return layerImage ? layerImage.url : ''
   }
   return ''
 }
 
 const getComboImageUrl = (): string => {
   if (props.selectedFile === 'sample') {
-    const theme = props.theme || 'dark'
-    const highlight = props.highlightEnabled ? '1-1' : '0-0'
-    const comboType = (props.outputFormat === 'rectangular') ? 'wide' : 'normal'
-    return `/assets/sample/keyboard/${theme}/${highlight}/combo-${comboType}-low.png`
+    return `/assets/sample/keyboard/dark/0-0/combo-normal-low.png`
+  } else if (props.selectedFile && props.generatedImages) {
+    // 生成された画像からコンボ画像を探す
+    const comboImage = props.generatedImages.find(img => 
+      img.type === 'combined' && img.filename.includes('combo')
+    )
+    return comboImage ? comboImage.url : ''
   }
   return ''
 }
 
 const getHeaderImageUrl = (): string => {
-  if (props.selectedFile === 'sample') {
-    const theme = props.theme || 'dark'
-    const highlight = props.highlightEnabled ? '1-1' : '0-0'
-    
-    // ヘッダーサイズを決定
-    let headerSize = '1x'  // デフォルト
-    if (props.outputFormat === 'vertical') {
-      headerSize = '1x'
-    } else if (props.outputFormat === 'rectangular') {
-      headerSize = '3x'
-    } else { // separated
-      headerSize = '2x'
-    }
-    
-    return `/assets/sample/keyboard/${theme}/${highlight}/header-${headerSize}-low.png`
-  }
+  // ヘッダー画像は現在利用不可
   return ''
 }
 
@@ -173,7 +167,7 @@ const handleHeaderImageError = (event: Event) => {
 </script>
 
 <style scoped lang="scss">
-@import '../styles/layout.scss';
+@use '../styles/layout.scss' as layout;
 
 // Variables
 $primary-color: #007bff;
@@ -183,7 +177,8 @@ $transition-duration: 0.2s;
 $background-light: #f5f5f5;
 
 .select-tab {
-  height: 100%;
+  height: auto;
+  min-height: 0;
   padding: 10px;
   background: $background-light;
 }
@@ -199,11 +194,14 @@ $background-light: #f5f5f5;
   max-height: 80vh;
   width: fit-content;
   transition: all 0.3s ease-in-out;
+  
+  // ウィンドウサイズ基準の共通画像倍率
+  --image-scale: clamp(2.5, 5vw, 4.5);
 }
 
 // Mixin for common image styles
 @mixin image-base {
-  width: 100%;
+  width: auto;
   height: auto;
   object-fit: contain;
   display: block;
@@ -211,6 +209,10 @@ $background-light: #f5f5f5;
   padding: 0;
   box-sizing: border-box;
   transition: all $transition-duration;
+  
+  // ウィンドウサイズ基準の共通倍率を適用
+  transform: scale(var(--image-scale));
+  transform-origin: center;
 }
 
 
@@ -231,21 +233,21 @@ $background-light: #f5f5f5;
 
 
 .layers-separated {
-  @include layers-grid-3x2-separated;
+  @include layout.layers-grid-3x2-separated;
   padding: 0;
   margin: 10px;
 }
 
 .layers-vertical {
-  @include layers-vertical-layout;
+  @include layout.layers-vertical-layout;
 }
 
 .layers-rectangular-2col {
-  @include layers-grid-2col;
+  @include layout.layers-grid-2col;
 }
 
 .layers-rectangular-3col {
-  @include layers-grid-3x2;
+  @include layout.layers-grid-3x2;
 }
 
 

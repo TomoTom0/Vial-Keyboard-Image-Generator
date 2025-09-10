@@ -79,6 +79,11 @@ export class Utils {
         return JSON.parse(data);
     }
 
+    // Vial設定を内容から読み込み（ブラウザ対応）
+    static loadVialConfigFromContent(content: string): VialConfig {
+        return JSON.parse(content);
+    }
+
     // キー配置座標を定義
     static getKeyPositions(keyWidth: number, keyHeight: number, keyGap: number, margin: number): (KeyPosition | null)[][] {
         const unitX = keyWidth + keyGap;

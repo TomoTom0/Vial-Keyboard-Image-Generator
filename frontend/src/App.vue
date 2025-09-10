@@ -2,7 +2,6 @@
 import { ref, onMounted, computed } from 'vue'
 import FileUpload from './components/FileUpload.vue'
 import FileHistory from './components/FileHistory.vue'
-import ColorModeSelector from './components/ColorModeSelector.vue'
 import SelectTab from './components/SelectTab.vue'
 import PreviewTab from './components/PreviewTab.vue'
 import OutputTab from './components/OutputTab.vue'
@@ -14,7 +13,8 @@ interface RecentFile {
   id: string
   name: string
   timestamp: Date
-  file?: File
+  content: string // ファイル内容をBase64で保存
+  type: string    // ファイルのMIMEタイプ
 }
 
 interface AdvancedSettings {
@@ -32,7 +32,7 @@ interface LayerSelection {
 const currentTab = ref<'select' | 'preview' | 'output'>('preview')
 const currentFormat = ref<string>('default')
 const currentTheme = ref<'light' | 'dark'>('dark')
-const selectedFile = ref<File | null>(null)
+const selectedFile = ref<string>('sample')
 const selectedDisplayFile = ref<string>('sample')
 const recentFiles = ref<RecentFile[]>([])
 
@@ -49,14 +49,15 @@ const layerSelection = ref<LayerSelection>({
   1: true,
   2: true,
   3: true,
-  4: true,
-  5: true
+  4: false,
+  5: false
 })
 
 // Preview and output data
 const previewImages = ref<any[]>([])
 const outputImages = ref<any[]>([])
 const isGenerating = ref(false)
+const isGenerated = ref(false)
 const error = ref<string | null>(null)
 
 // Composables
@@ -76,8 +77,8 @@ const {
 // Computed
 const availableFiles = computed(() => {
   const files = ['sample']
-  if (selectedFile.value) {
-    files.push(selectedFile.value.name)
+  if (selectedFile.value && selectedFile.value !== 'sample') {
+    files.push(selectedFile.value)
   }
   recentFiles.value.forEach(file => {
     if (!files.includes(file.name)) {
@@ -87,39 +88,102 @@ const availableFiles = computed(() => {
   return files
 })
 
+// ファイル内容を読み込む関数
+const readFileContent = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file) // Base64形式で読み込み
+  })
+}
+
+// Base64からFileオブジェクトを作成する関数
+const createFileFromBase64 = (content: string, name: string, type: string): File => {
+  const byteCharacters = atob(content.split(',')[1])
+  const byteNumbers = new Array(byteCharacters.length)
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i)
+  }
+  const byteArray = new Uint8Array(byteNumbers)
+  return new File([byteArray], name, { type })
+}
+
 // File handling
-const handleFileSelected = (file: File) => {
+const handleFileSelected = async (file: File) => {
   const validationError = validateFile(file)
   if (validationError) {
     error.value = validationError
     return
   }
   
-  selectedFile.value = file
-  setFile(file)
-  
-  addToRecentFiles(file)
-  selectedDisplayFile.value = file.name
-  generatePreviewImages()
-  
-  console.log('📁 File selected:', file.name)
-}
-
-const handleFileHistorySelected = (recentFile: RecentFile) => {
-  if (recentFile.file) {
-    selectedFile.value = recentFile.file
-    setFile(recentFile.file)
-    selectedDisplayFile.value = recentFile.name
+  try {
+    // ファイル内容を読み込み
+    const content = await readFileContent(file)
+    
+    selectedFile.value = file.name
+    setFile(file)
+    
+    await addToRecentFiles(file, content)
+    selectedDisplayFile.value = file.name
     generatePreviewImages()
+    
+    console.log('📁 File selected:', file.name)
+  } catch (err) {
+    error.value = 'ファイルの読み込みに失敗しました'
+    console.error('File reading error:', err)
   }
 }
 
-const addToRecentFiles = (file: File) => {
+const handleFileHistorySelected = (recentFile: RecentFile) => {
+  // サンプルが渡された場合は選択解除
+  if (recentFile.name === 'sample') {
+    selectedFile.value = 'sample'
+    selectedDisplayFile.value = 'sample'
+    return
+  }
+  
+  selectedFile.value = recentFile.name
+  selectedDisplayFile.value = recentFile.name
+  
+  // Base64からFileオブジェクトを動的に作成
+  const file = createFileFromBase64(recentFile.content, recentFile.name, recentFile.type)
+  setFile(file)
+  
+  generatePreviewImages()
+}
+
+const handleFileDownload = (recentFile: RecentFile) => {
+  // Base64データからファイルをダウンロード
+  const link = document.createElement('a')
+  link.href = recentFile.content
+  link.download = recentFile.name
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+const handleFileDelete = (recentFile: RecentFile) => {
+  const index = recentFiles.value.findIndex(f => f.id === recentFile.id)
+  if (index > -1) {
+    recentFiles.value.splice(index, 1)
+    saveRecentFiles()
+    
+    // 削除されたファイルが現在選択されている場合、サンプルに戻す
+    if (selectedFile.value === recentFile.name) {
+      selectedFile.value = 'sample'
+      selectedDisplayFile.value = 'sample'
+    }
+  }
+}
+
+const addToRecentFiles = async (file: File, content: string) => {
   const newFile: RecentFile = {
     id: Date.now().toString(),
     name: file.name,
     timestamp: new Date(),
-    file: file
+    content,
+    type: file.type
   }
   
   recentFiles.value = recentFiles.value.filter(f => f.name !== file.name)
@@ -170,6 +234,10 @@ const getFormatExplanationImage = (): string => {
 
 // Tab navigation
 const handleTabChanged = (tab: 'select' | 'preview' | 'output') => {
+  // Outputタブは画像生成完了後のみ選択可能
+  if (tab === 'output' && !isGenerated.value) {
+    return
+  }
   currentTab.value = tab
 }
 
@@ -212,10 +280,10 @@ const generatePreviewImages = async () => {
         })
       }
       previewImages.value = sampleImages
-    } else if (selectedFile.value) {
+    } else if (selectedFile.value && selectedFile.value !== 'sample' && currentFile.value) {
       // アップロードされたファイルの場合
       // TODO: クライアントサイドで.vilファイルを処理
-      previewImages.value = await generatePreviewImagesForFile(selectedFile.value)
+      previewImages.value = await generatePreviewImagesForFile(currentFile.value)
     }
     
   } catch (err) {
@@ -227,16 +295,16 @@ const generatePreviewImages = async () => {
 }
 
 const generatePreviewImagesForFile = async (file: File) => {
-  // TODO: クライアントサイドで.vilファイルを解析してCanvasで描画
-  // 今はプレースホルダーを返す
-  return [
-    {
-      id: 'uploaded-layer-0',
-      layer: 0,
-      url: '', // 空のURLでプレースホルダー表示
-      type: 'layer'
-    }
-  ]
+  // ブラウザ内で画像生成
+  const options = {
+    theme: currentTheme.value,
+    format: 'individual' as const,
+    layerRange: getSelectedLayerRange(),
+    showComboInfo: advancedSettings.value.showCombos
+  }
+  
+  const generatedImages = await generateImages(file, options)
+  return generatedImages
 }
 
 const getSelectedLayerRange = () => {
@@ -254,7 +322,7 @@ const getSelectedLayerRange = () => {
 
 // Final generation
 const handleGenerate = async () => {
-  if (!selectedFile.value) return
+  if (!selectedFile.value || selectedFile.value === 'sample' || !currentFile.value) return
   
   try {
     isGenerating.value = true
@@ -274,8 +342,9 @@ const handleGenerate = async () => {
       }
     }
     
-    await generateImages(selectedFile.value, options)
+    await generateImages(currentFile.value, options)
     outputImages.value = images.value
+    isGenerated.value = true
     currentTab.value = 'output'
     
   } catch (err) {
@@ -310,7 +379,9 @@ const saveRecentFiles = () => {
     const toSave = recentFiles.value.map(f => ({
       id: f.id,
       name: f.name,
-      timestamp: f.timestamp.toISOString()
+      timestamp: f.timestamp.toISOString(),
+      content: f.content,
+      type: f.type
     }))
     localStorage.setItem('vial-recent-files', JSON.stringify(toSave))
   } catch (err) {
@@ -354,6 +425,8 @@ onMounted(() => {
           :recent-files="recentFiles"
           :selected-file="selectedFile"
           @file-selected="handleFileHistorySelected"
+          @file-downloaded="handleFileDownload"
+          @file-deleted="handleFileDelete"
         />
       </div>
       
@@ -364,10 +437,6 @@ onMounted(() => {
             <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
           </div>
         </div>
-        <ColorModeSelector
-          :current-theme="currentTheme"
-          @theme-changed="handleThemeChanged"
-        />
       </div>
       
       <div class="panel-section format-section">
@@ -413,9 +482,15 @@ onMounted(() => {
             </div>
           </button>
         </div>
-        <div class="highlight-section">
+        <div class="control-buttons-section">
           <button :class="['highlight-toggle-btn', { active: advancedSettings.highlightEnabled }]" @click="toggleHighlight">
             Highlight {{ advancedSettings.highlightEnabled ? 'あり' : 'なし' }}
+          </button>
+          <button 
+            :class="['theme-toggle-btn', { active: currentTheme === 'dark' }]" 
+            @click="currentTheme = currentTheme === 'dark' ? 'light' : 'dark'; generatePreviewImages()"
+          >
+            {{ currentTheme === 'dark' ? 'Dark' : 'Light' }}
           </button>
         </div>
       </div>
@@ -426,13 +501,10 @@ onMounted(() => {
       <div class="workspace-header">
         <div class="workspace-nav">
           <div class="tab-buttons">
-            <button :class="['tab-btn', { active: currentTab === 'select' }]" @click="currentTab = 'select'">Select</button>
-            <button :class="['tab-btn', { active: currentTab === 'preview' }]" @click="currentTab = 'preview'">Preview</button>
-            <button :class="['tab-btn', { active: currentTab === 'output' }]" @click="currentTab = 'output'">Output</button>
+            <button :class="['tab-btn', { active: currentTab === 'select' }]" @click="handleTabChanged('select')">Select</button>
+            <button :class="['tab-btn', { active: currentTab === 'preview' }]" @click="handleTabChanged('preview')">Preview</button>
+            <button :class="['tab-btn', { active: currentTab === 'output', disabled: !isGenerated }]" @click="handleTabChanged('output')" :disabled="!isGenerated">Output</button>
           </div>
-        </div>
-        <div class="workspace-controls">
-          <button class="dropdown-btn">Dropdown button ▼</button>
         </div>
       </div>
       
@@ -451,6 +523,7 @@ onMounted(() => {
           :highlight-enabled="advancedSettings.highlightEnabled"
           :show-combos="advancedSettings.showCombos"
           :show-header="advancedSettings.showHeader"
+          :generated-images="previewImages"
           @layer-selection-changed="handleLayerSelectionChanged"
           @combo-toggled="handleComboToggled"
           @header-toggled="handleHeaderToggled"
@@ -465,6 +538,7 @@ onMounted(() => {
           :highlight-enabled="advancedSettings.highlightEnabled"
           :show-combos="advancedSettings.showCombos"
           :show-header="advancedSettings.showHeader"
+          :generated-images="previewImages"
           @generate="handleGenerate"
         />
         
@@ -512,7 +586,7 @@ onMounted(() => {
 }
 
 .upload-section {
-  min-height: 200px;
+  min-height: 80px;
 }
 
 .layout-section {
@@ -565,8 +639,11 @@ onMounted(() => {
   margin-bottom: 15px;
 }
 
-.highlight-section {
-  text-align: center;
+.control-buttons-section {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
   margin-top: 10px;
 }
 
@@ -579,11 +656,30 @@ onMounted(() => {
   border-radius: 4px;
   font-size: 14px;
   transition: all 0.2s;
-  width: 100%;
-  max-width: 200px;
+  flex: 1;
+  max-width: 120px;
 }
 
 .highlight-toggle-btn.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.theme-toggle-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: white;
+  color: #212529;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: all 0.2s;
+  flex: 1;
+  max-width: 120px;
+}
+
+.theme-toggle-btn.active {
   background: #007bff;
   color: white;
   border-color: #007bff;
@@ -821,33 +917,55 @@ onMounted(() => {
 
 .tab-buttons {
   display: flex;
-  gap: 0;
+  gap: 2px;
+  border-bottom: 2px solid #e5e7eb;
+  padding: 0;
+  margin-bottom: -2px;
 }
 
 .tab-btn {
-  padding: 8px 20px;
-  border: 1px solid #ccc;
-  background: #f9f9f9;
-  color: #212529;
+  padding: 12px 20px 10px 20px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #6b7280;
   cursor: pointer;
   font-size: 14px;
-  margin-right: -1px;
+  font-weight: 500;
+  border-radius: 6px 6px 0 0;
+  transition: all 0.2s ease;
+  position: relative;
+  margin-right: 0;
 }
 
-.tab-btn:first-child {
-  border-radius: 4px 0 0 4px;
-}
-
-.tab-btn:last-child {
-  border-radius: 0 4px 4px 0;
+.tab-btn:hover:not(.active):not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+  border-bottom-color: #d1d5db;
 }
 
 .tab-btn.active {
-  background: #007bff;
-  color: white;
-  border-color: #007bff;
+  background: white;
+  color: #007bff;
+  border-bottom: 2px solid #007bff;
   z-index: 1;
   position: relative;
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tab-btn:disabled,
+.tab-btn.disabled {
+  background: transparent;
+  color: #9ca3af;
+  cursor: not-allowed;
+  border-bottom-color: transparent;
+  opacity: 0.6;
+  
+  &:hover {
+    background: transparent;
+    color: #9ca3af;
+    border-bottom-color: transparent;
+  }
 }
 
 .workspace-controls {

@@ -23,7 +23,7 @@
       
       <div v-if="!uploadedFile" class="upload-content">
         <div class="upload-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="17,8 12,3 7,8"/>
             <line x1="12" y1="3" x2="12" y2="15"/>
@@ -253,12 +253,12 @@ onMounted(() => {
 .upload-zone {
   border: 2px dashed #d1d5db;
   border-radius: 8px;
-  padding: 12px;
+  padding: 8px;
   text-align: center;
   cursor: pointer;
   transition: all 0.25s ease;
   background: #fafbfc;
-  min-height: 60px;
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -292,7 +292,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .upload-icon {
@@ -313,7 +313,7 @@ onMounted(() => {
 }
 
 .primary-text {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: #374151;
   margin-bottom: 1px;

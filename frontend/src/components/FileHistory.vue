@@ -1,24 +1,34 @@
 <template>
   <div class="file-history">
-    <div class="section-title">Recent Files</div>
     <div v-if="recentFiles.length === 0" class="empty-state">
       No recent files
     </div>
     <div v-else class="file-list">
       <button
-        v-for="file in recentFiles"
+        v-for="file in displayedFiles"
         :key="file.id"
         :class="['file-item', { 'selected': isSelected(file) }]"
         @click="selectFile(file)"
       >
-        <div class="file-name">{{ file.name }}</div>
-        <div class="file-time">{{ formatTime(file.timestamp) }}</div>
+        <div class="file-content">
+          <div class="file-name">{{ file.name }}</div>
+          <div class="file-actions">
+            <button @click.stop="downloadFile(file)" class="action-btn download-btn" title="ダウンロード">
+              ↓
+            </button>
+            <button @click.stop="deleteFile(file)" class="action-btn delete-btn" title="削除">
+              ×
+            </button>
+          </div>
+        </div>
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 interface RecentFile {
   id: string
   name: string
@@ -28,34 +38,38 @@ interface RecentFile {
 
 const props = defineProps<{
   recentFiles: RecentFile[]
-  selectedFile: File | null
+  selectedFile: string
 }>()
 
 const emit = defineEmits<{
   fileSelected: [file: RecentFile]
+  fileDownloaded: [file: RecentFile]
+  fileDeleted: [file: RecentFile]
 }>()
 
+const displayedFiles = computed(() => {
+  return props.recentFiles.slice(0, 6)
+})
+
 const isSelected = (file: RecentFile): boolean => {
-  return props.selectedFile?.name === file.name
+  return props.selectedFile === file.name
 }
 
 const selectFile = (file: RecentFile) => {
-  emit('fileSelected', file)
+  // 既に選択されているファイルをクリックした場合は選択解除
+  if (props.selectedFile === file.name) {
+    emit('fileSelected', { id: '', name: 'sample', timestamp: new Date(), content: '', type: '' })
+  } else {
+    emit('fileSelected', file)
+  }
 }
 
-const formatTime = (timestamp: Date): string => {
-  const now = new Date()
-  const diff = now.getTime() - timestamp.getTime()
-  const minutes = Math.floor(diff / (1000 * 60))
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+const downloadFile = (file: RecentFile) => {
+  emit('fileDownloaded', file)
+}
 
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
-  if (hours < 24) return `${hours}h ago`
-  if (days < 7) return `${days}d ago`
-  
-  return timestamp.toLocaleDateString()
+const deleteFile = (file: RecentFile) => {
+  emit('fileDeleted', file)
 }
 </script>
 
@@ -64,14 +78,6 @@ const formatTime = (timestamp: Date): string => {
   width: 100%;
 }
 
-.section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #6b7280;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
 
 .empty-state {
   text-align: center;
@@ -84,23 +90,38 @@ const formatTime = (timestamp: Date): string => {
 }
 
 .file-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
 }
 
 .file-item {
   width: 100%;
   text-align: left;
   border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 6px;
+  padding: 8px 10px;
   background: #fafbfc;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  min-height: 50px;
+  position: relative;
+  z-index: 1;
+  outline: none;
+}
+
+.file-item:focus {
+  outline: none;
+}
+
+.file-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
 }
 
 .file-item:hover {
@@ -109,29 +130,79 @@ const formatTime = (timestamp: Date): string => {
 }
 
 .file-item.selected {
-  background: #eff6ff;
-  border-color: #3b82f6;
+  background: #eff6ff !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .file-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  word-break: break-all;
+  word-break: break-word;
   color: #111827;
   line-height: 1.3;
+  flex: 1;
+  text-align: left;
 }
 
 .file-item.selected .file-name {
   color: #1d4ed8;
 }
 
-.file-time {
-  font-size: 11px;
-  color: #6b7280;
-  font-weight: 400;
+.file-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: center;
+  pointer-events: auto;
+  z-index: 10;
+  position: relative;
 }
 
-.file-item.selected .file-time {
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #000000;
+  pointer-events: auto;
+  z-index: 11;
+  position: relative;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.download-btn {
+  color: #16a34a;
+}
+
+.delete-btn {
+  color: #ef4444;
+}
+
+.action-btn:hover {
+  background: rgba(107, 114, 128, 0.1);
+  border-color: rgba(107, 114, 128, 0.2);
+}
+
+.download-btn:hover {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.file-item.selected .action-btn {
   color: #3730a3;
 }
 
