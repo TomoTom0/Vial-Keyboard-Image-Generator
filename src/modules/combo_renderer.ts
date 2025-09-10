@@ -29,17 +29,6 @@ export class ComboRenderer {
         ctx.lineWidth = 1;
         ctx.strokeRect(x, y, buttonWidth, buttonHeight);
 
-        // Combo入力キーには右上に直角三角形マーカーを追加
-        if (isComboInputKey) {
-            const triangleSize = Math.floor(12 * scale);
-            ctx.fillStyle = '#ff6b6b'; // 赤色のマーカー
-            ctx.beginPath();
-            ctx.moveTo(x + buttonWidth - triangleSize, y);
-            ctx.lineTo(x + buttonWidth, y);
-            ctx.lineTo(x + buttonWidth, y + triangleSize);
-            ctx.closePath();
-            ctx.fill();
-        }
 
         // メインテキストを描画
         let fontSize: number;

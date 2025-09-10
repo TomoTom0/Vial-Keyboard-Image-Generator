@@ -20,54 +20,6 @@ export class VialKeyboardImageGenerator {
         this.unitY = this.keyHeight + this.keyGap;
     }
 
-    // 座標とメイン文字の対応をファイルに出力
-    private outputCoordinateMapping(config: VialConfig, layerIndex: number): void {
-        const outputFile = path.join(__dirname, `../../output/layer${layerIndex}_coordinates.txt`);
-        const positions = Utils.getKeyPositions(this.keyWidth, this.keyHeight, this.keyGap, this.margin);
-        
-        if (config.layout.length <= layerIndex) return;
-        const layer = config.layout[layerIndex];
-        
-        let output = `レイヤー${layerIndex}の座標とメイン文字の対応:\n\n`;
-        
-        // 左ブロック
-        output += "=== 左ブロック ===\n";
-        for (let rowIdx = 0; rowIdx < positions.length; rowIdx++) {
-            const row = positions[rowIdx];
-            if (!row) continue;
-            
-            for (let colIdx = 0; colIdx < row.length; colIdx++) {
-                const pos = row[colIdx];
-                if (!pos || pos.x > 400) continue; // 左側のみ
-                
-                const keycode = layer[rowIdx]?.[colIdx] || -1;
-                const label = Parser.keycodeToLabel(keycode, config);
-                if (label.mainText) {
-                    output += `左(${colIdx + 1},${rowIdx + 1}): ${label.mainText}\n`;
-                }
-            }
-        }
-        
-        output += "\n=== 右ブロック ===\n";
-        for (let rowIdx = 0; rowIdx < positions.length; rowIdx++) {
-            const row = positions[rowIdx];
-            if (!row) continue;
-            
-            for (let colIdx = 0; colIdx < row.length; colIdx++) {
-                const pos = row[colIdx];
-                if (!pos || pos.x <= 400) continue; // 右側のみ
-                
-                const keycode = layer[rowIdx]?.[colIdx] || -1;
-                const label = Parser.keycodeToLabel(keycode, config);
-                if (label.mainText) {
-                    output += `右(${colIdx + 1},${rowIdx + 1}): ${label.mainText}\n`;
-                }
-            }
-        }
-        
-        fs.writeFileSync(outputFile, output, 'utf8');
-        console.log(`座標マッピングを出力しました: ${outputFile}`);
-    }
 
     // キーボード画像を生成
     public generateKeyboardImage(configPath: string, outputPath: string, layerIndex: number = 0, options: RenderOptions = {}, scale: number = 1.0): void {
@@ -141,8 +93,6 @@ export class VialKeyboardImageGenerator {
         // 画像を保存
         const buffer = canvas.toBuffer('image/png');
         fs.writeFileSync(outputPath, buffer);
-        // 座標とメイン文字の対応をファイルに出力
-        this.outputCoordinateMapping(config, layerIndex);
         
         console.log(`キーボード画像を生成しました: ${outputPath}`);
     }

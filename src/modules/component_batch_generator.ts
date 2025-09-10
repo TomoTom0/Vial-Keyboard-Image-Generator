@@ -78,8 +78,8 @@ export class ComponentBatchGenerator {
         // 2. コンボ情報画像を生成（normalとwide）
         const combos = Parser.parseComboInfo(config);
         
-        // normal幅でコンボ情報生成
-        const comboNormalResult = ComboRenderer.drawCombos(
+        // 1x幅でコンボ情報生成
+        const combo1xResult = ComboRenderer.drawCombos(
             combos, 
             baseImageWidth, 
             false, 
@@ -88,13 +88,13 @@ export class ComponentBatchGenerator {
             false,           // highlightComboKeys（背景色ハイライトは無効）
             comboHighlight   // showComboMarkers（三角マーカーのみ）
         );
-        const comboNormalBuffer = comboNormalResult.canvas.toBuffer('image/png');
-        const comboNormalPath = path.join(outputDir, `combo-normal-${quality}.png`);
-        fs.writeFileSync(comboNormalPath, comboNormalBuffer);
-        console.log(`コンボ情報（normal）生成完了: ${comboNormalPath}`);
+        const combo1xBuffer = combo1xResult.canvas.toBuffer('image/png');
+        const combo1xPath = path.join(outputDir, `combo-1x-${quality}.png`);
+        fs.writeFileSync(combo1xPath, combo1xBuffer);
+        console.log(`コンボ情報（1x）生成完了: ${combo1xPath}`);
 
-        // wide幅でコンボ情報生成
-        const comboWideResult = ComboRenderer.drawCombos(
+        // 2x幅でコンボ情報生成
+        const combo2xResult = ComboRenderer.drawCombos(
             combos, 
             baseImageWidth * 2, 
             true, 
@@ -103,10 +103,25 @@ export class ComponentBatchGenerator {
             false,           // highlightComboKeys（背景色ハイライトは無効）
             comboHighlight   // showComboMarkers（三角マーカーのみ）
         );
-        const comboWideBuffer = comboWideResult.canvas.toBuffer('image/png');
-        const comboWidePath = path.join(outputDir, `combo-wide-${quality}.png`);
-        fs.writeFileSync(comboWidePath, comboWideBuffer);
-        console.log(`コンボ情報（wide）生成完了: ${comboWidePath}`);
+        const combo2xBuffer = combo2xResult.canvas.toBuffer('image/png');
+        const combo2xPath = path.join(outputDir, `combo-2x-${quality}.png`);
+        fs.writeFileSync(combo2xPath, combo2xBuffer);
+        console.log(`コンボ情報（2x）生成完了: ${combo2xPath}`);
+
+        // 3x幅でコンボ情報生成
+        const combo3xResult = ComboRenderer.drawCombos(
+            combos, 
+            baseImageWidth * 3, 
+            true, 
+            colorMode, 
+            scale, 
+            false,           // highlightComboKeys（背景色ハイライトは無効）
+            comboHighlight   // showComboMarkers（三角マーカーのみ）
+        );
+        const combo3xBuffer = combo3xResult.canvas.toBuffer('image/png');
+        const combo3xPath = path.join(outputDir, `combo-3x-${quality}.png`);
+        fs.writeFileSync(combo3xPath, combo3xBuffer);
+        console.log(`コンボ情報（3x）生成完了: ${combo3xPath}`);
 
         // 3. レイアウト見出し画像を生成（1x, 2x, 3x幅）
         // 1x幅ヘッダー
@@ -148,7 +163,7 @@ export class ComponentBatchGenerator {
         await ImageCombiner.combineVerticalFromComponents(
             layerPaths,
             header1xPath,
-            comboNormalPath,
+            combo1xPath,
             combinedVerticalPath,
             colorMode
         );
@@ -159,7 +174,7 @@ export class ComponentBatchGenerator {
         await ImageCombiner.combineHorizontalFromComponents(
             layerPaths,
             header3xPath,
-            comboWidePath,
+            combo3xPath,
             combinedHorizontalPath,
             colorMode
         );
