@@ -92,6 +92,12 @@ const getLayerImageUrl = (layer: number): string => {
     const layerImage = props.generatedImages.find(img => 
       img.type === 'layer' && img.layer === layer
     )
+    
+    // Canvas要素が存在する場合は、Data URLに変換
+    if (layerImage?.canvas) {
+      return layerImage.canvas.toDataURL()
+    }
+    
     return layerImage ? layerImage.url : ''
   }
   return ''
@@ -108,8 +114,14 @@ const getComboImageUrl = (): string => {
   } else if (props.selectedFile && props.generatedImages) {
     // 生成された画像からコンボ画像を探す
     const comboImage = props.generatedImages.find(img => 
-      img.type === 'combined' && img.filename.includes('combo')
+      img.type === 'combined' || (img.type === 'combo' as any)
     )
+    
+    // Canvas要素が存在する場合は、Data URLに変換
+    if (comboImage?.canvas) {
+      return comboImage.canvas.toDataURL()
+    }
+    
     return comboImage ? comboImage.url : ''
   }
   return ''

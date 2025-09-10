@@ -71,6 +71,7 @@ const {
 const {
   images,
   generateImages,
+  generateImagesFromContent,
   clearError
 } = useImageGeneration()
 
@@ -135,22 +136,38 @@ const handleFileSelected = async (file: File) => {
   }
 }
 
-const handleFileHistorySelected = (recentFile: RecentFile) => {
+const handleFileHistorySelected = async (recentFile: RecentFile) => {
   // サンプルが渡された場合は選択解除
   if (recentFile.name === 'sample') {
     selectedFile.value = 'sample'
     selectedDisplayFile.value = 'sample'
+    generatePreviewImages()
     return
   }
   
   selectedFile.value = recentFile.name
   selectedDisplayFile.value = recentFile.name
   
-  // Base64からFileオブジェクトを動的に作成
-  const file = createFileFromBase64(recentFile.content, recentFile.name, recentFile.type)
-  setFile(file)
-  
-  generatePreviewImages()
+  try {
+    // 履歴ファイル選択時は、Base64コンテンツから直接画像生成
+    const options = {
+      theme: currentTheme.value,
+      format: 'individual' as const,
+      layerRange: getSelectedLayerRange(),
+      showComboInfo: advancedSettings.value.showCombos
+    }
+    
+    // Base64からテキストコンテンツを抽出
+    const base64Content = recentFile.content.replace(/^data:.*base64,/, '')
+    const textContent = atob(base64Content)
+    
+    await generateImagesFromContent(textContent, recentFile.name, options)
+    
+    console.log('📁 履歴ファイル選択完了:', recentFile.name)
+  } catch (err) {
+    error.value = '履歴ファイルの処理に失敗しました'
+    console.error('History file processing error:', err)
+  }
 }
 
 const handleFileDownload = (recentFile: RecentFile) => {
@@ -523,7 +540,7 @@ onMounted(() => {
           :highlight-enabled="advancedSettings.highlightEnabled"
           :show-combos="advancedSettings.showCombos"
           :show-header="advancedSettings.showHeader"
-          :generated-images="previewImages"
+          :generated-images="images"
           @layer-selection-changed="handleLayerSelectionChanged"
           @combo-toggled="handleComboToggled"
           @header-toggled="handleHeaderToggled"
@@ -538,7 +555,7 @@ onMounted(() => {
           :highlight-enabled="advancedSettings.highlightEnabled"
           :show-combos="advancedSettings.showCombos"
           :show-header="advancedSettings.showHeader"
-          :generated-images="previewImages"
+          :generated-images="images"
           @generate="handleGenerate"
         />
         

@@ -1,5 +1,25 @@
 import { ref, computed } from 'vue'
-import { BrowserImageGenerator, type GeneratedImage, type GenerationOptions } from '../utils/imageGenerator'
+
+export interface GeneratedImage {
+  id: string
+  filename: string
+  type: 'combined' | 'layer'
+  layer?: number
+  format: string
+  url: string
+  size: number
+  timestamp: Date
+}
+
+export interface GenerationOptions {
+  theme: 'dark' | 'light'
+  format: 'vertical' | 'horizontal' | 'individual'
+  layerRange?: {
+    start: number
+    end: number
+  }
+  showComboInfo?: boolean
+}
 
 export function useImageGeneration() {
   const images = ref<GeneratedImage[]>([])
@@ -47,20 +67,45 @@ export function useImageGeneration() {
         }
       }, 200)
 
-      console.log('🚀 ブラウザ内で画像生成を開始...')
+      console.log('🚀 バックエンドAPI経由で画像生成を開始...')
       
-      // ファイル内容を読み取り
-      const fileContent = await readFileAsDataURL(file)
-      
+      // FormDataを作成してバックエンドに送信
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('theme', options.theme)
+      formData.append('format', options.format)
+      if (options.layerRange) {
+        formData.append('layerStart', options.layerRange.start.toString())
+        formData.append('layerEnd', options.layerRange.end.toString())
+      }
+      if (options.showComboInfo !== undefined) {
+        formData.append('showComboInfo', options.showComboInfo.toString())
+      }
+
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`)
+      }
+
+      const result = await response.json()
       clearInterval(progressInterval)
       progress.value = 95
 
-      // ブラウザ内で画像生成
-      const newImages = await BrowserImageGenerator.generateFromContent(
-        fileContent,
-        file.name,
-        options
-      )
+      // レスポンスをGeneratedImage形式に変換
+      const newImages: GeneratedImage[] = result.images.map((img: any) => ({
+        id: img.id || `${img.type}-${img.layer || 0}-${Date.now()}`,
+        filename: img.filename,
+        type: img.type,
+        layer: img.layer,
+        format: options.format,
+        url: img.url,
+        size: img.size || 0,
+        timestamp: new Date(img.timestamp || Date.now())
+      }))
 
       progress.value = 100
 
@@ -76,6 +121,98 @@ export function useImageGeneration() {
       throw err
     } finally {
       isGenerating.value = false
+      // 進捗を少し残してからリセット
+      setTimeout(() => {
+        progress.value = 0
+      }, 1000)
+    }
+  }
+
+  /**
+   * ファイル履歴から画像生成を実行（コンテンツから直接）
+   */
+  const generateImagesFromContent = async (content: string, filename: string, options: GenerationOptions) => {
+    if (isGenerating.value) {
+      throw new Error('既に生成処理が実行中です')
+    }
+
+    isGenerating.value = true
+    error.value = null
+    progress.value = 0
+
+    try {
+      // 進捗をシミュレート
+      const progressInterval = setInterval(() => {
+        if (progress.value < 90) {
+          progress.value += Math.random() * 15
+          if (progress.value > 90) progress.value = 90
+        }
+      }, 200)
+
+      console.log('🚀 バックエンドAPI経由で画像生成を開始... (履歴から)')
+      
+      // Base64コンテンツからBlobを作成
+      const byteCharacters = atob(content.split(',')[1])
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      const blob = new Blob([byteArray], { type: 'application/json' })
+      const file = new File([blob], filename, { type: 'application/json' })
+
+      // FormDataを作成してバックエンドに送信
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('theme', options.theme)
+      formData.append('format', options.format)
+      if (options.layerRange) {
+        formData.append('layerStart', options.layerRange.start.toString())
+        formData.append('layerEnd', options.layerRange.end.toString())
+      }
+      if (options.showComboInfo !== undefined) {
+        formData.append('showComboInfo', options.showComboInfo.toString())
+      }
+
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`)
+      }
+
+      const result = await response.json()
+      clearInterval(progressInterval)
+      progress.value = 95
+
+      // レスポンスをGeneratedImage形式に変換
+      const newImages: GeneratedImage[] = result.images.map((img: any) => ({
+        id: img.id || `${img.type}-${img.layer || 0}-${Date.now()}`,
+        filename: img.filename,
+        type: img.type,
+        layer: img.layer,
+        format: options.format,
+        url: img.url,
+        size: img.size || 0,
+        timestamp: new Date(img.timestamp || Date.now())
+      }))
+      
+      progress.value = 100
+      images.value = newImages
+      console.log(`✅ 画像生成完了: ${newImages.length}個の画像を生成しました`)
+
+      return newImages
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '画像生成中に不明なエラーが発生しました'
+      error.value = errorMessage
+      console.error('❌ 画像生成に失敗:', errorMessage)
+      throw err
+    } finally {
+      isGenerating.value = false
+      
       // 進捗を少し残してからリセット
       setTimeout(() => {
         progress.value = 0
@@ -201,6 +338,7 @@ export function useImageGeneration() {
 
     // Methods
     generateImages,
+    generateImagesFromContent,
     clearImages,
     removeImage,
     clearError,
