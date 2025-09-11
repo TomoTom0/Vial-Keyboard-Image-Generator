@@ -16,7 +16,7 @@
       <input
         ref="fileInput"
         type="file"
-        accept=".vil"
+        accept=".vil,.ytvil.png,.png"
         @change="handleFileSelect"
         hidden
       />
@@ -24,6 +24,7 @@
       <div v-if="!uploadedFile" class="upload-content">
         <div class="upload-text">
           <div class="primary-text">Upload .vil file from vial.rocks</div>
+          <div class="secondary-text">or .png/.ytvil.png file with embedded settings</div>
         </div>
       </div>
 
@@ -52,9 +53,12 @@
 import { ref, onMounted } from 'vue'
 import { useVialStore } from '../stores/vial'
 import { useUiStore } from '../stores/ui'
+import { useSettingsStore } from '../stores/settings'
+import { extractMetadataFromPng } from '../utils/pngMetadata'
 
 const vialStore = useVialStore()
 const uiStore = useUiStore()
+const settingsStore = useSettingsStore()
 
 
 const fileInput = ref<HTMLInputElement>()
@@ -108,12 +112,16 @@ const handleFileSelect = (e: Event) => {
 }
 
 // ファイル処理
-const handleFile = (file: File) => {
+const handleFile = async (file: File) => {
   error.value = ''
   
+  const fileName = file.name.toLowerCase()
+  const isVilFile = fileName.endsWith('.vil')
+  const isYtvilPng = fileName.endsWith('.ytvil.png')
+  
   // ファイル形式チェック
-  if (!file.name.toLowerCase().endsWith('.vil')) {
-    error.value = '.vilファイルのみアップロード可能です'
+  if (!isVilFile && !isYtvilPng) {
+    error.value = '.vilまたは.ytvil.pngファイルのみアップロード可能です'
     return
   }
   
@@ -124,6 +132,17 @@ const handleFile = (file: File) => {
   }
   
   uploadedFile.value = file
+  
+  // .ytvil.pngファイルの場合はメタデータを読み込み
+  if (isYtvilPng) {
+    try {
+      await handleYtvilPngFile(file)
+    } catch (err) {
+      console.error('Failed to process ytvil.png file:', err)
+      error.value = 'メタデータの読み込みに失敗しました'
+      return
+    }
+  }
   
   // プログレスバー表示（デモ）
   uploadProgress.value = 0
@@ -137,11 +156,80 @@ const handleFile = (file: File) => {
     }
   }, 50)
   
-  // VILファイルをパースしてstoreに保存
-  parseAndSaveVilFile(file)
+  // 通常のVILファイルの場合のみパース処理
+  if (isVilFile) {
+    parseAndSaveVilFile(file)
+    // 最近使用したファイルに追加（レガシー）
+    addToRecentFiles(file)
+  }
+}
+
+// ytvil.pngファイルの処理（メタデータを読み込み）
+const handleYtvilPngFile = async (file: File) => {
+  // PNGファイルをDataURLとして読み込み
+  const dataUrl = await readFileAsDataURL(file)
   
-  // 最近使用したファイルに追加（レガシー）
-  addToRecentFiles(file)
+  // メタデータを抽出
+  const metadata = extractMetadataFromPng(dataUrl)
+  
+  if (!metadata || !metadata.vilConfig) {
+    throw new Error('No VIL configuration found in PNG metadata')
+  }
+  
+  // VIL設定を復元
+  const vilConfig = JSON.parse(metadata.vilConfig)
+  
+  // ファイル名から.ytvil.pngを除去して.vilに変更
+  const originalName = file.name.replace(/\.ytvil\.png$/, '.vil')
+  
+  // VialStoreにVIL設定を保存
+  const base64Content = `data:application/octet-stream;base64,${btoa(metadata.vilConfig)}`
+  const newId = vialStore.addVialData(originalName, vilConfig, base64Content)
+  
+  // 埋め込まれた設定を復元
+  if (metadata.settings) {
+    try {
+      const savedSettings = JSON.parse(metadata.settings)
+      console.log('⚙️ Restoring settings from metadata:', savedSettings)
+      
+      // 設定を復元
+      settingsStore.outputFormat = savedSettings.outputFormat || 'vertical'
+      settingsStore.toggleDarkMode(savedSettings.theme === 'dark')
+      settingsStore.showHeader = savedSettings.showHeader ?? true
+      settingsStore.showCombos = savedSettings.showCombos ?? true
+      settingsStore.highlightEnabled = savedSettings.highlightEnabled ?? true
+      
+      if (savedSettings.layerSelection) {
+        settingsStore.layerSelection = savedSettings.layerSelection
+      }
+      
+      if (savedSettings.replaceRules) {
+        settingsStore.replaceRules = savedSettings.replaceRules
+      }
+      
+      // 成功メッセージを表示
+      uiStore.showToast('success', 'Settings Restored', 'VIL configuration and settings have been restored from PNG metadata')
+      
+    } catch (err) {
+      console.warn('Failed to restore settings from metadata:', err)
+    }
+  }
+  
+  // ファイルを選択状態にする
+  vialStore.selectedVialId = newId
+  
+  // 成功メッセージ
+  uiStore.showToast('success', 'PNG Import Complete', `Imported VIL configuration from ${file.name}`)
+}
+
+// ファイルをDataURLとして読み込む
+const readFileAsDataURL = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
 }
 
 // VILファイルをパースしてstoreに保存
@@ -336,13 +424,15 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 500;
   color: #111827;
-  margin-bottom: 0;
+  margin-bottom: 2px;
 }
 
 .secondary-text {
-  font-size: 11px;
+  font-size: 10px;
   color: #6b7280;
+  font-style: italic;
 }
+
 
 .file-preview {
   display: flex;

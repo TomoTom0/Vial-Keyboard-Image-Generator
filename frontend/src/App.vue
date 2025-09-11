@@ -13,7 +13,6 @@ import { useUiStore } from './stores/ui'
 import { useImagesStore } from './stores/images'
 import { useFileUpload } from './composables/useFileUpload'
 import { useImageGeneration, type GenerationOptions } from './composables/useImageGeneration'
-import { KEYBOARD_CONSTANTS } from './constants/keyboard'
 import { getCurrentStructure, getCurrentKeyboardLanguage, setCurrentKeyboardLanguage } from './utils/keyboardConfig'
 
 // Types (VialStoreで管理)
@@ -74,154 +73,6 @@ const generateCacheKey = (fileName: string, theme: string, showCombos: boolean, 
 }
 
 // 結合画像を生成する関数
-const generateCombinedImage = (
-  layerComponents: {canvas: HTMLCanvasElement, type: string}[],
-  headerComponent: {canvas: HTMLCanvasElement} | null,
-  comboComponent: {canvas: HTMLCanvasElement} | null,
-  settings: {showHeader?: boolean, showCombos?: boolean, outputFormat?: string}
-): HTMLCanvasElement => {
-  const margin = KEYBOARD_CONSTANTS.margin
-  let totalWidth = 0
-  let totalHeight = 0
-  
-  // 各コンポーネントのサイズを取得
-  const components = []
-  
-  if (settings.outputFormat === 'rectangular') {
-    // 長方形配置：ヘッダー + レイヤーをグリッド配置 + コンボ情報
-    const imageWidth = layerComponents[0]?.canvas.width || 0
-    const imageHeight = layerComponents[0]?.canvas.height || 0
-    
-    // 枚数に応じた列数を決定
-    let gridCols: number
-    if (layerComponents.length >= 5) {
-      gridCols = 3
-    } else if (layerComponents.length >= 2) {
-      gridCols = 2
-    } else {
-      gridCols = 1
-    }
-    
-    const gridRows = Math.ceil(layerComponents.length / gridCols)
-    const gridWidth = imageWidth * gridCols
-    
-    totalWidth = gridWidth
-    totalHeight = 0
-    
-    if (headerComponent && settings.showHeader) {
-      components.push({ canvas: headerComponent.canvas, type: 'header' })
-      totalHeight += headerComponent.canvas.height
-    }
-    
-    // レイヤーグリッドの高さ
-    if (layerComponents.length > 0) {
-      totalHeight += imageHeight * gridRows
-      layerComponents.forEach((comp) => {
-        components.push({ canvas: comp.canvas, type: 'layer' })
-      })
-    }
-    
-    if (comboComponent && settings.showCombos) {
-      components.push({ canvas: comboComponent.canvas, type: 'combo' })
-      totalHeight += comboComponent.canvas.height
-    }
-  } else {
-    // 縦結合：ヘッダー → 全レイヤー縦並び → コンボ情報
-    let maxWidth = 0
-    totalHeight = 0
-    
-    if (headerComponent && settings.showHeader) {
-      components.push({ canvas: headerComponent.canvas, type: 'header' })
-      maxWidth = Math.max(maxWidth, headerComponent.canvas.width)
-      totalHeight += headerComponent.canvas.height
-    }
-    
-    layerComponents.forEach((comp) => {
-      components.push({ canvas: comp.canvas, type: 'layer' })
-      maxWidth = Math.max(maxWidth, comp.canvas.width)
-      totalHeight += comp.canvas.height
-    })
-    
-    if (comboComponent && settings.showCombos) {
-      components.push({ canvas: comboComponent.canvas, type: 'combo' })
-      maxWidth = Math.max(maxWidth, comboComponent.canvas.width)
-      totalHeight += comboComponent.canvas.height
-    }
-    
-    totalWidth = maxWidth
-  }
-  
-  // 結合キャンバスを作成
-  const combinedCanvas = document.createElement('canvas')
-  combinedCanvas.width = totalWidth + margin * 2
-  combinedCanvas.height = totalHeight + margin * 2
-  
-  const ctx = combinedCanvas.getContext('2d')!
-  
-  // 背景を塗りつぶし
-  ctx.fillStyle = settingsStore.enableDarkMode ? '#1c1c20' : '#f5f5f5'
-  ctx.fillRect(0, 0, combinedCanvas.width, combinedCanvas.height)
-  
-  // コンポーネントを配置
-  let currentY = margin
-  
-  if (settings.outputFormat === 'rectangular') {
-    // 長方形配置：ヘッダー → グリッド配置 → コンボ情報
-    const imageWidth = layerComponents[0]?.canvas.width || 0
-    const imageHeight = layerComponents[0]?.canvas.height || 0
-    
-    // 枚数に応じた列数を決定
-    let gridCols: number
-    if (layerComponents.length >= 5) {
-      gridCols = 3
-    } else if (layerComponents.length >= 2) {
-      gridCols = 2
-    } else {
-      gridCols = 1
-    }
-    
-    // ヘッダーを先に描画
-    const headerComp = components.find(comp => comp.type === 'header')
-    if (headerComp) {
-      const centerX = (totalWidth - headerComp.canvas.width) / 2 + margin
-      ctx.drawImage(headerComp.canvas, centerX, currentY)
-      currentY += headerComp.canvas.height
-    }
-    
-    // レイヤーをグリッド配置
-    const layerCanvases = components.filter(comp => comp.type === 'layer').map(comp => comp.canvas)
-    for (let i = 0; i < layerCanvases.length; i++) {
-      const canvas = layerCanvases[i]
-      const col = i % gridCols
-      const row = Math.floor(i / gridCols)
-      const x = margin + col * imageWidth
-      const y = currentY + row * imageHeight
-      ctx.drawImage(canvas, x, y)
-    }
-    
-    // レイヤーグリッドの高さ分だけY座標を更新
-    if (layerCanvases.length > 0) {
-      const gridRows = Math.ceil(layerCanvases.length / gridCols)
-      currentY += imageHeight * gridRows
-    }
-    
-    // コンボを最後に描画
-    const comboComp = components.find(comp => comp.type === 'combo')
-    if (comboComp) {
-      const centerX = (totalWidth - comboComp.canvas.width) / 2 + margin
-      ctx.drawImage(comboComp.canvas, centerX, currentY)
-    }
-  } else {
-    // 縦結合：全て縦並び、中央水平揃え
-    components.forEach(comp => {
-      const centerX = (totalWidth - comp.canvas.width) / 2 + margin
-      ctx.drawImage(comp.canvas, centerX, currentY)
-      currentY += comp.canvas.height
-    })
-  }
-  
-  return combinedCanvas
-}
 
 // Debounced preview generation to prevent excessive regeneration
 const debouncedGeneratePreview = () => {
@@ -382,191 +233,9 @@ const generatePreviewImages = async () => {
 
 
 
-// Final generation
+// 画像生成処理をimage storeに委譲
 const handleGenerate = async () => {
-  if (!vialStore.selectedVialId || vialStore.selectedVialId === 'sample') return
-  
-  try {
-    uiStore.isGenerating = true
-    uiStore.error = null
-    
-    // ファイル内容を読み取り（recentFilesから取得）
-    const recentFile = vialStore.vialFiles.find(f => f.name === vialStore.selectedVialId)
-    if (!recentFile) throw new Error('ファイルが見つかりません')
-    const fileContent = recentFile.content
-    
-    // ブラウザ版で高品質Canvas画像を生成
-    const { BrowserComponentBatchGenerator } = await import('./utils/browserComponentBatchGenerator')
-    
-    const components = await BrowserComponentBatchGenerator.generateAllComponents(
-      fileContent,
-      {
-        configPath: vialStore.selectedVialId,
-        colorMode: settingsStore.enableDarkMode ? 'dark' : 'light',
-        comboHighlight: settingsStore.showCombos,
-        subtextHighlight: settingsStore.highlightEnabled,
-        quality: 'high', // 最終出力は高品質
-        replaceRules: settingsStore.replaceRules || [],
-        outputFormat: settingsStore.outputFormat,
-        showHeader: settingsStore.showHeader,
-        showCombos: settingsStore.showCombos
-      }
-    )
-    
-    // 選択されたレイヤーのみフィルタリング
-    const layerComponents = components.filter(comp => comp.type === 'layer')
-    const selectedLayerComponents = layerComponents.filter((_, index) => settingsStore.layerSelection[index])
-    
-    // フォーマットに応じてヘッダーとコンボコンポーネントを取得
-    let headerComponent, comboComponent
-    if (settingsStore.outputFormat === 'vertical') {
-      // 垂直結合では常に1x幅を使用
-      headerComponent = components.find(comp => comp.type === 'header' && comp.name.includes('header-1x'))
-      comboComponent = components.find(comp => comp.type === 'combo' && comp.name.includes('combo-1x'))
-    } else if (settingsStore.outputFormat === 'rectangular') {
-      // 長方形結合では選択レイヤー数に応じた幅を使用
-      let displayColumns: number
-      if (selectedLayerComponents.length >= 5) {
-        displayColumns = 3
-      } else if (selectedLayerComponents.length >= 2) {
-        displayColumns = 2
-      } else {
-        displayColumns = 1
-      }
-      headerComponent = components.find(comp => comp.type === 'header' && comp.name.includes(`header-${displayColumns}x`))
-      comboComponent = components.find(comp => comp.type === 'combo' && comp.name.includes(`combo-${displayColumns}x`))
-    } else {
-      // separatedの場合は選択レイヤー数に応じた幅を使用
-      let displayColumns: number
-      if (selectedLayerComponents.length >= 5) {
-        displayColumns = 3
-      } else if (selectedLayerComponents.length >= 2) {
-        displayColumns = 2
-      } else {
-        displayColumns = 1
-      }
-      headerComponent = components.find(comp => comp.type === 'header' && comp.name.includes(`header-${displayColumns}x`))
-      comboComponent = components.find(comp => comp.type === 'combo' && comp.name.includes(`combo-${displayColumns}x`))
-    }
-    
-    const finalOutputImages = []
-    
-    // 簡略化されたファイル名形式: 元ファイル名-タイムスタンプ
-    const generateFileName = (type: string, layerIndex?: number) => {
-      if (!vialStore.selectedVialId || typeof vialStore.selectedVialId !== 'string') {
-        throw new Error('Invalid selectedFile for filename generation')
-      }
-      const originalName = vialStore.selectedVialId.replace(/\.vil$/, '')
-      const shortName = originalName.slice(0, 12) // 文字数を少し増やす
-      const timestamp = new Date().toISOString().slice(11, 16).replace(/[-:T]/g, '') // HHMM のみ
-      
-      if (layerIndex !== undefined) {
-        return `${shortName}-L${layerIndex}-${timestamp}.png`
-      } else if (type.includes('combined') || type.includes('vertical') || type.includes('rectangular')) {
-        return `${shortName}-${timestamp}.png`
-      } else {
-        return `${shortName}-${type}-${timestamp}.png`
-      }
-    }
-    
-    if (settingsStore.outputFormat === 'separated') {
-      // separated: 各コンポーネントを個別に出力
-      if (headerComponent && settingsStore.showHeader) {
-        const filename = generateFileName('header')
-        finalOutputImages.push({
-          id: 'final-header',
-          filename,
-          type: 'combined' as const,
-          format: settingsStore.outputFormat,
-          url: headerComponent.canvas.toDataURL('image/png', 1.0),
-          size: headerComponent.canvas.width * headerComponent.canvas.height * 4,
-          timestamp: new Date(),
-          canvas: headerComponent.canvas
-        })
-      }
-      
-      selectedLayerComponents.forEach((comp, index) => {
-        const filename = generateFileName('layer', index)
-        finalOutputImages.push({
-          id: `final-layer-${index}`,
-          filename,
-          type: 'layer' as const,
-          layer: index,
-          format: settingsStore.outputFormat,
-          url: comp.canvas.toDataURL('image/png', 1.0),
-          size: comp.canvas.width * comp.canvas.height * 4,
-          timestamp: new Date(),
-          canvas: comp.canvas
-        })
-      })
-      
-      if (comboComponent && settingsStore.showCombos) {
-        const filename = generateFileName('combo')
-        finalOutputImages.push({
-          id: 'final-combo',
-          filename,
-          type: 'combined' as const,
-          format: settingsStore.outputFormat,
-          url: comboComponent.canvas.toDataURL('image/png', 1.0),
-          size: comboComponent.canvas.width * comboComponent.canvas.height * 4,
-          timestamp: new Date(),
-          canvas: comboComponent.canvas
-        })
-      }
-    } else {
-      // vertical/horizontal: 結合画像を生成
-      console.log('🔍 Generate - Advanced settings:', settingsStore)
-      console.log('🔍 Generate - Header component:', headerComponent?.name)
-      console.log('🔍 Generate - Combo component:', comboComponent?.name)
-      console.log('🔍 Generate - Show combos:', settingsStore.showCombos)
-      
-      const combinedCanvas = generateCombinedImage(
-        selectedLayerComponents,
-        headerComponent,
-        comboComponent,
-        settingsStore
-      )
-      
-      const filename = generateFileName(`${settingsStore.outputFormat}-combined`)
-      finalOutputImages.push({
-        id: 'final-combined',
-        filename,
-        type: 'combined' as const,
-        format: settingsStore.outputFormat,
-        url: combinedCanvas.toDataURL('image/png', 1.0),
-        size: combinedCanvas.width * combinedCanvas.height * 4,
-        timestamp: new Date(),
-        canvas: combinedCanvas
-      })
-    }
-    
-    imagesStore.images = finalOutputImages
-    uiStore.isGenerated = true
-    uiStore.setActiveTab('output')
-    
-  } catch (err) {
-    uiStore.error = err instanceof Error ? err.message : 'Generation failed'
-    console.error('Final generation error:', err)
-    // エラー時は適当な画像を表示しない - outputImagesをクリア
-    imagesStore.images = []
-    uiStore.isGenerated = false
-  } finally {
-    uiStore.isGenerating = false
-  }
-}
-
-// Download handling
-const handleDownload = (format: 'individual' | 'zip') => {
-  if (format === 'zip') {
-    console.log('Downloading as ZIP...')
-  } else {
-    imagesStore.images.forEach(image => {
-      const link = document.createElement('a')
-      link.href = image.url
-      link.download = image.filename
-      link.click()
-    })
-  }
+  await imagesStore.generateFinalOutputImages()
 }
 
 
@@ -674,7 +343,7 @@ onUnmounted(() => {
           <div class="layout-preview">
             <div class="layout-sample-small">
               <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
-              <div class="layout-title-overlay">{{ currentKeyboardStructure.displayName }}</div>
+              <div class="layout-title-overlay">{{ vialStore.currentVial?.name || 'sample' }}</div>
             </div>
           </div>
         </div>
@@ -761,7 +430,7 @@ onUnmounted(() => {
             <div class="layout-preview">
               <div class="layout-sample-small">
                 <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
-                <div class="layout-title-overlay">{{ currentKeyboardStructure.displayName }}</div>
+                <div class="layout-title-overlay">{{ vialStore.currentVial?.name || 'sample' }}</div>
               </div>
             </div>
           </div>

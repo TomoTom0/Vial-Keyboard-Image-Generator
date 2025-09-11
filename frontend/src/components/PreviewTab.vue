@@ -121,7 +121,7 @@ const handleImageError = (event: Event) => {
 const handleGenerate = async () => {
   try {
     // ImagesStoreの最終出力生成メソッドを呼び出し
-    await imagesStore.generateFinalOutput()
+    await imagesStore.generateFinalOutputImages()
   } catch (error) {
     console.error('❌ Generate failed:', error)
   }

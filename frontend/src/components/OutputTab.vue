@@ -65,6 +65,8 @@
 import { computed } from 'vue'
 import { useImagesStore } from '../stores/images'
 import { useSettingsStore } from '../stores/settings'
+import { useVialStore } from '../stores/vial'
+import { embedMetadataToPng } from '../utils/pngMetadata'
 
 interface GeneratedImage {
   id: string
@@ -86,8 +88,9 @@ interface GeneratedImage {
 
 const imagesStore = useImagesStore()
 const settingsStore = useSettingsStore()
+const vialStore = useVialStore()
 
-// Store から取得するcomputed値
+// Store から取得するcomputed値 - generateFinalOutputImagesが設定したoutputImagesを使用
 const outputImages = computed(() => imagesStore.outputImages)
 const outputFormat = computed(() => settingsStore.outputFormat)
 
@@ -103,28 +106,33 @@ const getImageAlt = (image: GeneratedImage): string => {
 }
 
 const getImageFilename = (image: GeneratedImage): string => {
-  if (image.type === 'header') return 'keyboard-header.png'
-  if (image.type === 'combo') return 'keyboard-combo.png'
-  if (image.type === 'layer') return `keyboard-layer-${image.layer}.png`
-  return `keyboard-${image.id}.png`
+  // 生成時に設定されたfilenameがあればそれを使用
+  if (image.filename) {
+    return image.filename
+  }
+  
+  // フォールバック（後方互換性のため）
+  if (image.type === 'header') return 'keyboard-header.ytvil.png'
+  if (image.type === 'combo') return 'keyboard-combo.ytvil.png'
+  if (image.type === 'layer') return `keyboard-layer-${image.layer}.ytvil.png`
+  return `keyboard-${image.id}.ytvil.png`
 }
 
 const downloadSingle = (image: GeneratedImage) => {
   try {
-    const link = document.createElement('a')
-    const imageUrl = getImageUrl(image)
+    // 画像生成時に既にメタデータが埋め込まれているため、そのまま使用
+    const downloadUrl = getImageUrl(image)
     const filename = getImageFilename(image)
     
-    link.href = imageUrl
+    const link = document.createElement('a')
+    link.href = downloadUrl
     link.download = filename
     link.target = '_blank'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    
-    console.log('Downloaded:', filename)
   } catch (error) {
-    console.error('Download failed:', error)
+    console.error('❌ Download failed:', error)
   }
 }
 
