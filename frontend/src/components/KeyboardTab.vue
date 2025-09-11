@@ -18,9 +18,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getCurrentKeyboardLanguage } from '../utils/keyboardConfig'
 
 const selectedLayout = ref<string>('japanese')
+
+// 現在の設定から初期値を読み込み
+onMounted(() => {
+  const currentLanguage = getCurrentKeyboardLanguage()
+  selectedLayout.value = currentLanguage.id
+})
 
 const emit = defineEmits<{
   layoutChanged: [layout: string]

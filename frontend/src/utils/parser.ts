@@ -1,6 +1,6 @@
 // パーサーモジュール（ブラウザ対応版）
 import type { VialConfig, KeyLabel, ComboInfo } from './types';
-import { Utils } from './utils';
+import { getCurrentKeyboardLanguage, getKeyMapping, getSpecialKeys } from './keyboardConfig';
 
 export class Parser {
     // 文字列キーコードを数値に変換
@@ -76,17 +76,9 @@ export class Parser {
         // 数値を文字列に変換
         const keyStr = typeof keycodeStr === 'number' ? keycodeStr.toString() : keycodeStr;
 
-        // US配列から日本語配列への変換
-        const convertedKeyStr = Utils.convertUsToJis(keyStr);
-        
-        // デバッグ情報
-        if (keyStr.includes('NONUS_HASH') || keyStr.includes('RO') || keyStr.includes('LSFT(KC_7)') || keyStr.includes('LSFT(KC_9)')) {
-            console.log(`Debug: Original=${keyStr}, Converted=${convertedKeyStr}`);
-        }
-
         // Tap Dance処理
-        if (convertedKeyStr.startsWith('TD(')) {
-            const match = convertedKeyStr.match(/TD\((\d+)\)/);
+        if (keyStr.startsWith('TD(')) {
+            const match = keyStr.match(/TD\((\d+)\)/);
             if (match) {
                 const tdIndex = parseInt(match[1]);
                 console.log(`Debug: Processing TD(${tdIndex})`);
@@ -114,12 +106,12 @@ export class Parser {
                     console.log(`Debug: No TD info found for TD(${tdIndex})`);
                 }
             }
-            return { mainText: convertedKeyStr, subText: undefined, isSpecial: true };
+            return { mainText: keyStr, subText: undefined, isSpecial: true };
         }
 
         // Layer Tap処理
-        if (convertedKeyStr.match(/^LT\d+\(/)) {
-            const match = convertedKeyStr.match(/^LT(\d+)\(KC_(.+)\)$/);
+        if (keyStr.match(/^LT\d+\(/)) {
+            const match = keyStr.match(/^LT(\d+)\(KC_(.+)\)$/);
             if (match) {
                 const layerNum = match[1];
                 const baseKey = match[2];
@@ -152,9 +144,9 @@ export class Parser {
         ];
 
         for (const tapKey of modifierTapKeys) {
-            if (convertedKeyStr.startsWith(tapKey.prefix)) {
-                const match = convertedKeyStr.match(new RegExp(`${tapKey.prefix.replace('(', '\\(')}KC_(.+)\\)`)) || 
-                             convertedKeyStr.match(new RegExp(`${tapKey.prefix.replace('(', '\\(')}(.+)\\)`));
+            if (keyStr.startsWith(tapKey.prefix)) {
+                const match = keyStr.match(new RegExp(`${tapKey.prefix.replace('(', '\\(')}KC_(.+)\\)`)) || 
+                             keyStr.match(new RegExp(`${tapKey.prefix.replace('(', '\\(')}(.+)\\)`));
                 if (match) {
                     const baseKey = match[1];
                     
@@ -179,16 +171,16 @@ export class Parser {
         }
 
         // TO(layer)処理
-        if (convertedKeyStr.startsWith('TO(')) {
-            const match = convertedKeyStr.match(/TO\((\d+)\)/);
+        if (keyStr.startsWith('TO(')) {
+            const match = keyStr.match(/TO\((\d+)\)/);
             if (match) {
                 return { mainText: `TO(${match[1]})`, subText: undefined, isSpecial: true };
             }
         }
 
         // OSM(モディファイア)処理
-        if (convertedKeyStr.startsWith('OSM(')) {
-            const match = convertedKeyStr.match(/OSM\((.+)\)/);
+        if (keyStr.startsWith('OSM(')) {
+            const match = keyStr.match(/OSM\((.+)\)/);
             if (match) {
                 const modifiers = match[1];
                 let shortForm = 'OSM(';
@@ -223,8 +215,8 @@ export class Parser {
         }
 
         // SHIFT_プレフィックス付きキーの処理
-        if (convertedKeyStr.startsWith('SHIFT_')) {
-            const shiftedChar = convertedKeyStr.substring(6); // "SHIFT_"を除去
+        if (keyStr.startsWith('SHIFT_')) {
+            const shiftedChar = keyStr.substring(6); // "SHIFT_"を除去
             // 特殊な変換
             if (shiftedChar === 'RO') {
                 return { mainText: '_', subText: undefined, isSpecial: true }; // Shift+RO = _
@@ -235,73 +227,40 @@ export class Parser {
             return { mainText: shiftedChar, subText: undefined, isSpecial: true };
         }
 
-        // LSFT(key)処理 - 変換されなかった場合のフォールバック
-        if (convertedKeyStr.startsWith('LSFT(')) {
-            const match = convertedKeyStr.match(/LSFT\(KC_(.+)\)/);
+        // LSFT(key)処理 - 現在の言語のShiftマッピングを使用
+        if (keyStr.startsWith('LSFT(')) {
+            const match = keyStr.match(/LSFT\(KC_(.+)\)/);
             if (match) {
-                return { mainText: `S+${match[1]}`, subText: undefined, isSpecial: true };
+                const baseKey = match[1];
+                const currentLanguageForShift = getCurrentKeyboardLanguage();
+                const shiftMapping = currentLanguageForShift.shiftMapping;
+                
+                if (shiftMapping[baseKey]) {
+                    return { mainText: shiftMapping[baseKey], subText: undefined, isSpecial: false };
+                }
+                return { mainText: `S+${baseKey}`, subText: undefined, isSpecial: true };
             }
         }
 
-        // 特殊な日本語配列キーの個別処理（正確な対応）
-        if (convertedKeyStr === 'KC_NONUS_HASH' || convertedKeyStr === 'NONUS_HASH') {
-            console.log(`Debug: KC_NONUS_HASH matched, returning ]`);
-            return { mainText: ']', subText: undefined, isSpecial: false };
-        }
-        if (convertedKeyStr === 'KC_RO' || convertedKeyStr === 'RO') {
-            return { mainText: '\\', subText: undefined, isSpecial: false };
-        }
-        if (convertedKeyStr === 'KC_JYEN' || convertedKeyStr === 'JYEN') {
-            return { mainText: '\\', subText: undefined, isSpecial: false };
+        // 現在の言語設定に基づく特殊キー処理
+        const currentLanguage = getCurrentKeyboardLanguage();
+        const specialKeys = currentLanguage.specialKeys;
+        
+        if (specialKeys[keyStr]) {
+            return { mainText: specialKeys[keyStr], subText: undefined, isSpecial: false };
         }
 
-        // 基本キーマッピング（KC_プレフィックス付き） - 日本語配列対応
-        if (convertedKeyStr.startsWith('KC_')) {
-            const baseKey = convertedKeyStr.substring(3);
-            if (baseKey === 'NONUS_HASH') {
-                console.log(`Debug: Processing KC_NONUS_HASH, baseKey=${baseKey}`);
+        // 基本キーマッピング（KC_プレフィックス付き） - 設定に基づく配列対応
+        if (keyStr.startsWith('KC_')) {
+            const baseKey = keyStr.substring(3);
+            const currentLanguageForMapping = getCurrentKeyboardLanguage();
+            console.log(`🔥 About to call getKeyMapping with: ${currentLanguageForMapping.id}`);
+            const keyMapping = getKeyMapping(currentLanguageForMapping.id);
+            console.log(`🔥 getKeyMapping returned EQUAL as: ${keyMapping['EQUAL']}`);
+            
+            if (baseKey === 'EQUAL' || baseKey === 'LBRACKET' || baseKey === 'NONUS_HASH') {
+                console.log(`🔑 Language: ${currentLanguageForMapping.id}, KC_${baseKey} → ${keyMapping[baseKey]}`);
             }
-            const keyMapping: { [key: string]: string } = {
-                // アルファベット
-                'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'E': 'E', 'F': 'F', 'G': 'G', 'H': 'H', 'I': 'I', 'J': 'J',
-                'K': 'K', 'L': 'L', 'M': 'M', 'N': 'N', 'O': 'O', 'P': 'P', 'Q': 'Q', 'R': 'R', 'S': 'S',
-                'T': 'T', 'U': 'U', 'V': 'V', 'W': 'W', 'X': 'X', 'Y': 'Y', 'Z': 'Z',
-                // 数字
-                '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9', '0': '0',
-                // 特殊キー
-                'ENTER': 'Enter', 'ESC': 'Esc', 'ESCAPE': 'Esc', 'BSPACE': 'Bksp', 'TAB': 'Tab', 'SPACE': 'Space',
-                // 記号 - JIS配列対応
-                'MINUS': '-', 'EQUAL': '^', 'BSLASH': '\\', 
-                'AT': '@', 'LBRACKET': '@', 'RBRACKET': '[',
-                'SCOLON': ';', 'QUOTE': ':', 'GRAVE': '`', 
-                'COMMA': ',', 'DOT': '.', 'SLASH': '/',
-                // 日本語配列特殊キー
-                'NONUS_HASH': ']',     // KC_NONUS_HASH → ] (大カッコ閉じる)
-                'RO': '\\',            // RO (日本語配列の\キー)
-                'INT1': '_',           // 日本語配列のアンダーバー位置
-                'INT3': '\\',          // 日本語配列のバックスラッシュ
-                'CAPSLOCK': 'Caps', 'PSCREEN': 'PrtScr',
-                // 修飾キー
-                'LCTRL': 'LCtrl', 'LSHIFT': 'LShift', 'LALT': 'LAlt', 'LGUI': 'LGui',
-                'RCTRL': 'RCtrl', 'RSHIFT': 'RShift', 'RALT': 'RAlt', 'RGUI': 'RGui',
-                // ファンクションキー
-                'F1': 'F1', 'F2': 'F2', 'F3': 'F3', 'F4': 'F4', 'F5': 'F5', 'F6': 'F6',
-                'F7': 'F7', 'F8': 'F8', 'F9': 'F9', 'F10': 'F10', 'F11': 'F11', 'F12': 'F12',
-                // 矢印キー
-                'UP': '↑', 'DOWN': '↓', 'LEFT': '←', 'RIGHT': '→',
-                // ナビゲーションキー
-                'HOME': 'Home', 'END': 'End', 'PGUP': 'PgUp', 'PGDN': 'PgDn',
-                'INSERT': 'Ins', 'DELETE': 'Del',
-                // テンキー
-                'KP_0': '0', 'KP_1': '1', 'KP_2': '2', 'KP_3': '3', 'KP_4': '4',
-                'KP_5': '5', 'KP_6': '6', 'KP_7': '7', 'KP_8': '8', 'KP_9': '9',
-                'KP_DOT': '.', 'KP_SLASH': '/', 'KP_ASTERISK': '*', 'KP_MINUS': '-',
-                'KP_PLUS': '+', 'KP_EQUAL': '=', 'KP_ENTER': 'Enter', 'KP_COMMA': ',',
-                // 日本語キー
-                'MHEN': 'MHEN', 'HENK': 'HENK', 'KANA': 'KANA',
-                // 透過キー
-                'TRNS': '▽'
-            };
 
             const mappedKey = keyMapping[baseKey];
             if (mappedKey) {
@@ -310,13 +269,13 @@ export class Parser {
         }
 
         // その他の特殊処理
-        switch (convertedKeyStr) {
+        switch (keyStr) {
             case 'KC_RALT': return { mainText: 'RAlt', subText: undefined, isSpecial: false };
             default:
-                if (convertedKeyStr.includes('NONUS_HASH')) {
-                    console.log(`Debug: Reached default case with ${convertedKeyStr}`);
+                if (keyStr.includes('NONUS_HASH')) {
+                    console.log(`Debug: Reached default case with ${keyStr}`);
                 }
-                return { mainText: convertedKeyStr, subText: undefined, isSpecial: false };
+                return { mainText: keyStr, subText: undefined, isSpecial: false };
         }
     }
 

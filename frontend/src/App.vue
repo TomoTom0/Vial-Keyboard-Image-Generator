@@ -9,6 +9,7 @@ import AdvancedSettings, { type ReplaceRule } from './components/AdvancedSetting
 import { useFileUpload } from './composables/useFileUpload'
 import { useImageGeneration, type GenerationOptions } from './composables/useImageGeneration'
 import { KEYBOARD_CONSTANTS } from './constants/keyboard'
+import { getCurrentStructure, getCurrentKeyboardLanguage, setCurrentKeyboardLanguage } from './utils/keyboardConfig'
 
 // Types
 interface RecentFile {
@@ -139,18 +140,21 @@ const isGenerating = ref(false)
 const isGenerated = ref(false)
 const error = ref<string | null>(null)
 
+// キーボード設定
+const currentKeyboardStructure = getCurrentStructure()
+
 // Canvas generation cache to prevent unnecessary regeneration
 const canvasCache = new Map<string, any[]>()
 let generateTimeout: NodeJS.Timeout | null = null
 
-const generateCacheKey = (fileName: string, theme: string, showCombos: boolean, highlightEnabled: boolean, tab?: string, layerSelection?: string, replaceRules?: ReplaceRule[], outputFormat?: string) => {
+const generateCacheKey = (fileName: string, theme: string, showCombos: boolean, highlightEnabled: boolean, tab?: string, layerSelection?: string, replaceRules?: ReplaceRule[], outputFormat?: string, keyboardLayout?: string) => {
   if (!fileName || typeof fileName !== 'string') {
     throw new Error('Invalid fileName for cache key generation')
   }
   const rulesHash = replaceRules && Array.isArray(replaceRules) 
     ? JSON.stringify(replaceRules.filter(r => r && typeof r === 'object' && r.enabled && r.from !== '' && r.to !== '')) 
     : 'none'
-  return `${fileName}-${theme}-${showCombos}-${highlightEnabled}-${tab || 'none'}-${layerSelection || 'none'}-${rulesHash}-${outputFormat || 'none'}`
+  return `${fileName}-${theme}-${showCombos}-${highlightEnabled}-${tab || 'none'}-${layerSelection || 'none'}-${rulesHash}-${outputFormat || 'none'}-${keyboardLayout || 'japanese'}`
 }
 
 // 結合画像を生成する関数
@@ -544,11 +548,14 @@ const handleReplaceRulesChanged = (rules: ReplaceRule[]) => {
   generatePreviewImages()
 }
 
-// キーボードレイアウト変更時の処理
-const handleKeyboardLayoutChanged = (layout: string) => {
-  console.log('Keyboard layout changed:', layout)
-  // 現在は画像生成に反映しない（要求通り）
-  // 将来的にここで設定を保存し、画像生成に反映する
+// キーボード言語変更時の処理
+const handleKeyboardLayoutChanged = (languageId: string) => {
+  console.log('Keyboard language changed:', languageId)
+  // 設定を保存
+  setCurrentKeyboardLanguage(languageId)
+  console.log('🔥 After setCurrentKeyboardLanguage, localStorage now has:', localStorage.getItem('vial-keyboard-language'))
+  // 画像を再生成（言語変更により表示が変わるため）
+  generatePreviewImages()
 }
 
 // Preview generation
@@ -586,6 +593,7 @@ const generatePreviewImages = async () => {
         .sort()
         .join(',')
       
+      const currentLanguage = getCurrentKeyboardLanguage()
       const cacheKey = generateCacheKey(
         selectedFile.value, 
         currentTheme.value,
@@ -594,7 +602,8 @@ const generatePreviewImages = async () => {
         currentTab.value,
         layerSelectionKey,
         replaceRules.value || [],
-        advancedSettings.value.outputFormat
+        advancedSettings.value.outputFormat,
+        currentLanguage.id
       )
       
       console.log('🔑 Cache key:', cacheKey)
@@ -1125,7 +1134,7 @@ onUnmounted(() => {
           <div class="layout-preview">
             <div class="layout-sample-small">
               <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
-              <div class="layout-title-overlay">Corne v4</div>
+              <div class="layout-title-overlay">{{ currentKeyboardStructure.displayName }}</div>
             </div>
           </div>
         </div>
@@ -1221,7 +1230,7 @@ onUnmounted(() => {
             <div class="layout-preview">
               <div class="layout-sample-small">
                 <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
-                <div class="layout-title-overlay">Corne v4</div>
+                <div class="layout-title-overlay">{{ currentKeyboardStructure.displayName }}</div>
               </div>
             </div>
           </div>

@@ -8,7 +8,6 @@ import { KEYBOARD_CONSTANTS } from '../constants/keyboard'
 // バックエンドの共通モジュールをインポート
 import { getThemeColors } from '../../../backend/src/modules/types'
 import { Utils as BackendUtils } from '../../../backend/src/modules/utils'
-import { Parser as BackendParser } from '../../../backend/src/modules/parser'
 
 // Rendererだけは型の問題があるので、描画ロジックを直接コピー
 // （実際のCanvas APIは同じなので、型だけの問題）
@@ -214,7 +213,7 @@ export class BrowserComponentBatchGenerator {
     private static generateLayerCanvas(config: VialConfig, layerIndex: number, options: RenderOptions, scale: number, replaceRules?: ReplaceRule[]): HTMLCanvasElement {
         try {
         // Combo情報を解析（バックエンドの共通モジュールを使用）
-        const combos = BackendParser.parseComboInfo(config);
+        const combos = Parser.parseComboInfo(config);
 
         // 画像サイズを計算（左右に適切な余白を含む）
         const contentWidth = this.unitX * 13.5 + this.keyWidth;
@@ -249,7 +248,7 @@ export class BrowserComponentBatchGenerator {
                     if (!pos) continue;
 
                     const keycode = layer[rowIdx]?.[colIdx] || -1;
-                    const label = BackendParser.keycodeToLabel(keycode, config);
+                    const label = Parser.keycodeToLabel(keycode, config);
 
                     // キーを描画（フロントエンド独自canvasDrawingUtilsを使用）
                     const stringKeycode = String(keycode);

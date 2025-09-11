@@ -1,6 +1,7 @@
 // パーサーモジュール（相互依存）
 import { VialConfig, KeyLabel, ComboInfo } from './types';
 import { Utils } from './utils';
+import { getCurrentLayout, getKeyMapping, getSpecialKeys } from '../utils/keyboardConfig';
 
 export class Parser {
     // 文字列キーコードを数値に変換
@@ -242,65 +243,22 @@ export class Parser {
             }
         }
 
-        // 特殊な日本語配列キーの個別処理（正確な対応）
-        if (convertedKeyStr === 'KC_NONUS_HASH' || convertedKeyStr === 'NONUS_HASH') {
-            console.log(`Debug: KC_NONUS_HASH matched, returning ]`);
-            return { mainText: ']', subText: undefined, isSpecial: false };
-        }
-        if (convertedKeyStr === 'KC_RO' || convertedKeyStr === 'RO') {
-            return { mainText: '\\', subText: undefined, isSpecial: false };
-        }
-        if (convertedKeyStr === 'KC_JYEN' || convertedKeyStr === 'JYEN') {
-            return { mainText: '\\', subText: undefined, isSpecial: false };
+        // 現在の配列設定に基づく特殊キー処理
+        const currentLayout = getCurrentLayout();
+        const specialKeys = currentLayout.specialKeys;
+        
+        if (specialKeys[convertedKeyStr]) {
+            console.log(`Debug: Special key ${convertedKeyStr} matched, returning ${specialKeys[convertedKeyStr]}`);
+            return { mainText: specialKeys[convertedKeyStr], subText: undefined, isSpecial: false };
         }
 
-        // 基本キーマッピング（KC_プレフィックス付き） - 日本語配列対応
+        // 基本キーマッピング（KC_プレフィックス付き） - 設定に基づく配列対応
         if (convertedKeyStr.startsWith('KC_')) {
             const baseKey = convertedKeyStr.substring(3);
             if (baseKey === 'NONUS_HASH') {
                 console.log(`Debug: Processing KC_NONUS_HASH, baseKey=${baseKey}`);
             }
-            const keyMapping: { [key: string]: string } = {
-                // アルファベット
-                'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'E': 'E', 'F': 'F', 'G': 'G', 'H': 'H', 'I': 'I', 'J': 'J',
-                'K': 'K', 'L': 'L', 'M': 'M', 'N': 'N', 'O': 'O', 'P': 'P', 'Q': 'Q', 'R': 'R', 'S': 'S',
-                'T': 'T', 'U': 'U', 'V': 'V', 'W': 'W', 'X': 'X', 'Y': 'Y', 'Z': 'Z',
-                // 数字
-                '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6', '7': '7', '8': '8', '9': '9', '0': '0',
-                // 特殊キー
-                'ENTER': 'Enter', 'ESC': 'Esc', 'ESCAPE': 'Esc', 'BSPACE': 'Bksp', 'TAB': 'Tab', 'SPACE': 'Space',
-                // 記号 - JIS配列対応
-                'MINUS': '-', 'EQUAL': '^', 'BSLASH': '\\', 
-                'AT': '@', 'LBRACKET': '@', 'RBRACKET': '[',
-                'SCOLON': ';', 'QUOTE': ':', 'GRAVE': '`', 
-                'COMMA': ',', 'DOT': '.', 'SLASH': '/',
-                // 日本語配列特殊キー
-                'NONUS_HASH': ']',     // KC_NONUS_HASH → ] (大カッコ閉じる)
-                'RO': '\\',            // RO (日本語配列の\キー)
-                'INT1': '_',           // 日本語配列のアンダーバー位置
-                'INT3': '\\',          // 日本語配列のバックスラッシュ
-                'CAPSLOCK': 'Caps', 'PSCREEN': 'PrtScr',
-                // 修飾キー
-                'LCTRL': 'LCtrl', 'LSHIFT': 'LShift', 'LALT': 'LAlt', 'LGUI': 'LGui',
-                'RCTRL': 'RCtrl', 'RSHIFT': 'RShift', 'RALT': 'RAlt', 'RGUI': 'RGui',
-                // ファンクションキー
-                'F1': 'F1', 'F2': 'F2', 'F3': 'F3', 'F4': 'F4', 'F5': 'F5', 'F6': 'F6',
-                'F7': 'F7', 'F8': 'F8', 'F9': 'F9', 'F10': 'F10', 'F11': 'F11', 'F12': 'F12',
-                // 矢印キー
-                'UP': '↑', 'DOWN': '↓', 'LEFT': '←', 'RIGHT': '→',
-                // ナビゲーションキー
-                'HOME': 'Home', 'END': 'End', 'PGUP': 'PgUp', 'PGDN': 'PgDn',
-                'INSERT': 'Ins', 'DELETE': 'Del',
-                // テンキー
-                'KP_0': '0', 'KP_1': '1', 'KP_2': '2', 'KP_3': '3', 'KP_4': '4',
-                'KP_5': '5', 'KP_6': '6', 'KP_7': '7', 'KP_8': '8', 'KP_9': '9',
-                'KP_DOT': '.', 'KP_SLASH': '/', 'KP_ASTERISK': '*', 'KP_MINUS': '-',
-                'KP_PLUS': '+', 'KP_EQUAL': '=', 'KP_ENTER': 'Enter', 'KP_COMMA': ',',
-                // 日本語キー
-                'MHEN': 'MHEN', 'HENK': 'HENK', 'KANA': 'KANA',
-                // 透過キー
-                'TRNS': '▽'
-            };
+            const keyMapping = getKeyMapping();
 
             const mappedKey = keyMapping[baseKey];
             if (mappedKey) {
