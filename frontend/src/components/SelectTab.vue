@@ -2,11 +2,11 @@
   <div class="select-tab">
     <div class="image-container">
       <!-- Header image -->
-      <div v-if="outputFormat !== 'separated' && (selectedFile === 'sample' || (selectedFile && generatedImages && generatedImages.length > 0))"
-           :class="['header-image-section', { 'header-disabled': !props.showHeader }]"
+      <div v-if="outputFormat !== 'separated' && imagesStore.getHeaderImageUrl()"
+           :class="['header-image-section', { 'header-disabled': !settingsStore.showHeader }]"
            @click="toggleHeader">
         <img 
-          :src="getHeaderImageUrl()"
+          :src="imagesStore.getHeaderImageUrl()"
           alt="Layout header"
           class="header-image"
           @error="handleHeaderImageError"
@@ -22,31 +22,24 @@
           @click="toggleLayer(layer, !layerSelection[layer])"
         >
           <img 
-            v-if="selectedFile === 'sample'"
-            :src="getLayerImageUrl(layer)"
+            v-if="imagesStore.getLayerImageUrl(layer)"
+            :src="imagesStore.getLayerImageUrl(layer)"
             :alt="`Layer ${layer}`"
             class="layer-preview"
             @error="handleImageError"
           />
-          <img 
-            v-else-if="selectedFile && generatedImages && generatedImages.length > 0 && getLayerImageUrl(layer)"
-            :src="getLayerImageUrl(layer)"
-            :alt="`Layer ${layer}`"
-            class="layer-preview"
-            @error="handleImageError"
-          />
-          <div v-else-if="selectedFile === 'sample'" class="layer-placeholder">
+          <div v-else class="layer-placeholder">
             <div class="placeholder-text">Layer {{ layer }}</div>
           </div>
         </div>
       </div>
       
       <!-- Combo section -->
-      <div v-if="outputFormat !== 'separated'"
-           :class="['combos-image-section', { 'combos-disabled': !props.showCombos }]"
+      <div v-if="outputFormat !== 'separated' && imagesStore.getComboImageUrl()"
+           :class="['combos-image-section', { 'combos-disabled': !settingsStore.showCombos }]"
            @click="toggleCombos">
         <img 
-          :src="getComboImageUrl()"
+          :src="imagesStore.getComboImageUrl()"
           alt="Combo information"
           class="combo-image"
           @error="handleComboImageError"
@@ -57,29 +50,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { LAYERS } from '../constants/layout'
+import { useVialStore } from '../stores/vial'
+import { useSettingsStore } from '../stores/settings'
+import { useImagesStore } from '../stores/images'
 
 interface LayerSelection {
   [layerId: number]: boolean
 }
 
-const props = defineProps<{
-  selectedFile: string
-  layerSelection: LayerSelection
-  outputFormat?: 'separated' | 'vertical' | 'rectangular'
-  theme?: 'light' | 'dark'
-  highlightEnabled?: boolean
-  showCombos?: boolean
-  showHeader?: boolean
-  generatedImages?: any[]
-}>()
+const vialStore = useVialStore()
+const settingsStore = useSettingsStore()
+const imagesStore = useImagesStore()
 
-const emit = defineEmits<{
-  layerSelectionChanged: [selection: LayerSelection]
-  comboToggled: [enabled: boolean]
-  headerToggled: [enabled: boolean]
-}>()
+// Store から取得するcomputed値
+const selectedFile = computed(() => vialStore.selectedVialId)
+const outputFormat = computed(() => settingsStore.outputFormat)
+const generatedImages = computed(() => imagesStore.images)
+const layerSelection = computed(() => settingsStore.layerSelection)
 
 // Available layers
 const availableLayers = LAYERS.AVAILABLE
@@ -100,25 +89,22 @@ onUnmounted(() => {
 })
 
 const toggleLayer = (layer: number, selected: boolean) => {
-  const newSelection = {
-    ...props.layerSelection,
+  settingsStore.layerSelection = {
+    ...layerSelection.value,
     [layer]: selected
   }
-  emit('layerSelectionChanged', newSelection)
 }
 
 const toggleCombos = () => {
-  const newState = !props.showCombos
-  emit('comboToggled', newState)
+  settingsStore.showCombos = !settingsStore.showCombos
 }
 
 const toggleHeader = () => {
-  const newState = !props.showHeader
-  emit('headerToggled', newState)
+  settingsStore.showHeader = !settingsStore.showHeader
 }
 
 const getLayersLayoutClass = (): string => {
-  const format = props.outputFormat || 'separated'
+  const format = settingsStore.outputFormat || 'separated'
   
   if (format === 'vertical') {
     return 'layers-vertical'
@@ -139,7 +125,7 @@ const getLayersLayoutClass = (): string => {
 }
 
 const getContentLayoutClass = (): string => {
-  const format = props.outputFormat || 'separated'
+  const format = outputFormat.value || 'separated'
   
   if (format === 'vertical') {
     return 'content-vertical'
@@ -153,109 +139,7 @@ const getOrderedLayers = () => {
   return LAYERS.DISPLAY_ORDER
 }
 
-const getLayerImageUrl = (layer: number): string => {
-  if (props.selectedFile === 'sample') {
-    // サンプルファイルの場合は静的画像
-    return `/assets/sample/keyboard/dark/0-0/layer${layer}-low.png`
-  } else if (props.selectedFile && props.generatedImages) {
-    // 生成された画像から該当するレイヤーを探す
-    const layerImage = props.generatedImages.find(img => 
-      img.type === 'layer' && img.layer === layer
-    )
-    
-    // Canvas要素が存在する場合は、Data URLに変換
-    if (layerImage?.canvas) {
-      return layerImage.canvas.toDataURL()
-    }
-    
-    return layerImage ? layerImage.url : ''
-  }
-  return ''
-}
 
-const getComboImageUrl = (): string => {
-  if (props.selectedFile === 'sample') {
-    return `/assets/sample/keyboard/dark/0-0/combo-normal-low.png`
-  } else if (props.selectedFile && props.generatedImages) {
-    // セレクトタブ用の適切な幅を計算（全レイヤー数4ベース）
-    let displayColumns = 1
-    if (props.outputFormat === 'vertical') {
-      displayColumns = 1
-    } else if (props.outputFormat === 'rectangular') {
-      // 実際のレイヤー数を取得（generatedImagesからレイヤー画像の数を数える）
-      const allLayerCount = props.generatedImages.filter(img => img.type === 'layer').length
-      if (allLayerCount >= 5) {
-        displayColumns = 3
-      } else if (allLayerCount >= 2) {
-        displayColumns = 2
-      } else {
-        displayColumns = 1
-      }
-    } else { // separated
-      displayColumns = 1
-    }
-    
-    // 適切な幅のコンボ画像を探す
-    const targetCombo = props.generatedImages.find(img => 
-      img.type === 'combo' && (
-        img.id.includes(`combo-${displayColumns}x`) || 
-        img.id.includes(`browser-combo-${displayColumns}x`)
-      )
-    )
-    const fallbackCombo = props.generatedImages.find(img => 
-      img.type === 'combo' && (
-        img.id.includes('combo-1x') || 
-        img.id.includes('browser-combo-1x')
-      )
-    )
-    const comboImage = targetCombo || fallbackCombo
-    console.log(`🔍 SelectTab: Looking for combo-${displayColumns}x, found:`, comboImage?.id)
-    return comboImage ? comboImage.url : ''
-  }
-  return ''
-}
-
-const getHeaderImageUrl = (): string => {
-  if (props.selectedFile === 'sample') {
-    return `/assets/sample/keyboard/dark/0-0/header-normal-low.png`
-  } else if (props.selectedFile && props.generatedImages) {
-    // セレクトタブ用の適切な幅を計算（全レイヤー数4ベース）
-    let displayColumns = 1
-    if (props.outputFormat === 'vertical') {
-      displayColumns = 1
-    } else if (props.outputFormat === 'rectangular') {
-      // 実際のレイヤー数を取得（generatedImagesからレイヤー画像の数を数える）
-      const allLayerCount = props.generatedImages.filter(img => img.type === 'layer').length
-      if (allLayerCount >= 5) {
-        displayColumns = 3
-      } else if (allLayerCount >= 2) {
-        displayColumns = 2
-      } else {
-        displayColumns = 1
-      }
-    } else { // separated
-      displayColumns = 1
-    }
-    
-    // 適切な幅のヘッダー画像を探す
-    const targetHeader = props.generatedImages.find(img => 
-      img.type === 'header' && (
-        img.id.includes(`header-${displayColumns}x`) || 
-        img.id.includes(`browser-header-${displayColumns}x`)
-      )
-    )
-    const fallbackHeader = props.generatedImages.find(img => 
-      img.type === 'header' && (
-        img.id.includes('header-1x') || 
-        img.id.includes('browser-header-1x')
-      )
-    )
-    const headerImage = targetHeader || fallbackHeader
-    console.log(`🔍 SelectTab: Looking for header-${displayColumns}x, found:`, headerImage?.id)
-    return headerImage ? headerImage.url : ''
-  }
-  return ''
-}
 
 const handleImageError = (event: Event) => {
   console.warn('Failed to load layer image')

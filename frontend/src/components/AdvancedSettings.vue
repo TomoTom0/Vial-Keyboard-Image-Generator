@@ -16,19 +16,19 @@
           :class="['tab-btn', { active: currentTab === 'keyboard' }]"
           @click="currentTab = 'keyboard'"
         >
-          Keyboard
+          Language
         </button>
       </div>
       
       <div class="tab-content">
         <ReplaceTab 
           v-show="currentTab === 'replace'"
-          :replace-rules="replaceRules"
-          @rules-changed="handleRulesChanged"
+          :replace-rules="settingsStore.replaceRules"
+          @rules-changed="handleReplaceRulesChanged"
         />
         <KeyboardTab 
           v-show="currentTab === 'keyboard'"
-          @layout-changed="handleLayoutChanged"
+          :selected-file="vialStore.selectedVialId"
         />
       </div>
     </div>
@@ -39,32 +39,28 @@
 import { ref } from 'vue'
 import ReplaceTab from './ReplaceTab.vue'
 import KeyboardTab from './KeyboardTab.vue'
+import { useSettingsStore } from '../stores/settings'
+import { useVialStore } from '../stores/vial'
+import { useImagesStore } from '../stores/images'
+import type { ReplaceRule } from '../utils/types'
 
-export interface ReplaceRule {
-  id: string
-  enabled: boolean
-  from: string
-  to: string
+const settingsStore = useSettingsStore()
+const vialStore = useVialStore()
+const imagesStore = useImagesStore()
+
+const currentTab = ref<'replace' | 'keyboard'>('replace')
+
+const handleReplaceRulesChanged = (rules: ReplaceRule[]) => {
+  console.log('🔄 Replace rules changed:', rules)
+  settingsStore.setReplaceRules(rules)
+  
+  // プレビュー画像を再生成
+  if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {
+    console.log('🔄 Regenerating preview images due to replace rules change')
+    imagesStore.generatePreviewImages()
+  }
 }
 
-const props = defineProps<{
-  replaceRules: ReplaceRule[]
-}>()
-
-const emit = defineEmits<{
-  rulesChanged: [rules: ReplaceRule[]]
-  layoutChanged: [layout: string]
-}>()
-
-const currentTab = ref('replace')
-
-const handleRulesChanged = (rules: ReplaceRule[]) => {
-  emit('rulesChanged', rules)
-}
-
-const handleLayoutChanged = (layout: string) => {
-  emit('layoutChanged', layout)
-}
 </script>
 
 <style scoped lang="scss">

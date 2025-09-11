@@ -254,13 +254,7 @@ export class Parser {
         if (keyStr.startsWith('KC_')) {
             const baseKey = keyStr.substring(3);
             const currentLanguageForMapping = getCurrentKeyboardLanguage();
-            console.log(`🔥 About to call getKeyMapping with: ${currentLanguageForMapping.id}`);
             const keyMapping = getKeyMapping(currentLanguageForMapping.id);
-            console.log(`🔥 getKeyMapping returned EQUAL as: ${keyMapping['EQUAL']}`);
-            
-            if (baseKey === 'EQUAL' || baseKey === 'LBRACKET' || baseKey === 'NONUS_HASH') {
-                console.log(`🔑 Language: ${currentLanguageForMapping.id}, KC_${baseKey} → ${keyMapping[baseKey]}`);
-            }
 
             const mappedKey = keyMapping[baseKey];
             if (mappedKey) {

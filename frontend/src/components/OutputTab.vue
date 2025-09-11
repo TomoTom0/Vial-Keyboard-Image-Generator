@@ -12,7 +12,7 @@
           >
             <img 
               :src="getImageUrl(image)"
-              :alt="image.filename"
+              :alt="getImageAlt(image)"
               class="output-image"
             />
           </div>
@@ -36,7 +36,7 @@
           >
             <img 
               :src="getImageUrl(image)"
-              :alt="image.filename"
+              :alt="getImageAlt(image)"
               class="output-image"
             />
             <div class="download-section">
@@ -44,7 +44,7 @@
                 class="download-btn"
                 @click="downloadSingle(image)"
               >
-                Download {{ image.filename }}
+                Download {{ getImageFilename(image) }}
               </button>
             </div>
           </div>
@@ -62,40 +62,67 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue'
+import { computed } from 'vue'
+import { useImagesStore } from '../stores/images'
+import { useSettingsStore } from '../stores/settings'
 
 interface GeneratedImage {
   id: string
-  filename: string
-  type: 'combined' | 'layer' | 'header' | 'combo'
-  layer?: number
-  format: string
-  url: string
-  size: number
-  timestamp: Date
-  canvas?: HTMLCanvasElement
+  layer: number
+  format?: 'separated' | 'vertical' | 'horizontal'
+  dataUrl?: string
+  url?: string  
+  type: 'layer' | 'header' | 'combo'
+  timestamp?: Date
+  settings?: {
+    keySize: number
+    fontSize: number
+    spacing: number
+    showLabels: boolean
+    darkMode: boolean
+    language: string
+  }
 }
 
-const props = defineProps<{
-  outputImages: GeneratedImage[]
-  outputFormat?: 'separated' | 'vertical' | 'rectangular'
-}>()
+const imagesStore = useImagesStore()
+const settingsStore = useSettingsStore()
+
+// Store から取得するcomputed値
+const outputImages = computed(() => imagesStore.outputImages)
+const outputFormat = computed(() => settingsStore.outputFormat)
 
 const getImageUrl = (image: GeneratedImage): string => {
-  return image.url
+  return image.dataUrl || image.url || ''
+}
+
+const getImageAlt = (image: GeneratedImage): string => {
+  if (image.type === 'header') return 'Header'
+  if (image.type === 'combo') return 'Combo'
+  if (image.type === 'layer') return `Layer ${image.layer}`
+  return image.id
+}
+
+const getImageFilename = (image: GeneratedImage): string => {
+  if (image.type === 'header') return 'keyboard-header.png'
+  if (image.type === 'combo') return 'keyboard-combo.png'
+  if (image.type === 'layer') return `keyboard-layer-${image.layer}.png`
+  return `keyboard-${image.id}.png`
 }
 
 const downloadSingle = (image: GeneratedImage) => {
   try {
     const link = document.createElement('a')
-    link.href = image.url
-    link.download = image.filename
+    const imageUrl = getImageUrl(image)
+    const filename = getImageFilename(image)
+    
+    link.href = imageUrl
+    link.download = filename
     link.target = '_blank'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     
-    console.log('Downloaded:', image.filename)
+    console.log('Downloaded:', filename)
   } catch (error) {
     console.error('Download failed:', error)
   }
@@ -108,13 +135,16 @@ const downloadAllAsZip = async () => {
     const zip = new JSZip()
     
     // 各画像をZIPに追加
-    for (const image of props.outputImages) {
+    for (const image of outputImages.value) {
       try {
-        const response = await fetch(image.url)
+        const imageUrl = getImageUrl(image)
+        const filename = getImageFilename(image)
+        const response = await fetch(imageUrl)
         const blob = await response.blob()
-        zip.file(image.filename, blob)
+        zip.file(filename, blob)
       } catch (error) {
-        console.warn(`Failed to add ${image.filename} to ZIP:`, error)
+        const filename = getImageFilename(image)
+        console.warn(`Failed to add ${filename} to ZIP:`, error)
       }
     }
     

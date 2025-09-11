@@ -1,6 +1,6 @@
 <template>
   <div class="file-history">
-    <div v-if="recentFiles.length === 0" class="empty-state">
+    <div v-if="vialStore.vialFiles.length === 0" class="empty-state">
       No recent files
     </div>
     <div v-else class="file-list">
@@ -28,54 +28,50 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useVialStore } from '../stores/vial'
+import type { VialData } from '../stores/vial'
 
-interface RecentFile {
-  id: string
-  name: string
-  timestamp: Date
-  file?: File
-}
-
-const props = defineProps<{
-  recentFiles: RecentFile[]
-  selectedFile: string
-}>()
-
-const emit = defineEmits<{
-  fileSelected: [file: RecentFile]
-  fileDownloaded: [file: RecentFile]
-  fileDeleted: [file: RecentFile]
-}>()
+const vialStore = useVialStore()
 
 const displayedFiles = computed(() => {
-  return props.recentFiles.slice(0, 6)
+  return vialStore.vialFiles.slice(0, 6)
 })
 
-const isSelected = (file: RecentFile): boolean => {
-  return props.selectedFile === file.name
+const isSelected = (file: VialData): boolean => {
+  return vialStore.selectedVialId === file.id
 }
 
-const selectFile = (file: RecentFile) => {
+const selectFile = (file: VialData) => {
   // 既に選択されているファイルをクリックした場合は選択解除
-  if (props.selectedFile === file.name) {
-    emit('fileSelected', { id: '', name: 'sample', timestamp: new Date(), content: '', type: '' })
+  if (vialStore.selectedVialId === file.id) {
+    vialStore.selectVial('sample')
   } else {
-    emit('fileSelected', file)
+    vialStore.selectVial(file.id)
   }
 }
 
-const downloadFile = (file: RecentFile) => {
-  emit('fileDownloaded', file)
+const downloadFile = (file: VialData) => {
+  // VIL configをダウンロード
+  const jsonString = JSON.stringify(file.config, null, 2)
+  const blob = new Blob([jsonString], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = file.name.endsWith('.vil') ? file.name : `${file.name}.vil`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
-const deleteFile = (file: RecentFile) => {
-  emit('fileDeleted', file)
+const deleteFile = (file: VialData) => {
+  vialStore.removeVialData(file.id)
 }
 </script>
 
 <style scoped>
 .file-history {
-  width: 100%;
+  display: contents;
 }
 
 

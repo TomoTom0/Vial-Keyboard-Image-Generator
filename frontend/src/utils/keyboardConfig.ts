@@ -144,7 +144,6 @@ const englishSpecialKeys = {
   'JYEN': 'JYEN'
 };
 
-console.log('🚨 englishSpecialKeys defined:', englishSpecialKeys);
 
 // 利用可能なキーボード言語
 export const keyboardLanguages: KeyboardLanguage[] = [
@@ -178,13 +177,7 @@ export function getCurrentKeyboardLanguage(): KeyboardLanguage {
   const savedLanguageId = typeof window !== 'undefined' ? 
     localStorage.getItem('vial-keyboard-language') || 'japanese' : 'japanese';
   
-  console.log(`🔍 getCurrentKeyboardLanguage: savedLanguageId="${savedLanguageId}"`);
-  console.log(`🔍 Available keyboardLanguages:`, keyboardLanguages.map(l => l.id));
-  
   const language = keyboardLanguages.find(lang => lang.id === savedLanguageId) || keyboardLanguages[0];
-  console.log(`🔍 getCurrentKeyboardLanguage: returning language="${language.id}"`);
-  console.log(`🔍 Language specialKeys:`, language.specialKeys);
-  console.log(`🔍 KC_NONUS_HASH in specialKeys:`, language.specialKeys['KC_NONUS_HASH']);
   
   return language;
 }
@@ -211,4 +204,75 @@ export function getKeyMapping(languageId: string = 'japanese'): { [key: string]:
 export function getSpecialKeys(languageId: string = 'japanese'): { [key: string]: string } {
   const language = keyboardLanguages.find(l => l.id === languageId);
   return language ? language.specialKeys : japaneseSpecialKeys;
+}
+
+// キーコードから表示文字を取得する共通関数
+export function getCharacterFromKeycode(keycode: string, languageId: string): string | null {
+  const language = keyboardLanguages.find(l => l.id === languageId);
+  if (!language) return null;
+
+  // LSFT(KC_XXX)の処理
+  if (keycode.startsWith('LSFT(KC_')) {
+    const match = keycode.match(/LSFT\(KC_(.+)\)/);
+    if (match) {
+      const baseKey = match[1];
+      return language.shiftMapping[baseKey] || null;
+    }
+  }
+
+  // KC_プレフィックス付きの場合
+  if (keycode.startsWith('KC_')) {
+    const baseKey = keycode.substring(3);
+    // 通常キーマッピングを先にチェック
+    if (language.keyMapping[baseKey]) {
+      return language.keyMapping[baseKey];
+    }
+    // 特殊キーマッピングをチェック
+    if (language.specialKeys[keycode]) {
+      return language.specialKeys[keycode];
+    }
+  }
+
+  // 特殊キーの場合（KC_プレフィックスなし）
+  if (language.specialKeys[keycode]) {
+    return language.specialKeys[keycode];
+  }
+
+  return null;
+}
+
+// キーコード変換比較：あるキーコードが2つの言語で同じ結果になるかチェック
+export function compareKeycodeResult(keycode: string, languageId1: string, languageId2: string): boolean {
+  const result1 = getCharacterFromKeycode(keycode, languageId1);
+  const result2 = getCharacterFromKeycode(keycode, languageId2);
+  return result1 === result2;
+}
+
+// 文字からキーコード逆引き：特定の文字を入力するのに必要なキーコードを取得
+export function getKeycodeForCharacter(character: string, languageId: string): string | null {
+  const language = keyboardLanguages.find(l => l.id === languageId);
+  if (!language) return null;
+  
+  // 通常キーマッピングから逆引き
+  for (const [keycode, mappedChar] of Object.entries(language.keyMapping)) {
+    if (mappedChar === character) {
+      return `KC_${keycode}`;
+    }
+  }
+  
+  // 特殊キーマッピングから逆引き
+  for (const [keycode, mappedChar] of Object.entries(language.specialKeys)) {
+    if (mappedChar === character) {
+      return keycode;
+    }
+  }
+  
+  // Shiftキー組み合わせから逆引き
+  for (const [keycode, shiftChar] of Object.entries(language.shiftMapping)) {
+    if (shiftChar === character) {
+      return `LSFT(KC_${keycode})`;
+    }
+  }
+  
+  return null; // 見つからなかった場合
 }

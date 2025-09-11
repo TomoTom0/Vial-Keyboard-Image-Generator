@@ -57,7 +57,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
-import type { ReplaceRule } from './AdvancedSettings.vue'
+import type { ReplaceRule } from '../utils/types'
 
 const props = defineProps<{
   replaceRules: ReplaceRule[]

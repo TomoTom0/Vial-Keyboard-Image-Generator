@@ -19,6 +19,7 @@ interface ComponentGeneratorOptions {
     subtextHighlight: boolean;
     quality: 'high' | 'low';
     replaceRules?: ReplaceRule[];
+    keyboardLanguage?: string;
 }
 
 interface GeneratedComponent {

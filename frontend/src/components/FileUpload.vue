@@ -50,18 +50,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useVialStore } from '../stores/vial'
+import { useUiStore } from '../stores/ui'
 
-interface RecentFile {
-  id: string
-  name: string
-  timestamp: Date
-  data?: string
-}
+const vialStore = useVialStore()
+const uiStore = useUiStore()
 
-const emit = defineEmits<{
-  fileSelected: [file: File]
-  error: [message: string]
-}>()
 
 const fileInput = ref<HTMLInputElement>()
 const uploadedFile = ref<File | null>(null)
@@ -143,11 +137,30 @@ const handleFile = (file: File) => {
     }
   }, 50)
   
-  // 最近使用したファイルに追加
-  addToRecentFiles(file)
+  // VILファイルをパースしてstoreに保存
+  parseAndSaveVilFile(file)
   
-  // 親コンポーネントにファイルを通知
-  emit('fileSelected', file)
+  // 最近使用したファイルに追加（レガシー）
+  addToRecentFiles(file)
+}
+
+// VILファイルをパースしてstoreに保存
+const parseAndSaveVilFile = async (file: File) => {
+  try {
+    const fileContent = await file.text()
+    const vilConfig = JSON.parse(fileContent)
+    
+    // VialStoreに保存（base64形式で統一）
+    const base64Content = `data:application/octet-stream;base64,${btoa(fileContent)}`
+    const newId = vialStore.addVialData(file.name, vilConfig, base64Content)
+    
+    // 追加したファイルを自動選択
+    vialStore.selectVial(newId)
+    
+  } catch (error) {
+    console.error('Failed to parse VIL file:', error)
+    uiStore.showError('VILファイルの解析に失敗しました')
+  }
 }
 
 // ファイル削除
@@ -159,6 +172,16 @@ const removeFile = () => {
     fileInput.value.value = ''
   }
 }
+
+// ファイルアップロード後のリセット（外部から呼び出し可能）
+const reset = () => {
+  removeFile()
+}
+
+// 親コンポーネントからアクセス可能にする
+defineExpose({
+  reset
+})
 
 // ユーティリティ関数
 const formatFileSize = (bytes: number): string => {

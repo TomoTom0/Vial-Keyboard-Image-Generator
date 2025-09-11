@@ -1,35 +1,23 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
+import { onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
 import FileUpload from './components/FileUpload.vue'
 import FileHistory from './components/FileHistory.vue'
 import SelectTab from './components/SelectTab.vue'
 import PreviewTab from './components/PreviewTab.vue'
 import OutputTab from './components/OutputTab.vue'
-import AdvancedSettings, { type ReplaceRule } from './components/AdvancedSettings.vue'
+import AdvancedSettings from './components/AdvancedSettings.vue'
+import Toast from './components/Toast.vue'
+import { useVialStore } from './stores/vial'
+import { useSettingsStore } from './stores/settings'
+import { useUiStore } from './stores/ui'
+import { useImagesStore } from './stores/images'
 import { useFileUpload } from './composables/useFileUpload'
 import { useImageGeneration, type GenerationOptions } from './composables/useImageGeneration'
 import { KEYBOARD_CONSTANTS } from './constants/keyboard'
 import { getCurrentStructure, getCurrentKeyboardLanguage, setCurrentKeyboardLanguage } from './utils/keyboardConfig'
 
-// Types
-interface RecentFile {
-  id: string
-  name: string
-  timestamp: Date
-  content: string // ファイル内容をBase64で保存
-  type: string    // ファイルのMIMEタイプ
-}
+// Types (VialStoreで管理)
 
-interface AdvancedSettings {
-  highlightEnabled: boolean
-  showCombos: boolean
-  showHeader: boolean
-  outputFormat: 'separated' | 'vertical' | 'rectangular'
-}
-
-interface LayerSelection {
-  [layerId: number]: boolean
-}
 
 // URLハッシュから初期タブを取得（hashモード形式: /#/tab）
 function getInitialTabFromHash(): 'select' | 'preview' | 'output' {
@@ -49,96 +37,24 @@ function updateHash(tab: 'select' | 'preview' | 'output') {
   window.location.hash = `#/${tab}`
 }
 
-// Core state
-const currentTab = ref<'select' | 'preview' | 'output'>(getInitialTabFromHash())
-const currentFormat = ref<string>('default')
-const currentTheme = ref<'light' | 'dark'>('dark')
-// 選択ファイルをlocalStorageから復元、なければデフォルト値
-const savedSelectedFile = localStorage.getItem('vial-keyboard-selectedFile') || 'sample'
-const selectedFile = ref<string>(savedSelectedFile)
-const selectedDisplayFile = ref<string>('sample')
-const recentFiles = ref<RecentFile[]>([])
+// Store instances
+const vialStore = useVialStore()
+const settingsStore = useSettingsStore()
+const uiStore = useUiStore()
+const imagesStore = useImagesStore()
 
-// 置換ルール設定
-const replaceRules = ref<ReplaceRule[]>([])
+// Store初期化 (onMountedで実行)
 
-// 置換ルールのキャッシュ保存・ロード
-const saveReplaceRulesToCache = () => {
-  localStorage.setItem('vial-keyboard-replaceRules', JSON.stringify(replaceRules.value))
-}
+// Legacy functions removed - handled by stores with persist plugin
 
-const loadReplaceRulesFromCache = () => {
-  const cached = localStorage.getItem('vial-keyboard-replaceRules')
-  if (cached) {
-    try {
-      const rules = JSON.parse(cached)
-      if (Array.isArray(rules)) {
-        replaceRules.value = rules
-      }
-    } catch (e) {
-      console.warn('Failed to load replace rules from cache:', e)
-    }
-  }
-}
+// Settings managed by SettingsStore
 
-// 高度な設定のキャッシュ保存・ロード
-const saveAdvancedSettingsToCache = () => {
-  localStorage.setItem('vial-keyboard-advancedSettings', JSON.stringify(advancedSettings.value))
-}
+// Preview and output data managed by ImagesStore and UiStore
 
-const loadAdvancedSettingsFromCache = () => {
-  const cached = localStorage.getItem('vial-keyboard-advancedSettings')
-  if (cached) {
-    try {
-      const settings = JSON.parse(cached)
-      if (settings && typeof settings === 'object') {
-        // 既存の設定をマージして不足分を補完
-        advancedSettings.value = {
-          ...advancedSettings.value,
-          ...settings
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to load advanced settings from cache:', e)
-    }
-  }
-}
 
-// Control panel tab state for responsive design
-const controlPanelTab = ref<'layout' | 'upload' | 'format'>('upload') // 初期はファイルタブ
 
-// ファイル選択状態に応じてタブを自動切り替え
-const updateControlPanelTab = () => {
-  if (!selectedFile.value || selectedFile.value === 'sample') {
-    controlPanelTab.value = 'upload' // ファイル未選択時はファイルタブ
-  } else {
-    controlPanelTab.value = 'format' // ファイル選択済みは設定タブ
-  }
-}
+// トースト通知はUiStoreで管理
 
-// Settings
-const advancedSettings = ref<AdvancedSettings>({
-  highlightEnabled: false,
-  showCombos: true,
-  showHeader: true,
-  outputFormat: 'separated'
-})
-
-const layerSelection = ref<LayerSelection>({
-  0: true,
-  1: true,
-  2: true,
-  3: true,
-  4: false,
-  5: false
-})
-
-// Preview and output data
-const previewImages = ref<any[]>([])
-const outputImages = ref<any[]>([])
-const isGenerating = ref(false)
-const isGenerated = ref(false)
-const error = ref<string | null>(null)
 
 // キーボード設定
 const currentKeyboardStructure = getCurrentStructure()
@@ -243,7 +159,7 @@ const generateCombinedImage = (
   const ctx = combinedCanvas.getContext('2d')!
   
   // 背景を塗りつぶし
-  ctx.fillStyle = currentTheme.value === 'dark' ? '#1c1c20' : '#f5f5f5'
+  ctx.fillStyle = settingsStore.enableDarkMode ? '#1c1c20' : '#f5f5f5'
   ctx.fillRect(0, 0, combinedCanvas.width, combinedCanvas.height)
   
   // コンポーネントを配置
@@ -336,10 +252,10 @@ const {
 // Computed
 const availableFiles = computed(() => {
   const files = ['sample']
-  if (selectedFile.value && selectedFile.value !== 'sample') {
-    files.push(selectedFile.value)
+  if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {
+    files.push(vialStore.selectedVialId)
   }
-  recentFiles.value.forEach(file => {
+  vialStore.vialFiles.forEach(file => {
     if (!files.includes(file.name)) {
       files.push(file.name)
     }
@@ -368,85 +284,9 @@ const createFileFromBase64 = (content: string, name: string, type: string): File
   return new File([byteArray], name, { type })
 }
 
-// File handling
-const handleFileSelected = async (file: File) => {
-  const validationError = validateFile(file)
-  if (validationError) {
-    error.value = validationError
-    return
-  }
-  
-  try {
-    // ファイル内容を読み込み
-    const content = await readFileContent(file)
-    
-    selectedFile.value = file.name
-    setFile(file)
-    
-    await addToRecentFiles(file, content)
-    selectedDisplayFile.value = file.name
-    generatePreviewImages()
-    
-    console.log('📁 File selected:', file.name)
-  } catch (err) {
-    error.value = 'ファイルの読み込みに失敗しました'
-    console.error('File reading error:', err)
-  }
-}
 
-const handleFileHistorySelected = async (recentFile: RecentFile) => {
-  // recentFileのnullチェック
-  if (!recentFile || !recentFile.name || typeof recentFile.name !== 'string') {
-    console.error('Invalid recentFile passed to handleFileHistorySelected:', recentFile)
-    error.value = 'Invalid file selection'
-    return
-  }
-  
-  // サンプルが渡された場合は選択解除
-  if (recentFile.name === 'sample') {
-    selectedFile.value = 'sample'
-    selectedDisplayFile.value = 'sample'
-    generatePreviewImages()
-    return
-  }
-  
-  selectedFile.value = recentFile.name
-  selectedDisplayFile.value = recentFile.name
-  
-  try {
-    // 共通のgeneratePreviewImagesを使用
-    generatePreviewImages()
-    
-    console.log('📁 履歴ファイル選択完了:', recentFile.name)
-  } catch (err) {
-    error.value = '履歴ファイルの処理に失敗しました'
-    console.error('History file processing error:', err)
-  }
-}
 
-const handleFileDownload = (recentFile: RecentFile) => {
-  // Base64データからファイルをダウンロード
-  const link = document.createElement('a')
-  link.href = recentFile.content
-  link.download = recentFile.name
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
 
-const handleFileDelete = (recentFile: RecentFile) => {
-  const index = recentFiles.value.findIndex(f => f.id === recentFile.id)
-  if (index > -1) {
-    recentFiles.value.splice(index, 1)
-    saveRecentFiles()
-    
-    // 削除されたファイルが現在選択されている場合、サンプルに戻す
-    if (selectedFile.value === recentFile.name) {
-      selectedFile.value = 'sample'
-      selectedDisplayFile.value = 'sample'
-    }
-  }
-}
 
 const addToRecentFiles = async (file: File, content: string) => {
   const newFile: RecentFile = {
@@ -457,11 +297,11 @@ const addToRecentFiles = async (file: File, content: string) => {
     type: file.type
   }
   
-  recentFiles.value = recentFiles.value.filter(f => f.name !== file.name)
-  recentFiles.value.unshift(newFile)
+  vialStore.vialFiles = vialStore.vialFiles.filter(f => f.name !== file.name)
+  vialStore.vialFiles.unshift(newFile)
   
-  if (recentFiles.value.length > 5) {
-    recentFiles.value = recentFiles.value.slice(0, 5)
+  if (vialStore.vialFiles.length > 5) {
+    vialStore.vialFiles = vialStore.vialFiles.slice(0, 5)
   }
   
   saveRecentFiles()
@@ -469,371 +309,91 @@ const addToRecentFiles = async (file: File, content: string) => {
 
 // Format and theme handling
 const handleFormatChanged = (format: string) => {
-  currentFormat.value = format
+  settingsStore.setOutputFormat(format as 'separated' | 'vertical' | 'horizontal')
   generatePreviewImages()
 }
 
 const handleThemeChanged = (theme: 'light' | 'dark') => {
-  currentTheme.value = theme
+  settingsStore.toggleDarkMode(theme === 'dark')
   debouncedGeneratePreview()
 }
 
-const handleAdvancedSettingsChanged = (settings: AdvancedSettings) => {
-  advancedSettings.value = settings
-  debouncedGeneratePreview()
-}
 
 const updateOutputFormat = (format: 'separated' | 'vertical' | 'rectangular') => {
-  advancedSettings.value.outputFormat = format
+  settingsStore.outputFormat = format
   generatePreviewImages()
 }
 
 const toggleHighlight = () => {
-  advancedSettings.value.highlightEnabled = !advancedSettings.value.highlightEnabled
+  settingsStore.highlightEnabled = !settingsStore.highlightEnabled
   debouncedGeneratePreview()
 }
 
 const toggleCombos = () => {
-  advancedSettings.value.showCombos = !advancedSettings.value.showCombos
+  settingsStore.showCombos = !settingsStore.showCombos
   debouncedGeneratePreview()
 }
 
 const getFormatExplanationImage = (): string => {
-  const format = advancedSettings.value.outputFormat
+  const format = settingsStore.outputFormat
   return `/images/explanations/format-${format}.png`
 }
 
 // Tab navigation
 const handleTabChanged = (tab: 'select' | 'preview' | 'output') => {
   // Outputタブは画像生成完了後のみ選択可能
-  if (tab === 'output' && !isGenerated.value) {
+  if (tab === 'output' && !uiStore.isGenerated) {
     return
   }
-  currentTab.value = tab
+  uiStore.setActiveTab(tab)
 }
 
 const handleDisplayFileChanged = (fileName: string) => {
-  selectedDisplayFile.value = fileName
+  vialStore.selectedVialId = fileName
   generatePreviewImages()
 }
 
 // Control panel tab handling
 const handleControlPanelTabChanged = (tab: 'layout' | 'upload' | 'format') => {
-  controlPanelTab.value = tab
+  uiStore.setControlPanelTab(tab)
 }
 
-// Layer selection
-const handleLayerSelectionChanged = (selection: LayerSelection) => {
-  console.log('🔄 Layer selection changed:', selection)
-  layerSelection.value = selection
-  generatePreviewImages()
-}
 
 const handleComboToggled = (enabled: boolean) => {
-  advancedSettings.value.showCombos = enabled
+  settingsStore.showCombos = enabled
   debouncedGeneratePreview()
 }
 
 const handleHeaderToggled = (enabled: boolean) => {
-  advancedSettings.value.showHeader = enabled
+  settingsStore.showHeader = enabled
   generatePreviewImages()
 }
 
-// 置換ルール変更時の処理
-const handleReplaceRulesChanged = (rules: ReplaceRule[]) => {
-  replaceRules.value = rules
-  // キャッシュに保存
-  saveReplaceRulesToCache()
-  // ルールが変更されたらプレビュー画像を再生成
-  generatePreviewImages()
-}
 
-// キーボード言語変更時の処理
-const handleKeyboardLayoutChanged = (languageId: string) => {
-  console.log('Keyboard language changed:', languageId)
-  // 設定を保存
-  setCurrentKeyboardLanguage(languageId)
-  console.log('🔥 After setCurrentKeyboardLanguage, localStorage now has:', localStorage.getItem('vial-keyboard-language'))
-  // 画像を再生成（言語変更により表示が変わるため）
-  generatePreviewImages()
-}
 
-// Preview generation
+
+// Preview generation (delegated to ImagesStore)
 const generatePreviewImages = async () => {
-  try {
-    isGenerating.value = true
-    error.value = null
-    
-    console.log('🔍 Debug: selectedDisplayFile.value =', selectedDisplayFile.value)
-    console.log('🔍 Debug: selectedFile.value =', selectedFile.value)
-    
-    if (selectedDisplayFile.value === 'sample') {
-      // サンプルファイルの場合 - 静的画像を使用
-      const sampleImages: any[] = []
-      for (let layer = 0; layer <= 3; layer++) {
-        sampleImages.push({
-          id: `sample-layer-${layer}`,
-          layer,
-          url: `/images/sample/keyboard_layout_layer${layer}_modular.png`,
-          type: 'layer'
-        })
-      }
-      previewImages.value = sampleImages
-    } else if (selectedFile.value && selectedFile.value !== 'sample') {
-      // selectedFile.valueの型チェック
-      if (typeof selectedFile.value !== 'string') {
-        console.error('selectedFile.value is not a string:', selectedFile.value)
-        throw new Error('Invalid file selection')
-      }
-      
-      // キャッシュキーを生成（レイヤー選択状態も含める）
-      const layerSelectionKey = Object.entries(layerSelection.value)
-        .filter(([_, selected]) => selected)
-        .map(([layer, _]) => layer)
-        .sort()
-        .join(',')
-      
-      const currentLanguage = getCurrentKeyboardLanguage()
-      const cacheKey = generateCacheKey(
-        selectedFile.value, 
-        currentTheme.value,
-        advancedSettings.value.showCombos,
-        advancedSettings.value.highlightEnabled,
-        currentTab.value,
-        layerSelectionKey,
-        replaceRules.value || [],
-        advancedSettings.value.outputFormat,
-        currentLanguage.id
-      )
-      
-      console.log('🔑 Cache key:', cacheKey)
-      
-      // キャッシュから検索
-      if (canvasCache.has(cacheKey)) {
-        console.log('✨ Using cached images')
-        previewImages.value = canvasCache.get(cacheKey)!
-        return
-      } else {
-        console.log('🏭 Generating new images for cache key:', cacheKey)
-      }
-      
-      // キャッシュにない場合は新規生成
-      // 現在のファイルコンテンツを取得
-      const recentFile = recentFiles.value.find(f => f && f.name === selectedFile.value)
-      if (!recentFile) throw new Error('ファイルが見つかりません')
-      if (!recentFile.content || typeof recentFile.content !== 'string') {
-        throw new Error('ファイルコンテンツが無効です')
-      }
-      const base64Content = recentFile.content.replace(/^data:.*base64,/, '')
-      const fileContent = atob(base64Content)
-      
-      const generatedImages = await generatePreviewImagesForContent(fileContent, selectedFile.value)
-      
-      // キャッシュに保存（最新5件のみ保持）
-      canvasCache.set(cacheKey, generatedImages)
-      if (canvasCache.size > 5) {
-        const firstKey = canvasCache.keys().next().value
-        canvasCache.delete(firstKey)
-      }
-      
-      // Vue.jsのリアクティブ更新を筢実にするため、新しい配列を作成
-      previewImages.value = [...generatedImages]
-      console.log('🖼️ Updated previewImages array with', generatedImages.length, 'images')
-    }
-    
-  } catch (err) {
-    console.error('Preview generation failed:', err)
-    error.value = err instanceof Error ? err.message : 'Preview generation failed'
-    // エラー時は適当な画像を表示しない - previewImagesをクリア
-    previewImages.value = []
-  } finally {
-    isGenerating.value = false
-  }
+  await imagesStore.generatePreviewImages(
+    vialStore.selectedVialId || 'sample', 
+    vialStore.currentVial
+  )
 }
 
-const generatePreviewImagesForContent = async (fileContent: string, fileName: string) => {
-  try {
-    
-    // ブラウザ版の関数を使用
-    const { BrowserComponentBatchGenerator } = await import('./utils/browserComponentBatchGenerator')
-    
-    
-    const components = await BrowserComponentBatchGenerator.generateAllComponents(
-      fileContent,
-      {
-        configPath: fileName,
-        colorMode: currentTheme.value,
-        comboHighlight: advancedSettings.value.showCombos,
-        subtextHighlight: advancedSettings.value.highlightEnabled,
-        quality: 'low', // プレビューは低品質
-        replaceRules: replaceRules.value || []
-      }
-    )
-    
-    // レイヤー数に応じた適切なコンポーネントを選択
-    const layerComponents = components.filter(comp => comp.type === 'layer')
-    const layerCount = layerComponents.length
-    
-    console.log('🎯 Generated components:', components.map(c => ({ name: c.name, type: c.type })))
-    
-    // タブに応じて列数決定のロジックを変更
-    console.log('🏷️ Current tab:', currentTab.value)
-    console.log('🏷️ Layer count:', layerCount)
-    let displayColumns: number
-    if (currentTab.value === 'select') {
-      // セレクトタブでは全体レイヤー数で判断
-      if (layerCount >= 5) {
-        displayColumns = 3
-      } else if (layerCount >= 2) {
-        displayColumns = 2
-      } else {
-        displayColumns = 1
-      }
-      console.log('📊 Select tab - Total layer count:', layerCount, 'Display columns:', displayColumns)
-    } else {
-      // プレビュータブでは出力フォーマットに応じて判断
-      console.log('🔍 Raw layerSelection.value:', layerSelection.value)
-      console.log('🔍 Output format:', advancedSettings.value.outputFormat)
-      
-      if (advancedSettings.value.outputFormat === 'vertical') {
-        // 垂直結合では常に1列幅
-        displayColumns = 1
-        console.log('✅ Vertical format - Setting 1 column')
-      } else if (advancedSettings.value.outputFormat === 'rectangular') {
-        // 長方形結合では選択レイヤー数に応じて決定
-        const selectedLayers = Object.entries(layerSelection.value)
-          .filter(([_, selected]) => selected)
-          .map(([layer, _]) => parseInt(layer))
-        
-        console.log('🔍 Filtered selectedLayers:', selectedLayers, 'Length:', selectedLayers.length)
-        
-        if (selectedLayers.length >= 5) {
-          displayColumns = 3
-          console.log('✅ Rectangular format - Setting 3 columns (>=5 layers)')
-        } else if (selectedLayers.length >= 2) {
-          displayColumns = 2
-          console.log('✅ Rectangular format - Setting 2 columns (2-4 layers)')
-        } else {
-          displayColumns = 1
-          console.log('✅ Rectangular format - Setting 1 column (<=1 layers)')
-        }
-      } else {
-        // separatedの場合は1列
-        displayColumns = 1
-        console.log('✅ Separated format - Setting 1 column')
-      }
-      console.log('📊 Preview tab - Display columns:', displayColumns)
-    }
-    
-    // 適切な幅のコンポーネントを選択（quality付きの名前）
-    const searchHeaderName = `header-${displayColumns}x-low`
-    const searchComboName = `combo-${displayColumns}x-low`
-    console.log('🔍 Searching for header:', searchHeaderName, 'combo:', searchComboName)
-    console.log('🔍 Available components:', components.map(c => c.name))
-    
-    let headerComponent = components.find(comp => comp.name.includes(searchHeaderName))
-    let comboComponent = components.find(comp => comp.name.includes(searchComboName))
-    
-    // フォールバック処理：見つからない場合は1x幅を使用
-    if (!headerComponent) {
-      console.log('⚠️ Header component not found, falling back to 1x')
-      headerComponent = components.find(comp => comp.name.includes('header-1x-low'))
-    }
-    if (!comboComponent) {
-      console.log('⚠️ Combo component not found, falling back to 1x')
-      comboComponent = components.find(comp => comp.name.includes('combo-1x-low'))
-    }
-    
-    console.log('🏷️ Found header:', headerComponent?.name, 'Found combo:', comboComponent?.name)
-    
-    // プレビュー用画像配列を構築
-    const previewImages = []
-    
-    // 列数に応じた適切な幅のヘッダーを追加
-    // すべての幅のヘッダー情報を追加
-    console.log('🔍 Available headers:', components.filter(comp => comp.type === 'header').map(comp => comp.name))
-    for (let width = 1; width <= 3; width++) {
-      const headerComp = components.find(comp => comp.name.includes(`header-${width}x-low`))
-      if (headerComp) {
-        const headerURL = headerComp.canvas.toDataURL('image/png', 0.7)
-        previewImages.push({
-          id: `browser-header-${width}x`,
-          layer: -1,
-          url: headerURL,
-          type: 'header' as const
-        })
-        console.log(`🏷️ Added header-${width}x to preview images`)
-      } else {
-        console.log(`⚠️ Header-${width}x not found`)
-      }
-    }
-    
-    // レイヤー画像追加
-    layerComponents.forEach((comp, index) => {
-      const dataURL = comp.canvas.toDataURL('image/png', 0.7)
-      if (index === 0) {
-        console.log('🖼️ First layer data URL preview:', dataURL.substring(0, 100) + '...')
-      }
-      previewImages.push({
-        id: `browser-layer-${index}`,
-        layer: index,
-        url: dataURL,
-        type: 'layer' as const
-      })
-    })
-    
-    // すべての幅のコンボ情報を追加
-    console.log('🔍 Available combos:', components.filter(comp => comp.type === 'combo').map(comp => comp.name))
-    for (let width = 1; width <= 3; width++) {
-      const comboComp = components.find(comp => comp.name.includes(`combo-${width}x-low`))
-      if (comboComp) {
-        const comboURL = comboComp.canvas.toDataURL('image/png', 0.7)
-        previewImages.push({
-          id: `browser-combo-${width}x`,
-          layer: -2,
-          url: comboURL,
-          type: 'combo' as const
-        })
-        console.log(`🤼 Added combo-${width}x to preview images`)
-      } else {
-        console.log(`⚠️ Combo-${width}x not found`)
-      }
-    }
-    
-    return previewImages
-    
-  } catch (error) {
-    console.error('ブラウザ内画像生成でエラー:', error)
-    throw error
-  }
-}
 
-const getSelectedLayerRange = () => {
-  const selectedLayers = Object.entries(layerSelection.value)
-    .filter(([_, selected]) => selected)
-    .map(([layer, _]) => parseInt(layer))
-  
-  if (selectedLayers.length === 0) return { start: 0, end: 0 }
-  
-  return {
-    start: Math.min(...selectedLayers),
-    end: Math.max(...selectedLayers)
-  }
-}
 
 // Final generation
 const handleGenerate = async () => {
-  if (!selectedFile.value || selectedFile.value === 'sample') return
+  if (!vialStore.selectedVialId || vialStore.selectedVialId === 'sample') return
   
   try {
-    isGenerating.value = true
-    error.value = null
+    uiStore.isGenerating = true
+    uiStore.error = null
     
     // ファイル内容を読み取り（recentFilesから取得）
-    const recentFile = recentFiles.value.find(f => f.name === selectedFile.value)
+    const recentFile = vialStore.vialFiles.find(f => f.name === vialStore.selectedVialId)
     if (!recentFile) throw new Error('ファイルが見つかりません')
-    const base64Content = recentFile.content.replace(/^data:.*base64,/, '')
-    const fileContent = atob(base64Content)
+    const fileContent = recentFile.content
     
     // ブラウザ版で高品質Canvas画像を生成
     const { BrowserComponentBatchGenerator } = await import('./utils/browserComponentBatchGenerator')
@@ -841,26 +401,26 @@ const handleGenerate = async () => {
     const components = await BrowserComponentBatchGenerator.generateAllComponents(
       fileContent,
       {
-        configPath: selectedFile.value,
-        colorMode: currentTheme.value,
-        comboHighlight: advancedSettings.value.showCombos,
-        subtextHighlight: advancedSettings.value.highlightEnabled,
+        configPath: vialStore.selectedVialId,
+        colorMode: settingsStore.enableDarkMode ? 'dark' : 'light',
+        comboHighlight: settingsStore.showCombos,
+        subtextHighlight: settingsStore.highlightEnabled,
         quality: 'high', // 最終出力は高品質
-        replaceRules: replaceRules.value || []
+        replaceRules: settingsStore.replaceRules || []
       }
     )
     
     // 選択されたレイヤーのみフィルタリング
     const layerComponents = components.filter(comp => comp.type === 'layer')
-    const selectedLayerComponents = layerComponents.filter((_, index) => layerSelection.value[index])
+    const selectedLayerComponents = layerComponents.filter((_, index) => settingsStore.layerSelection[index])
     
     // フォーマットに応じてヘッダーとコンボコンポーネントを取得
     let headerComponent, comboComponent
-    if (advancedSettings.value.outputFormat === 'vertical') {
+    if (settingsStore.outputFormat === 'vertical') {
       // 垂直結合では常に1x幅を使用
       headerComponent = components.find(comp => comp.type === 'header' && comp.name.includes('header-1x'))
       comboComponent = components.find(comp => comp.type === 'combo' && comp.name.includes('combo-1x'))
-    } else if (advancedSettings.value.outputFormat === 'rectangular') {
+    } else if (settingsStore.outputFormat === 'rectangular') {
       // 長方形結合では選択レイヤー数に応じた幅を使用
       let displayColumns: number
       if (selectedLayerComponents.length >= 5) {
@@ -890,10 +450,10 @@ const handleGenerate = async () => {
     
     // 簡略化されたファイル名形式: 元ファイル名-タイムスタンプ
     const generateFileName = (type: string, layerIndex?: number) => {
-      if (!selectedFile.value || typeof selectedFile.value !== 'string') {
+      if (!vialStore.selectedVialId || typeof vialStore.selectedVialId !== 'string') {
         throw new Error('Invalid selectedFile for filename generation')
       }
-      const originalName = selectedFile.value.replace(/\.vil$/, '')
+      const originalName = vialStore.selectedVialId.replace(/\.vil$/, '')
       const shortName = originalName.slice(0, 12) // 文字数を少し増やす
       const timestamp = new Date().toISOString().slice(11, 16).replace(/[-:T]/g, '') // HHMM のみ
       
@@ -906,15 +466,15 @@ const handleGenerate = async () => {
       }
     }
     
-    if (advancedSettings.value.outputFormat === 'separated') {
+    if (settingsStore.outputFormat === 'separated') {
       // separated: 各コンポーネントを個別に出力
-      if (headerComponent && advancedSettings.value.showHeader) {
+      if (headerComponent && settingsStore.showHeader) {
         const filename = generateFileName('header')
         finalOutputImages.push({
           id: 'final-header',
           filename,
           type: 'combined' as const,
-          format: advancedSettings.value.outputFormat,
+          format: settingsStore.outputFormat,
           url: headerComponent.canvas.toDataURL('image/png', 1.0),
           size: headerComponent.canvas.width * headerComponent.canvas.height * 4,
           timestamp: new Date(),
@@ -929,7 +489,7 @@ const handleGenerate = async () => {
           filename,
           type: 'layer' as const,
           layer: index,
-          format: advancedSettings.value.outputFormat,
+          format: settingsStore.outputFormat,
           url: comp.canvas.toDataURL('image/png', 1.0),
           size: comp.canvas.width * comp.canvas.height * 4,
           timestamp: new Date(),
@@ -937,13 +497,13 @@ const handleGenerate = async () => {
         })
       })
       
-      if (comboComponent && advancedSettings.value.showCombos) {
+      if (comboComponent && settingsStore.showCombos) {
         const filename = generateFileName('combo')
         finalOutputImages.push({
           id: 'final-combo',
           filename,
           type: 'combined' as const,
-          format: advancedSettings.value.outputFormat,
+          format: settingsStore.outputFormat,
           url: comboComponent.canvas.toDataURL('image/png', 1.0),
           size: comboComponent.canvas.width * comboComponent.canvas.height * 4,
           timestamp: new Date(),
@@ -952,24 +512,24 @@ const handleGenerate = async () => {
       }
     } else {
       // vertical/horizontal: 結合画像を生成
-      console.log('🔍 Generate - Advanced settings:', advancedSettings.value)
+      console.log('🔍 Generate - Advanced settings:', settingsStore)
       console.log('🔍 Generate - Header component:', headerComponent?.name)
       console.log('🔍 Generate - Combo component:', comboComponent?.name)
-      console.log('🔍 Generate - Show combos:', advancedSettings.value.showCombos)
+      console.log('🔍 Generate - Show combos:', settingsStore.showCombos)
       
       const combinedCanvas = generateCombinedImage(
         selectedLayerComponents,
         headerComponent,
         comboComponent,
-        advancedSettings.value
+        settingsStore
       )
       
-      const filename = generateFileName(`${advancedSettings.value.outputFormat}-combined`)
+      const filename = generateFileName(`${settingsStore.outputFormat}-combined`)
       finalOutputImages.push({
         id: 'final-combined',
         filename,
         type: 'combined' as const,
-        format: advancedSettings.value.outputFormat,
+        format: settingsStore.outputFormat,
         url: combinedCanvas.toDataURL('image/png', 1.0),
         size: combinedCanvas.width * combinedCanvas.height * 4,
         timestamp: new Date(),
@@ -977,18 +537,18 @@ const handleGenerate = async () => {
       })
     }
     
-    outputImages.value = finalOutputImages
-    isGenerated.value = true
-    currentTab.value = 'output'
+    imagesStore.images = finalOutputImages
+    uiStore.isGenerated = true
+    uiStore.setActiveTab('output')
     
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Generation failed'
+    uiStore.error = err instanceof Error ? err.message : 'Generation failed'
     console.error('Final generation error:', err)
     // エラー時は適当な画像を表示しない - outputImagesをクリア
-    outputImages.value = []
-    isGenerated.value = false
+    imagesStore.images = []
+    uiStore.isGenerated = false
   } finally {
-    isGenerating.value = false
+    uiStore.isGenerating = false
   }
 }
 
@@ -997,7 +557,7 @@ const handleDownload = (format: 'individual' | 'zip') => {
   if (format === 'zip') {
     console.log('Downloading as ZIP...')
   } else {
-    outputImages.value.forEach(image => {
+    imagesStore.images.forEach(image => {
       const link = document.createElement('a')
       link.href = image.url
       link.download = image.filename
@@ -1006,15 +566,11 @@ const handleDownload = (format: 'individual' | 'zip') => {
   }
 }
 
-// Error handling
-const handleError = (message: string) => {
-  error.value = message
-}
 
 // Local storage
 const saveRecentFiles = () => {
   try {
-    const toSave = recentFiles.value.map(f => ({
+    const toSave = vialStore.vialFiles.map(f => ({
       id: f.id,
       name: f.name,
       timestamp: f.timestamp.toISOString(),
@@ -1027,33 +583,20 @@ const saveRecentFiles = () => {
   }
 }
 
-const loadRecentFiles = () => {
-  try {
-    const saved = localStorage.getItem('vial-recent-files')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      recentFiles.value = parsed.map((f: any) => ({
-        ...f,
-        timestamp: new Date(f.timestamp)
-      }))
-    }
-  } catch (err) {
-    console.warn('Failed to load recent files:', err)
-  }
-}
+// レガシー関数削除: VialStoreのpersist機能を使用
 
 // ファイル復元時の表示ファイル同期
 const syncDisplayFileAfterLoad = () => {
-  if (selectedFile.value && selectedFile.value !== 'sample') {
+  if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {
     // 選択されたファイルがrecentFilesに存在するかチェック
-    const fileExists = recentFiles.value.some(f => f.name === selectedFile.value)
+    const fileExists = vialStore.vialFiles.some(f => f.name === vialStore.selectedVialId)
     if (fileExists) {
-      selectedDisplayFile.value = selectedFile.value
-      console.log('📁 Restored file selection:', selectedFile.value)
+      vialStore.selectedVialId = vialStore.selectedVialId
+      console.log('📁 Restored file selection:', vialStore.selectedVialId)
     } else {
       // ファイルが存在しない場合はサンプルに戻す
-      selectedFile.value = 'sample'
-      selectedDisplayFile.value = 'sample'
+      vialStore.selectedVialId = 'sample'
+      vialStore.selectedVialId = 'sample'
       console.log('📁 File not found, falling back to sample')
     }
   }
@@ -1061,42 +604,36 @@ const syncDisplayFileAfterLoad = () => {
 
 // Initialization
 // タブ変更時にハッシュを更新
-watch(currentTab, (newTab) => {
+watch(() => uiStore.activeTab, (newTab) => {
   updateHash(newTab)
 })
 
-// ファイル選択状態に応じてコントロールパネルタブを自動切り替え
-watch(selectedFile, () => {
-  updateControlPanelTab()
-}, { immediate: true })
 
-// 選択ファイルの変更をlocalStorageに保存
-watch(selectedFile, (newFile) => {
-  localStorage.setItem('vial-keyboard-selectedFile', newFile)
+// 選択されたVILファイルの変更時に画像を再生成
+watch(() => vialStore.selectedVialId, (newId) => {
+  if (newId) {
+    generatePreviewImages()
+  }
 })
 
 // 高度な設定の変更をlocalStorageに保存し、画像を再生成
-watch(advancedSettings, () => {
-  saveAdvancedSettingsToCache()
-  // フォーマット変更時は画像を再生成
+watch(() => settingsStore.outputFormat, () => {
   generatePreviewImages()
-}, { deep: true })
+})
+
 
 // ハッシュ変更を監視してタブを同期
 const handleHashChange = () => {
   const newTab = getInitialTabFromHash()
-  if (newTab !== currentTab.value) {
-    currentTab.value = newTab
+  if (newTab !== uiStore.activeTab) {
+    uiStore.setActiveTab(newTab)
   }
 }
 
 onMounted(() => {
-  loadRecentFiles()
-  loadReplaceRulesFromCache()
-  loadAdvancedSettingsFromCache()
+  // Piniaのpersist pluginで自動ロードされるため、手動初期化は不要
   
-  // ファイル復元後の表示同期
-  syncDisplayFileAfterLoad()
+  // Piniaのpersist機能により自動復元されるため、手動読み込み削除
   
   // ハッシュ変更イベントを監視
   window.addEventListener('hashchange', handleHashChange)
@@ -1141,23 +678,14 @@ onUnmounted(() => {
         
         <div class="panel-section upload-section">
           <div class="file-grid">
-            <FileUpload
-              @file-selected="handleFileSelected"
-              @error="handleError"
-            />
-            <FileHistory
-              :recent-files="recentFiles"
-              :selected-file="selectedFile"
-              @file-selected="handleFileHistorySelected"
-              @file-downloaded="handleFileDownload"
-              @file-deleted="handleFileDelete"
-            />
+            <FileUpload />
+            <FileHistory />
           </div>
         </div>
         
         <div class="panel-section format-section">
           <div class="format-buttons">
-            <button :class="['format-btn', { active: advancedSettings.outputFormat === 'separated' }]" @click="updateOutputFormat('separated')">
+            <button :class="['format-btn', { active: settingsStore.outputFormat === 'separated' }]" @click="updateOutputFormat('separated')">
               <span class="format-label">Separated</span>
               <div class="format-diagram">
                 <div class="diagram-separated">
@@ -1168,7 +696,7 @@ onUnmounted(() => {
                 </div>
               </div>
             </button>
-            <button :class="['format-btn', { active: advancedSettings.outputFormat === 'vertical' }]" @click="updateOutputFormat('vertical')">
+            <button :class="['format-btn', { active: settingsStore.outputFormat === 'vertical' }]" @click="updateOutputFormat('vertical')">
               <span class="format-label">Vertical</span>
               <div class="format-diagram">
                 <div class="diagram-vertical">
@@ -1182,7 +710,7 @@ onUnmounted(() => {
                 </div>
               </div>
             </button>
-            <button :class="['format-btn', { active: advancedSettings.outputFormat === 'rectangular' }]" @click="updateOutputFormat('rectangular')">
+            <button :class="['format-btn', { active: settingsStore.outputFormat === 'rectangular' }]" @click="updateOutputFormat('rectangular')">
               <span class="format-label">Rectangular</span>
               <div class="format-diagram">
                 <div class="diagram-horizontal">
@@ -1198,14 +726,14 @@ onUnmounted(() => {
             </button>
           </div>
           <div class="control-buttons-section">
-            <button :class="['highlight-toggle-btn', { active: advancedSettings.highlightEnabled }]" @click="toggleHighlight">
-              Highlight {{ advancedSettings.highlightEnabled ? 'on' : 'off' }}
+            <button :class="['highlight-toggle-btn', { active: settingsStore.highlightEnabled }]" @click="toggleHighlight">
+              Highlight {{ settingsStore.highlightEnabled ? 'on' : 'off' }}
             </button>
             <button 
-              :class="['theme-toggle-btn', { active: currentTheme === 'dark' }]" 
-              @click="currentTheme = currentTheme === 'dark' ? 'light' : 'dark'; debouncedGeneratePreview()"
+              :class="['theme-toggle-btn', { active: settingsStore.enableDarkMode }]" 
+              @click="settingsStore.toggleDarkMode(!settingsStore.enableDarkMode); debouncedGeneratePreview()"
             >
-              {{ currentTheme === 'dark' ? 'Dark' : 'Light' }}
+              {{ settingsStore.enableDarkMode ? 'Dark' : 'Light' }}
             </button>
           </div>
         </div>
@@ -1214,19 +742,19 @@ onUnmounted(() => {
       <!-- モバイル表示（タブ切り替え） -->
       <div class="control-panel-mobile">
         <div class="control-tab-buttons">
-          <button :class="['control-tab-btn', { active: controlPanelTab === 'upload' }]" @click="handleControlPanelTabChanged('upload')">
+          <button :class="['control-tab-btn', { active: uiStore.controlPanelTab === 'upload' }]" @click="handleControlPanelTabChanged('upload')">
             Files
           </button>
-          <button :class="['control-tab-btn', { active: controlPanelTab === 'format' }]" @click="handleControlPanelTabChanged('format')">
+          <button :class="['control-tab-btn', { active: uiStore.controlPanelTab === 'format' }]" @click="handleControlPanelTabChanged('format')">
             Settings
           </button>
-          <button :class="['control-tab-btn', { active: controlPanelTab === 'layout' }]" @click="handleControlPanelTabChanged('layout')">
+          <button :class="['control-tab-btn', { active: uiStore.controlPanelTab === 'layout' }]" @click="handleControlPanelTabChanged('layout')">
             Layout
           </button>
         </div>
         
         <div class="control-tab-content">
-          <div v-show="controlPanelTab === 'layout'" class="panel-section layout-section">
+          <div v-show="uiStore.controlPanelTab === 'layout'" class="panel-section layout-section">
             <div class="layout-preview">
               <div class="layout-sample-small">
                 <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
@@ -1235,25 +763,16 @@ onUnmounted(() => {
             </div>
           </div>
           
-          <div v-show="controlPanelTab === 'upload'" class="panel-section upload-section">
+          <div v-show="uiStore.controlPanelTab === 'upload'" class="panel-section upload-section">
             <div class="file-grid">
-              <FileUpload
-                @file-selected="handleFileSelected"
-                @error="handleError"
-              />
-              <FileHistory
-                :recent-files="recentFiles"
-                :selected-file="selectedFile"
-                @file-selected="handleFileHistorySelected"
-                @file-downloaded="handleFileDownload"
-                @file-deleted="handleFileDelete"
-              />
+              <FileUpload />
+              <FileHistory />
             </div>
           </div>
           
-          <div v-show="controlPanelTab === 'format'" class="panel-section format-section">
+          <div v-show="uiStore.controlPanelTab === 'format'" class="panel-section format-section">
             <div class="format-buttons">
-              <button :class="['format-btn', { active: advancedSettings.outputFormat === 'separated' }]" @click="updateOutputFormat('separated')">
+              <button :class="['format-btn', { active: settingsStore.outputFormat === 'separated' }]" @click="updateOutputFormat('separated')">
                 <span class="format-label">Separated</span>
                 <div class="format-diagram">
                   <div class="diagram-separated">
@@ -1264,7 +783,7 @@ onUnmounted(() => {
                   </div>
                 </div>
               </button>
-              <button :class="['format-btn', { active: advancedSettings.outputFormat === 'vertical' }]" @click="updateOutputFormat('vertical')">
+              <button :class="['format-btn', { active: settingsStore.outputFormat === 'vertical' }]" @click="updateOutputFormat('vertical')">
                 <span class="format-label">Vertical</span>
                 <div class="format-diagram">
                   <div class="diagram-vertical">
@@ -1278,7 +797,7 @@ onUnmounted(() => {
                   </div>
                 </div>
               </button>
-              <button :class="['format-btn', { active: advancedSettings.outputFormat === 'rectangular' }]" @click="updateOutputFormat('rectangular')">
+              <button :class="['format-btn', { active: settingsStore.outputFormat === 'rectangular' }]" @click="updateOutputFormat('rectangular')">
                 <span class="format-label">Rectangular</span>
                 <div class="format-diagram">
                   <div class="diagram-horizontal">
@@ -1294,14 +813,14 @@ onUnmounted(() => {
               </button>
             </div>
             <div class="control-buttons-section">
-              <button :class="['highlight-toggle-btn', { active: advancedSettings.highlightEnabled }]" @click="toggleHighlight">
-                Highlight {{ advancedSettings.highlightEnabled ? 'on' : 'off' }}
+              <button :class="['highlight-toggle-btn', { active: settingsStore.highlightEnabled }]" @click="toggleHighlight">
+                Highlight {{ settingsStore.highlightEnabled ? 'on' : 'off' }}
               </button>
               <button 
-                :class="['theme-toggle-btn', { active: currentTheme === 'dark' }]" 
-                @click="currentTheme = currentTheme === 'dark' ? 'light' : 'dark'; debouncedGeneratePreview()"
+                :class="['theme-toggle-btn', { active: settingsStore.enableDarkMode }]" 
+                @click="settingsStore.toggleDarkMode(!settingsStore.enableDarkMode); debouncedGeneratePreview()"
               >
-                {{ currentTheme === 'dark' ? 'Dark' : 'Light' }}
+                {{ settingsStore.enableDarkMode ? 'Dark' : 'Light' }}
               </button>
             </div>
           </div>
@@ -1314,63 +833,46 @@ onUnmounted(() => {
       <div class="workspace-header">
         <div class="workspace-nav">
           <div class="tab-buttons">
-            <button :class="['tab-btn', { active: currentTab === 'select' }]" @click="handleTabChanged('select')">Select</button>
-            <button :class="['tab-btn', { active: currentTab === 'preview' }]" @click="handleTabChanged('preview')">Preview</button>
-            <button :class="['tab-btn', { active: currentTab === 'output', disabled: !isGenerated }]" @click="handleTabChanged('output')" :disabled="!isGenerated">Output</button>
+            <button :class="['tab-btn', { active: uiStore.activeTab === 'select' }]" @click="handleTabChanged('select')">Select</button>
+            <button :class="['tab-btn', { active: uiStore.activeTab === 'preview' }]" @click="handleTabChanged('preview')">Preview</button>
+            <button :class="['tab-btn', { active: uiStore.activeTab === 'output', disabled: !uiStore.isGenerated }]" @click="handleTabChanged('output')" :disabled="!uiStore.isGenerated">Output</button>
           </div>
         </div>
       </div>
       
       <div class="workspace-content">
-        <div v-if="error" class="error-toast">
-          {{ error }}
-          <button @click="error = null" class="error-close">&times;</button>
+        <div v-if="uiStore.error" class="error-toast">
+          {{ uiStore.error }}
+          <button @click="uiStore.setError(null)" class="error-close">&times;</button>
         </div>
         
         <SelectTab
-          v-show="currentTab === 'select'"
-          :selected-file="selectedDisplayFile"
-          :layer-selection="layerSelection"
-          :output-format="advancedSettings.outputFormat"
-          :theme="currentTheme"
-          :highlight-enabled="advancedSettings.highlightEnabled"
-          :show-combos="advancedSettings.showCombos"
-          :show-header="advancedSettings.showHeader"
-          :generated-images="previewImages"
-          @layer-selection-changed="handleLayerSelectionChanged"
-          @combo-toggled="handleComboToggled"
-          @header-toggled="handleHeaderToggled"
+          v-show="uiStore.activeTab === 'select'"
         />
         
         <PreviewTab
-          v-show="currentTab === 'preview'"
-          :selected-file="selectedDisplayFile"
-          :layer-selection="layerSelection"
-          :output-format="advancedSettings.outputFormat"
-          :theme="currentTheme"
-          :highlight-enabled="advancedSettings.highlightEnabled"
-          :show-combos="advancedSettings.showCombos"
-          :show-header="advancedSettings.showHeader"
-          :generated-images="previewImages"
-          @generate="handleGenerate"
+          v-show="uiStore.activeTab === 'preview'"
         />
         
         <OutputTab
-          v-show="currentTab === 'output'"
-          :output-images="outputImages"
-          :output-format="advancedSettings.outputFormat"
-          @download="handleDownload"
+          v-show="uiStore.activeTab === 'output'"
         />
       </div>
       
       <!-- 詳細設定領域 -->
-      <AdvancedSettings
-        :replace-rules="replaceRules"
-        @rules-changed="handleReplaceRulesChanged"
-        @layout-changed="handleKeyboardLayoutChanged"
-      />
+      <AdvancedSettings />
     </main>
   </div>
+
+  <!-- トースト通知 -->
+  <Toast
+    v-for="toast in uiStore.toasts"
+    :key="toast.id"
+    :type="toast.type"
+    :title="toast.title"
+    :message="toast.message"
+    @close="uiStore.removeToast(toast.id)"
+  />
 </template>
 
 <style scoped>
@@ -1518,8 +1020,8 @@ onUnmounted(() => {
   }
   
   .file-grid {
-    grid-template-columns: 1fr;
-    gap: 3px;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
   }
 }
 
@@ -1553,8 +1055,9 @@ onUnmounted(() => {
 
 .file-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+  align-items: start;
 }
 
 .layout-section {
