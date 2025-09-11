@@ -12,7 +12,12 @@
         >
           Replace
         </button>
-        <!-- 将来的に他のタブを追加 -->
+        <button 
+          :class="['tab-btn', { active: currentTab === 'keyboard' }]"
+          @click="currentTab = 'keyboard'"
+        >
+          Keyboard
+        </button>
       </div>
       
       <div class="tab-content">
@@ -20,6 +25,10 @@
           v-show="currentTab === 'replace'"
           :replace-rules="replaceRules"
           @rules-changed="handleRulesChanged"
+        />
+        <KeyboardTab 
+          v-show="currentTab === 'keyboard'"
+          @layout-changed="handleLayoutChanged"
         />
       </div>
     </div>
@@ -29,6 +38,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import ReplaceTab from './ReplaceTab.vue'
+import KeyboardTab from './KeyboardTab.vue'
 
 export interface ReplaceRule {
   id: string
@@ -43,12 +53,17 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   rulesChanged: [rules: ReplaceRule[]]
+  layoutChanged: [layout: string]
 }>()
 
 const currentTab = ref('replace')
 
 const handleRulesChanged = (rules: ReplaceRule[]) => {
   emit('rulesChanged', rules)
+}
+
+const handleLayoutChanged = (layout: string) => {
+  emit('layoutChanged', layout)
 }
 </script>
 

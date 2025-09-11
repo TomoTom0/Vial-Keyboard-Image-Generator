@@ -87,7 +87,7 @@ const addEmptyRuleIfNeeded = () => {
   if (!lastRule || lastRule.from !== '' || lastRule.to !== '') {
     const newRule: ReplaceRule = {
       id: generateId(),
-      enabled: false,
+      enabled: true, // デフォルトで有効
       from: '',
       to: ''
     }
@@ -125,8 +125,8 @@ const hasUnsavedChanges = (index: number): boolean => {
   const savedRule = savedRules.value.find(r => r.id === localRule.id)
   
   if (!savedRule) {
-    // 新しいルールで内容がある場合
-    return localRule.from !== '' || localRule.to !== ''
+    // 新しいルールで内容がある場合（両方に値が入っている場合のみ）
+    return localRule.from.trim() !== '' && localRule.to.trim() !== ''
   }
   
   // 既存ルールの変更をチェック
@@ -149,6 +149,12 @@ const isLastEmptyRule = (index: number): boolean => {
 const saveRule = (index: number) => {
   const rule = localRules.value[index]
   
+  // バリデーション: 両方のフィールドに値が入っている場合のみ保存
+  if (rule.from.trim() === '' || rule.to.trim() === '') {
+    console.log('Both from and to fields must be filled to save')
+    return
+  }
+  
   // 保存済みリストを更新
   const savedIndex = savedRules.value.findIndex(r => r.id === rule.id)
   if (savedIndex >= 0) {
@@ -158,7 +164,7 @@ const saveRule = (index: number) => {
   }
   
   // 親コンポーネントに変更を通知
-  const validRules = savedRules.value.filter(r => r.from !== '' || r.to !== '')
+  const validRules = savedRules.value.filter(r => r.from.trim() !== '' && r.to.trim() !== '')
   emit('rulesChanged', validRules)
 }
 

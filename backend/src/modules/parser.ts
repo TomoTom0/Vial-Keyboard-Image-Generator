@@ -138,11 +138,86 @@ export class Parser {
             }
         }
 
+        // モディファイアタップキー処理
+        const modifierTapKeys = [
+            { prefix: 'LCTL_T(', modifier: 'LCTL' },
+            { prefix: 'LSFT_T(', modifier: 'LSFT' },
+            { prefix: 'LALT_T(', modifier: 'LALT' },
+            { prefix: 'LGUI_T(', modifier: 'LGUI' },
+            { prefix: 'RCTL_T(', modifier: 'RCTL' },
+            { prefix: 'RSFT_T(', modifier: 'RSFT' },
+            { prefix: 'RALT_T(', modifier: 'RALT' },
+            { prefix: 'RGUI_T(', modifier: 'RGUI' }
+        ];
+
+        for (const tapKey of modifierTapKeys) {
+            if (convertedKeyStr.startsWith(tapKey.prefix)) {
+                const match = convertedKeyStr.match(new RegExp(`${tapKey.prefix.replace('(', '\\(')}KC_(.+)\\)`)) || 
+                             convertedKeyStr.match(new RegExp(`${tapKey.prefix.replace('(', '\\(')}(.+)\\)`));
+                if (match) {
+                    const baseKey = match[1];
+                    
+                    // KC_プレフィックスを除去
+                    let keyName = baseKey.replace(/^KC_/, '');
+                    
+                    // 一般的なキー名の変換
+                    switch (keyName) {
+                        case 'SPACE': keyName = 'SPACE'; break;
+                        case 'TAB': keyName = 'TAB'; break;
+                        case 'ENTER': keyName = 'ENTER'; break;
+                        default: keyName = keyName;
+                    }
+                    
+                    return {
+                        mainText: keyName,
+                        subTexts: [tapKey.modifier],
+                        isSpecial: true
+                    };
+                }
+            }
+        }
+
         // TO(layer)処理
         if (convertedKeyStr.startsWith('TO(')) {
             const match = convertedKeyStr.match(/TO\((\d+)\)/);
             if (match) {
                 return { mainText: `TO(${match[1]})`, subText: undefined, isSpecial: true };
+            }
+        }
+
+        // OSM(モディファイア)処理
+        if (convertedKeyStr.startsWith('OSM(')) {
+            const match = convertedKeyStr.match(/OSM\((.+)\)/);
+            if (match) {
+                const modifiers = match[1];
+                let shortForm = 'OSM(';
+                
+                // 左側と右側のモディファイアを分けて処理
+                const leftMods = [];
+                const rightMods = [];
+                
+                if (modifiers.includes('MOD_LCTL')) leftMods.push('C');
+                if (modifiers.includes('MOD_LSFT')) leftMods.push('S');
+                if (modifiers.includes('MOD_LALT')) leftMods.push('A');
+                if (modifiers.includes('MOD_LGUI')) leftMods.push('G');
+                
+                if (modifiers.includes('MOD_RCTL')) rightMods.push('RC');
+                if (modifiers.includes('MOD_RSFT')) rightMods.push('RS');
+                if (modifiers.includes('MOD_RALT')) rightMods.push('RA');
+                if (modifiers.includes('MOD_RGUI')) rightMods.push('RG');
+                
+                // 左側のモディファイアがある場合は L プレフィックス付き
+                let result = '';
+                if (leftMods.length > 0) {
+                    result += 'L' + leftMods.join('');
+                }
+                if (rightMods.length > 0) {
+                    result += rightMods.join('');
+                }
+                
+                shortForm += result + ')';
+                
+                return { mainText: shortForm, subText: undefined, isSpecial: true };
             }
         }
 
@@ -204,7 +279,7 @@ export class Parser {
                 'RO': '\\',            // RO (日本語配列の\キー)
                 'INT1': '_',           // 日本語配列のアンダーバー位置
                 'INT3': '\\',          // 日本語配列のバックスラッシュ
-                'CAPSLOCK': 'Caps', 'PSCREEN': 'Print\nScreen',
+                'CAPSLOCK': 'Caps', 'PSCREEN': 'PrtScr',
                 // 修飾キー
                 'LCTRL': 'LCtrl', 'LSHIFT': 'LShift', 'LALT': 'LAlt', 'LGUI': 'LGui',
                 'RCTRL': 'RCtrl', 'RSHIFT': 'RShift', 'RALT': 'RAlt', 'RGUI': 'RGui',
@@ -220,7 +295,7 @@ export class Parser {
                 'KP_0': '0', 'KP_1': '1', 'KP_2': '2', 'KP_3': '3', 'KP_4': '4',
                 'KP_5': '5', 'KP_6': '6', 'KP_7': '7', 'KP_8': '8', 'KP_9': '9',
                 'KP_DOT': '.', 'KP_SLASH': '/', 'KP_ASTERISK': '*', 'KP_MINUS': '-',
-                'KP_PLUS': '+', 'KP_EQUAL': '=', 'KP_ENTER': 'Enter',
+                'KP_PLUS': '+', 'KP_EQUAL': '=', 'KP_ENTER': 'Enter', 'KP_COMMA': ',',
                 // 日本語キー
                 'MHEN': 'MHEN', 'HENK': 'HENK', 'KANA': 'KANA',
                 // 透過キー

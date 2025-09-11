@@ -544,6 +544,13 @@ const handleReplaceRulesChanged = (rules: ReplaceRule[]) => {
   generatePreviewImages()
 }
 
+// キーボードレイアウト変更時の処理
+const handleKeyboardLayoutChanged = (layout: string) => {
+  console.log('Keyboard layout changed:', layout)
+  // 現在は画像生成に反映しない（要求通り）
+  // 将来的にここで設定を保存し、画像生成に反映する
+}
+
 // Preview generation
 const generatePreviewImages = async () => {
   try {
@@ -1351,6 +1358,7 @@ onUnmounted(() => {
       <AdvancedSettings
         :replace-rules="replaceRules"
         @rules-changed="handleReplaceRulesChanged"
+        @layout-changed="handleKeyboardLayoutChanged"
       />
     </main>
   </div>

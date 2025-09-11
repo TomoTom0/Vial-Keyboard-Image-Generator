@@ -421,10 +421,12 @@ export class CanvasDrawingUtils {
     // 左側最後のキー（V: unitX * 5.0）と右側最初のキー（M: unitX * 8.0）の中間のX座標
     const leftKeyEndX = margin + unitX * 5.0 + keyWidth;
     const rightKeyStartX = margin + unitX * 8.0;
-    const centerX = (leftKeyEndX + rightKeyStartX) / 2;
+    const centerX = (leftKeyEndX + rightKeyStartX) / 2 + 15; // 右に15px移動
     
-    ctx.font = 'bold 24px Arial, sans-serif';
-    ctx.fillStyle = colors.textSub;
+    ctx.font = 'bold 32px Arial, sans-serif'; // サイズを大きく
+    // より見やすい色を設定（背景色に基づいて判定）
+    const isDarkTheme = colors.background === '#1c1c20' || colors.textNormal === '#f0f6fc';
+    ctx.fillStyle = isDarkTheme ? '#ffffff' : '#000000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`#${layerIndex}`, centerX, thirdRowY);
