@@ -29,8 +29,11 @@ export function getCanvasImageUrl(
   selectedLayers?: { [layerId: number]: boolean }
 ): string {
   if (!generatedImages || generatedImages.length === 0) {
+    console.log(`🔍 getCanvasImageUrl: No images available for type ${type}`)
     return ''
   }
+  
+  console.log(`🔍 getCanvasImageUrl: Looking for ${type} images from`, generatedImages.map(img => ({id: img.id, type: img.type})))
 
   // 表示列数を計算
   let displayColumns: number
@@ -51,15 +54,23 @@ export function getCanvasImageUrl(
 
   // 生成された画像から適切な幅の画像を探す
   const targetImage = generatedImages.find(img => 
-    img.type === type && img.id.includes(`browser-${type}-${displayColumns}x`)
+    img.type === type && (
+      img.id.includes(`browser-${type}-${displayColumns}x`) ||
+      img.id.includes(`${type}-${displayColumns}x`)
+    )
   )
   
   // 見つからない場合は1x幅をフォールバック
   const fallbackImage = generatedImages.find(img => 
-    img.type === type && img.id.includes(`browser-${type}-1x`)
+    img.type === type && (
+      img.id.includes(`browser-${type}-1x`) ||
+      img.id.includes(`${type}-1x`)
+    )
   )
   
   const selectedImage = targetImage || fallbackImage
+  
+  console.log(`🔍 getCanvasImageUrl: Selected image for ${type}-${displayColumns}x:`, selectedImage?.id || 'Not found')
   
   // Canvas要素が存在する場合は、Data URLに変換
   if (selectedImage?.canvas) {

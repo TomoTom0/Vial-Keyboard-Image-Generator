@@ -50,7 +50,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { LAYERS } from '../constants/layout'
-import { getCanvasImageUrl } from '../utils/imageUtils'
 
 interface LayerSelection {
   [layerId: number]: boolean
@@ -133,13 +132,40 @@ const getHeaderImageUrl = (): string => {
   if (props.selectedFile === 'sample') {
     return `/assets/sample/keyboard/dark/0-0/header-normal-low.png`
   } else if (props.selectedFile && props.generatedImages) {
-    return getCanvasImageUrl(
-      'header',
-      props.generatedImages,
-      props.outputFormat || 'separated',
-      false, // PreviewTabでは有効レイヤー数を使用
-      props.layerSelection
+    // プレビュータブ用の適切な幅を計算（選択レイヤー数ベース）
+    let displayColumns = 1
+    if (props.outputFormat === 'vertical') {
+      displayColumns = 1
+    } else if (props.outputFormat === 'rectangular') {
+      const selectedCount = Object.values(props.layerSelection).filter(Boolean).length
+      if (selectedCount >= 5) {
+        displayColumns = 3
+      } else if (selectedCount >= 2) {
+        displayColumns = 2
+      } else {
+        displayColumns = 1
+      }
+    } else { // separated
+      displayColumns = 1
+    }
+    
+    // 適切な幅のヘッダー画像を探す
+    const targetHeader = props.generatedImages.find(img => 
+      img.type === 'header' && (
+        img.id.includes(`header-${displayColumns}x`) || 
+        img.id.includes(`browser-header-${displayColumns}x`)
+      )
     )
+    const fallbackHeader = props.generatedImages.find(img => 
+      img.type === 'header' && (
+        img.id.includes('header-1x') || 
+        img.id.includes('browser-header-1x')
+      )
+    )
+    const headerImage = targetHeader || fallbackHeader
+    console.log(`🔍 PreviewTab: Available images:`, props.generatedImages.map(img => img.id))
+    console.log(`🔍 PreviewTab: Looking for header-${displayColumns}x (${Object.values(props.layerSelection).filter(Boolean).length} selected), found:`, headerImage?.id)
+    return headerImage ? headerImage.url : ''
   }
   return ''
 }
@@ -148,13 +174,39 @@ const getComboImageUrl = (): string => {
   if (props.selectedFile === 'sample') {
     return `/assets/sample/keyboard/dark/0-0/combo-normal-low.png`
   } else if (props.selectedFile && props.generatedImages) {
-    return getCanvasImageUrl(
-      'combo',
-      props.generatedImages,
-      props.outputFormat || 'separated',
-      false, // PreviewTabでは有効レイヤー数を使用
-      props.layerSelection
+    // プレビュータブ用の適切な幅を計算（選択レイヤー数ベース）
+    let displayColumns = 1
+    if (props.outputFormat === 'vertical') {
+      displayColumns = 1
+    } else if (props.outputFormat === 'rectangular') {
+      const selectedCount = Object.values(props.layerSelection).filter(Boolean).length
+      if (selectedCount >= 5) {
+        displayColumns = 3
+      } else if (selectedCount >= 2) {
+        displayColumns = 2
+      } else {
+        displayColumns = 1
+      }
+    } else { // separated
+      displayColumns = 1
+    }
+    
+    // 適切な幅のコンボ画像を探す
+    const targetCombo = props.generatedImages.find(img => 
+      img.type === 'combo' && (
+        img.id.includes(`combo-${displayColumns}x`) || 
+        img.id.includes(`browser-combo-${displayColumns}x`)
+      )
     )
+    const fallbackCombo = props.generatedImages.find(img => 
+      img.type === 'combo' && (
+        img.id.includes('combo-1x') || 
+        img.id.includes('browser-combo-1x')
+      )
+    )
+    const comboImage = targetCombo || fallbackCombo
+    console.log(`🔍 PreviewTab: Looking for combo-${displayColumns}x (${Object.values(props.layerSelection).filter(Boolean).length} selected), found:`, comboImage?.id)
+    return comboImage ? comboImage.url : ''
   }
   return ''
 }

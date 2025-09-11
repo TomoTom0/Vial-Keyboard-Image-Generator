@@ -1,5 +1,5 @@
 // ブラウザ対応版 ComponentBatchGenerator
-import type { VialConfig, RenderOptions, ComboInfo } from './types'
+import type { VialConfig, RenderOptions, ComboInfo, ReplaceRule } from './types'
 import { Utils } from './utils'
 import { Parser } from './parser'
 import { CanvasDrawingUtils, type CanvasAdapter } from './canvasDrawingUtils'
@@ -19,6 +19,7 @@ interface ComponentGeneratorOptions {
     comboHighlight: boolean;
     subtextHighlight: boolean;
     quality: 'high' | 'low';
+    replaceRules?: ReplaceRule[];
 }
 
 interface GeneratedComponent {
@@ -58,15 +59,17 @@ export class BrowserComponentBatchGenerator {
         vilFileContent: string,
         options: ComponentGeneratorOptions
     ): Promise<GeneratedComponent[]> {
-        const {
-            configPath,
-            colorMode,
-            comboHighlight,
-            subtextHighlight,
-            quality
-        } = options;
+        try {
+            const {
+                configPath,
+                colorMode,
+                comboHighlight,
+                subtextHighlight,
+                quality,
+                replaceRules
+            } = options;
 
-        const components: GeneratedComponent[] = [];
+            const components: GeneratedComponent[] = [];
 
 
         // Vial設定を読み込み
@@ -91,7 +94,7 @@ export class BrowserComponentBatchGenerator {
         // 1. 個別レイヤー画像を生成（バックエンドと同じロジックを使用）
         const layerCanvases: HTMLCanvasElement[] = [];
         for (let layerIndex = 0; layerIndex < config.layout.length; layerIndex++) {
-            const canvas = this.generateLayerCanvas(config, layerIndex, renderOptions, scale);
+            const canvas = this.generateLayerCanvas(config, layerIndex, renderOptions, scale, replaceRules);
             layerCanvases.push(canvas);
             components.push({
                 canvas,
@@ -200,11 +203,16 @@ export class BrowserComponentBatchGenerator {
         // 4. 結合画像を生成（TODO: 必要に応じて実装）
         // 縦配置結合と横配置結合は別途実装
 
-        return components;
+            return components;
+        } catch (error) {
+            console.error('BrowserComponentBatchGenerator.generateAllComponents failed:', error);
+            throw new Error(`Canvas generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
     }
 
     // バックエンドと同じレイヤー画像生成ロジック（ブラウザCanvasAdapter使用）
-    private static generateLayerCanvas(config: VialConfig, layerIndex: number, options: RenderOptions, scale: number): HTMLCanvasElement {
+    private static generateLayerCanvas(config: VialConfig, layerIndex: number, options: RenderOptions, scale: number, replaceRules?: ReplaceRule[]): HTMLCanvasElement {
+        try {
         // Combo情報を解析（バックエンドの共通モジュールを使用）
         const combos = BackendParser.parseComboInfo(config);
 
@@ -247,7 +255,7 @@ export class BrowserComponentBatchGenerator {
                     const stringKeycode = String(keycode);
                     const colors = getThemeColors(options.theme);
                     CanvasDrawingUtils.drawKey(ctx, pos, label, stringKeycode, options, colors, combos);
-                    CanvasDrawingUtils.drawText(ctx, pos, label, stringKeycode, options, colors, combos);
+                    CanvasDrawingUtils.drawText(ctx, pos, label, stringKeycode, options, colors, combos, replaceRules);
                 }
             }
         }
@@ -255,6 +263,10 @@ export class BrowserComponentBatchGenerator {
         // レイヤー番号を装飾付きで描画（フロントエンド独自canvasDrawingUtilsを使用）
         CanvasDrawingUtils.drawLayerNumber(ctx, layerIndex, canvas.width / scale, canvas.height / scale, colors);
 
-        return canvas;
+            return canvas;
+        } catch (error) {
+            console.error(`generateLayerCanvas failed for layer ${layerIndex}:`, error);
+            throw new Error(`Layer ${layerIndex} canvas generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
     }
 }

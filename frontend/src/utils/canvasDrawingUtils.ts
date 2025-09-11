@@ -4,6 +4,7 @@
 import type { VialConfig, RenderOptions, ComboInfo } from './types';
 import { getThemeColors } from './types';
 import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
+import type { ReplaceRule } from '../components/AdvancedSettings.vue';
 
 export interface CanvasAdapter {
   createCanvas(width: number, height: number): any;
@@ -20,6 +21,26 @@ export class CanvasDrawingUtils {
   static get margin() { return KEYBOARD_CONSTANTS.margin }
   static get unitX() { return KEYBOARD_CONSTANTS.unitX }
   static get unitY() { return KEYBOARD_CONSTANTS.unitY }
+
+  // テキスト置換機能
+  static applyTextReplacements(text: string, replaceRules: ReplaceRule[] = []): string {
+    if (!replaceRules || replaceRules.length === 0) {
+      return text
+    }
+    
+    let result = text
+    for (const rule of replaceRules) {
+      if (rule.enabled && rule.from && rule.from !== '') {
+        // 完全一致置換（大文字小文字区別）
+        if (result === rule.from) {
+          result = rule.to || ''
+          break // 最初にマッチしたルールのみ適用
+        }
+      }
+    }
+    
+    return result
+  }
 
 
   // キー配置情報を取得（元のutils.tsと同じ配置で、width, heightも含める）
@@ -144,7 +165,8 @@ export class CanvasDrawingUtils {
     config: VialConfig,
     layerIndex: number,
     options: RenderOptions,
-    scale: number = 1.0
+    scale: number = 1.0,
+    replaceRules?: ReplaceRule[]
   ): any {
     // 画像サイズを計算
     const contentWidth = this.unitX * 14.0 + 30.0 + this.keyWidth;
@@ -211,7 +233,7 @@ export class CanvasDrawingUtils {
 
           // キーを描画（実際のcombos情報を渡す）
           this.drawKey(ctx, pos, label, String(keycode), options, colors, combos);
-          this.drawText(ctx, pos, label, String(keycode), options, colors, combos);
+          this.drawText(ctx, pos, label, String(keycode), options, colors, combos, replaceRules);
         }
       }
     }
@@ -295,9 +317,22 @@ export class CanvasDrawingUtils {
     keycode: string,
     options: RenderOptions,
     colors: any,
-    combos?: ComboInfo[]
+    combos?: ComboInfo[],
+    replaceRules?: ReplaceRule[]
   ) {
     if (label.mainText === '') return;
+
+    // テキスト置換を適用
+    const replacedMainText = this.applyTextReplacements(label.mainText, replaceRules)
+    if (replacedMainText === '') return;
+
+    // サブテキストにも置換を適用
+    let replacedSubTexts: string[] = []
+    if (label.subTexts && Array.isArray(label.subTexts)) {
+      replacedSubTexts = label.subTexts.map((subText: string) => 
+        this.applyTextReplacements(subText, replaceRules)
+      ).filter((text: string) => text !== '') // 空文字列を除外
+    }
 
     const {
       highlightComboKeys = true,
@@ -306,18 +341,18 @@ export class CanvasDrawingUtils {
     } = options;
 
     const isComboKey = (combos && keycode !== undefined) ? this.isComboInputKey(keycode, combos) : false;
-    const hasSubTexts = label.subTexts && label.subTexts.length > 0;
+    const hasSubTexts = replacedSubTexts.length > 0;
 
     const mainColor = (showTextColors && ((isComboKey && highlightComboKeys) || (hasSubTexts && highlightSubtextKeys))) 
         ? colors.textSpecial 
         : colors.textNormal;
     
     let fontSize: number;
-    if (label.mainText.length === 1) {
+    if (replacedMainText.length === 1) {
       fontSize = 24;
-    } else if (label.mainText.length > 8) {
+    } else if (replacedMainText.length > 8) {
       fontSize = 14;
-    } else if (label.subText) {
+    } else if (hasSubTexts) {
       fontSize = 20;
     } else {
       fontSize = 18;
@@ -328,36 +363,36 @@ export class CanvasDrawingUtils {
     ctx.textAlign = 'center';
 
     const mainY = pos.y + pos.height * 0.35;
-    ctx.fillText(label.mainText, pos.x + pos.width / 2, mainY);
+    ctx.fillText(replacedMainText, pos.x + pos.width / 2, mainY);
 
-    // サブテキストの描画
-    if (label.subTexts && label.subTexts.length > 0) {
+    // サブテキストの描画（置換後のテキストを使用）
+    if (replacedSubTexts.length > 0) {
       ctx.fillStyle = colors.textSub;
       
-      if (label.subTexts.length === 1) {
+      if (replacedSubTexts.length === 1) {
         ctx.font = '14px Arial, sans-serif';
         const y = pos.y + pos.height * 0.75;
-        ctx.fillText(label.subTexts[0], pos.x + pos.width / 2, y);
+        ctx.fillText(replacedSubTexts[0], pos.x + pos.width / 2, y);
       } else {
         const startY = pos.y + pos.height * 0.65;
         const lineHeight = 13;
         
-        for (let i = 0; i < label.subTexts.length; i += 2) {
+        for (let i = 0; i < replacedSubTexts.length; i += 2) {
           const row = Math.floor(i / 2);
           const y = startY + (row * lineHeight);
           
-          if (i + 1 < label.subTexts.length) {
+          if (i + 1 < replacedSubTexts.length) {
             const leftX = pos.x + pos.width * 0.25;
             const rightX = pos.x + pos.width * 0.75;
             
             ctx.font = '13px Arial, sans-serif';
-            ctx.fillText(label.subTexts[i], leftX, y);
+            ctx.fillText(replacedSubTexts[i], leftX, y);
             
             ctx.font = '11px Arial, sans-serif';
-            ctx.fillText(label.subTexts[i + 1], rightX, y);
+            ctx.fillText(replacedSubTexts[i + 1], rightX, y);
           } else {
             ctx.font = '11px Arial, sans-serif';
-            ctx.fillText(label.subTexts[i], pos.x + pos.width / 2, y);
+            ctx.fillText(replacedSubTexts[i], pos.x + pos.width / 2, y);
           }
         }
       }

@@ -37,6 +37,14 @@ export interface ComboInfo {
     index: number;          // 元のインデックス番号
 }
 
+// テキスト置換ルール
+export interface ReplaceRule {
+    id: string;
+    enabled: boolean;
+    from: string;
+    to: string;
+}
+
 // 描画オプション
 export interface RenderOptions {
     highlightComboKeys?: boolean;      // Combo入力キーの背景色変更 (デフォルト: true)

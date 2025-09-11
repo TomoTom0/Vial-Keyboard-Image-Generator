@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import FileUpload from './components/FileUpload.vue'
 import FileHistory from './components/FileHistory.vue'
 import SelectTab from './components/SelectTab.vue'
 import PreviewTab from './components/PreviewTab.vue'
 import OutputTab from './components/OutputTab.vue'
+import AdvancedSettings, { type ReplaceRule } from './components/AdvancedSettings.vue'
 import { useFileUpload } from './composables/useFileUpload'
 import { useImageGeneration, type GenerationOptions } from './composables/useImageGeneration'
 import { KEYBOARD_CONSTANTS } from './constants/keyboard'
@@ -57,8 +58,62 @@ const selectedFile = ref<string>(savedSelectedFile)
 const selectedDisplayFile = ref<string>('sample')
 const recentFiles = ref<RecentFile[]>([])
 
+// 置換ルール設定
+const replaceRules = ref<ReplaceRule[]>([])
+
+// 置換ルールのキャッシュ保存・ロード
+const saveReplaceRulesToCache = () => {
+  localStorage.setItem('vial-keyboard-replaceRules', JSON.stringify(replaceRules.value))
+}
+
+const loadReplaceRulesFromCache = () => {
+  const cached = localStorage.getItem('vial-keyboard-replaceRules')
+  if (cached) {
+    try {
+      const rules = JSON.parse(cached)
+      if (Array.isArray(rules)) {
+        replaceRules.value = rules
+      }
+    } catch (e) {
+      console.warn('Failed to load replace rules from cache:', e)
+    }
+  }
+}
+
+// 高度な設定のキャッシュ保存・ロード
+const saveAdvancedSettingsToCache = () => {
+  localStorage.setItem('vial-keyboard-advancedSettings', JSON.stringify(advancedSettings.value))
+}
+
+const loadAdvancedSettingsFromCache = () => {
+  const cached = localStorage.getItem('vial-keyboard-advancedSettings')
+  if (cached) {
+    try {
+      const settings = JSON.parse(cached)
+      if (settings && typeof settings === 'object') {
+        // 既存の設定をマージして不足分を補完
+        advancedSettings.value = {
+          ...advancedSettings.value,
+          ...settings
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load advanced settings from cache:', e)
+    }
+  }
+}
+
 // Control panel tab state for responsive design
-const controlPanelTab = ref<'layout' | 'upload' | 'format'>('layout')
+const controlPanelTab = ref<'layout' | 'upload' | 'format'>('upload') // 初期はファイルタブ
+
+// ファイル選択状態に応じてタブを自動切り替え
+const updateControlPanelTab = () => {
+  if (!selectedFile.value || selectedFile.value === 'sample') {
+    controlPanelTab.value = 'upload' // ファイル未選択時はファイルタブ
+  } else {
+    controlPanelTab.value = 'format' // ファイル選択済みは設定タブ
+  }
+}
 
 // Settings
 const advancedSettings = ref<AdvancedSettings>({
@@ -88,8 +143,14 @@ const error = ref<string | null>(null)
 const canvasCache = new Map<string, any[]>()
 let generateTimeout: NodeJS.Timeout | null = null
 
-const generateCacheKey = (fileName: string, theme: string, showCombos: boolean, highlightEnabled: boolean, tab?: string, layerSelection?: string) => {
-  return `${fileName}-${theme}-${showCombos}-${highlightEnabled}-${tab || 'none'}-${layerSelection || 'none'}`
+const generateCacheKey = (fileName: string, theme: string, showCombos: boolean, highlightEnabled: boolean, tab?: string, layerSelection?: string, replaceRules?: ReplaceRule[], outputFormat?: string) => {
+  if (!fileName || typeof fileName !== 'string') {
+    throw new Error('Invalid fileName for cache key generation')
+  }
+  const rulesHash = replaceRules && Array.isArray(replaceRules) 
+    ? JSON.stringify(replaceRules.filter(r => r && typeof r === 'object' && r.enabled && r.from !== '' && r.to !== '')) 
+    : 'none'
+  return `${fileName}-${theme}-${showCombos}-${highlightEnabled}-${tab || 'none'}-${layerSelection || 'none'}-${rulesHash}-${outputFormat || 'none'}`
 }
 
 // 結合画像を生成する関数
@@ -256,7 +317,6 @@ const debouncedGeneratePreview = () => {
 
 // Composables
 const {
-  currentFile,
   hasFile,
   setFile,
   validateFile
@@ -331,6 +391,13 @@ const handleFileSelected = async (file: File) => {
 }
 
 const handleFileHistorySelected = async (recentFile: RecentFile) => {
+  // recentFileのnullチェック
+  if (!recentFile || !recentFile.name || typeof recentFile.name !== 'string') {
+    console.error('Invalid recentFile passed to handleFileHistorySelected:', recentFile)
+    error.value = 'Invalid file selection'
+    return
+  }
+  
   // サンプルが渡された場合は選択解除
   if (recentFile.name === 'sample') {
     selectedFile.value = 'sample'
@@ -343,8 +410,7 @@ const handleFileHistorySelected = async (recentFile: RecentFile) => {
   selectedDisplayFile.value = recentFile.name
   
   try {
-    // 共通のgeneratePreviewImagesを使用（currentFile.valueはクリア）
-    setFile(null)  // currentFileをクリア
+    // 共通のgeneratePreviewImagesを使用
     generatePreviewImages()
     
     console.log('📁 履歴ファイル選択完了:', recentFile.name)
@@ -469,6 +535,15 @@ const handleHeaderToggled = (enabled: boolean) => {
   generatePreviewImages()
 }
 
+// 置換ルール変更時の処理
+const handleReplaceRulesChanged = (rules: ReplaceRule[]) => {
+  replaceRules.value = rules
+  // キャッシュに保存
+  saveReplaceRulesToCache()
+  // ルールが変更されたらプレビュー画像を再生成
+  generatePreviewImages()
+}
+
 // Preview generation
 const generatePreviewImages = async () => {
   try {
@@ -477,7 +552,6 @@ const generatePreviewImages = async () => {
     
     console.log('🔍 Debug: selectedDisplayFile.value =', selectedDisplayFile.value)
     console.log('🔍 Debug: selectedFile.value =', selectedFile.value)
-    console.log('🔍 Debug: currentFile.value =', currentFile.value?.name)
     
     if (selectedDisplayFile.value === 'sample') {
       // サンプルファイルの場合 - 静的画像を使用
@@ -492,6 +566,12 @@ const generatePreviewImages = async () => {
       }
       previewImages.value = sampleImages
     } else if (selectedFile.value && selectedFile.value !== 'sample') {
+      // selectedFile.valueの型チェック
+      if (typeof selectedFile.value !== 'string') {
+        console.error('selectedFile.value is not a string:', selectedFile.value)
+        throw new Error('Invalid file selection')
+      }
+      
       // キャッシュキーを生成（レイヤー選択状態も含める）
       const layerSelectionKey = Object.entries(layerSelection.value)
         .filter(([_, selected]) => selected)
@@ -505,7 +585,9 @@ const generatePreviewImages = async () => {
         advancedSettings.value.showCombos,
         advancedSettings.value.highlightEnabled,
         currentTab.value,
-        layerSelectionKey
+        layerSelectionKey,
+        replaceRules.value || [],
+        advancedSettings.value.outputFormat
       )
       
       console.log('🔑 Cache key:', cacheKey)
@@ -521,8 +603,11 @@ const generatePreviewImages = async () => {
       
       // キャッシュにない場合は新規生成
       // 現在のファイルコンテンツを取得
-      const recentFile = recentFiles.value.find(f => f.name === selectedFile.value)
+      const recentFile = recentFiles.value.find(f => f && f.name === selectedFile.value)
       if (!recentFile) throw new Error('ファイルが見つかりません')
+      if (!recentFile.content || typeof recentFile.content !== 'string') {
+        throw new Error('ファイルコンテンツが無効です')
+      }
       const base64Content = recentFile.content.replace(/^data:.*base64,/, '')
       const fileContent = atob(base64Content)
       
@@ -543,6 +628,8 @@ const generatePreviewImages = async () => {
   } catch (err) {
     console.error('Preview generation failed:', err)
     error.value = err instanceof Error ? err.message : 'Preview generation failed'
+    // エラー時は適当な画像を表示しない - previewImagesをクリア
+    previewImages.value = []
   } finally {
     isGenerating.value = false
   }
@@ -562,7 +649,8 @@ const generatePreviewImagesForContent = async (fileContent: string, fileName: st
         colorMode: currentTheme.value,
         comboHighlight: advancedSettings.value.showCombos,
         subtextHighlight: advancedSettings.value.highlightEnabled,
-        quality: 'low' // プレビューは低品質
+        quality: 'low', // プレビューは低品質
+        replaceRules: replaceRules.value || []
       }
     )
     
@@ -574,6 +662,7 @@ const generatePreviewImagesForContent = async (fileContent: string, fileName: st
     
     // タブに応じて列数決定のロジックを変更
     console.log('🏷️ Current tab:', currentTab.value)
+    console.log('🏷️ Layer count:', layerCount)
     let displayColumns: number
     if (currentTab.value === 'select') {
       // セレクトタブでは全体レイヤー数で判断
@@ -644,7 +733,9 @@ const generatePreviewImagesForContent = async (fileContent: string, fileName: st
     // プレビュー用画像配列を構築
     const previewImages = []
     
-    // すべての幅のヘッダーを追加（1x, 2x, 3x）
+    // 列数に応じた適切な幅のヘッダーを追加
+    // すべての幅のヘッダー情報を追加
+    console.log('🔍 Available headers:', components.filter(comp => comp.type === 'header').map(comp => comp.name))
     for (let width = 1; width <= 3; width++) {
       const headerComp = components.find(comp => comp.name.includes(`header-${width}x-low`))
       if (headerComp) {
@@ -656,6 +747,8 @@ const generatePreviewImagesForContent = async (fileContent: string, fileName: st
           type: 'header' as const
         })
         console.log(`🏷️ Added header-${width}x to preview images`)
+      } else {
+        console.log(`⚠️ Header-${width}x not found`)
       }
     }
     
@@ -673,7 +766,8 @@ const generatePreviewImagesForContent = async (fileContent: string, fileName: st
       })
     })
     
-    // すべての幅のコンボ情報を追加（1x, 2x, 3x）
+    // すべての幅のコンボ情報を追加
+    console.log('🔍 Available combos:', components.filter(comp => comp.type === 'combo').map(comp => comp.name))
     for (let width = 1; width <= 3; width++) {
       const comboComp = components.find(comp => comp.name.includes(`combo-${width}x-low`))
       if (comboComp) {
@@ -685,6 +779,8 @@ const generatePreviewImagesForContent = async (fileContent: string, fileName: st
           type: 'combo' as const
         })
         console.log(`🤼 Added combo-${width}x to preview images`)
+      } else {
+        console.log(`⚠️ Combo-${width}x not found`)
       }
     }
     
@@ -733,7 +829,8 @@ const handleGenerate = async () => {
         colorMode: currentTheme.value,
         comboHighlight: advancedSettings.value.showCombos,
         subtextHighlight: advancedSettings.value.highlightEnabled,
-        quality: 'high' // 最終出力は高品質
+        quality: 'high', // 最終出力は高品質
+        replaceRules: replaceRules.value || []
       }
     )
     
@@ -775,16 +872,21 @@ const handleGenerate = async () => {
     
     const finalOutputImages = []
     
-    // 新しいファイル名形式: ytomo-vial-kb-元ファイル名最大10文字-タイムスタンプ
+    // 簡略化されたファイル名形式: 元ファイル名-タイムスタンプ
     const generateFileName = (type: string, layerIndex?: number) => {
+      if (!selectedFile.value || typeof selectedFile.value !== 'string') {
+        throw new Error('Invalid selectedFile for filename generation')
+      }
       const originalName = selectedFile.value.replace(/\.vil$/, '')
-      const shortName = originalName.slice(0, 10)
-      const timestamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '') // YYYYMMDDHHMM
+      const shortName = originalName.slice(0, 12) // 文字数を少し増やす
+      const timestamp = new Date().toISOString().slice(11, 16).replace(/[-:T]/g, '') // HHMM のみ
       
       if (layerIndex !== undefined) {
-        return `ytomo-vial-kb-${shortName}-${timestamp}-layer${layerIndex}.png`
+        return `${shortName}-L${layerIndex}-${timestamp}.png`
+      } else if (type.includes('combined') || type.includes('vertical') || type.includes('rectangular')) {
+        return `${shortName}-${timestamp}.png`
       } else {
-        return `ytomo-vial-kb-${shortName}-${timestamp}-${type}.png`
+        return `${shortName}-${type}-${timestamp}.png`
       }
     }
     
@@ -866,6 +968,9 @@ const handleGenerate = async () => {
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Generation failed'
     console.error('Final generation error:', err)
+    // エラー時は適当な画像を表示しない - outputImagesをクリア
+    outputImages.value = []
+    isGenerated.value = false
   } finally {
     isGenerating.value = false
   }
@@ -921,16 +1026,45 @@ const loadRecentFiles = () => {
   }
 }
 
+// ファイル復元時の表示ファイル同期
+const syncDisplayFileAfterLoad = () => {
+  if (selectedFile.value && selectedFile.value !== 'sample') {
+    // 選択されたファイルがrecentFilesに存在するかチェック
+    const fileExists = recentFiles.value.some(f => f.name === selectedFile.value)
+    if (fileExists) {
+      selectedDisplayFile.value = selectedFile.value
+      console.log('📁 Restored file selection:', selectedFile.value)
+    } else {
+      // ファイルが存在しない場合はサンプルに戻す
+      selectedFile.value = 'sample'
+      selectedDisplayFile.value = 'sample'
+      console.log('📁 File not found, falling back to sample')
+    }
+  }
+}
+
 // Initialization
 // タブ変更時にハッシュを更新
 watch(currentTab, (newTab) => {
   updateHash(newTab)
 })
 
+// ファイル選択状態に応じてコントロールパネルタブを自動切り替え
+watch(selectedFile, () => {
+  updateControlPanelTab()
+}, { immediate: true })
+
 // 選択ファイルの変更をlocalStorageに保存
 watch(selectedFile, (newFile) => {
   localStorage.setItem('vial-keyboard-selectedFile', newFile)
 })
+
+// 高度な設定の変更をlocalStorageに保存し、画像を再生成
+watch(advancedSettings, () => {
+  saveAdvancedSettingsToCache()
+  // フォーマット変更時は画像を再生成
+  generatePreviewImages()
+}, { deep: true })
 
 // ハッシュ変更を監視してタブを同期
 const handleHashChange = () => {
@@ -942,12 +1076,19 @@ const handleHashChange = () => {
 
 onMounted(() => {
   loadRecentFiles()
+  loadReplaceRulesFromCache()
+  loadAdvancedSettingsFromCache()
+  
+  // ファイル復元後の表示同期
+  syncDisplayFileAfterLoad()
   
   // ハッシュ変更イベントを監視
   window.addEventListener('hashchange', handleHashChange)
   
-  // 初期表示時にサンプルのプレビューを生成
-  generatePreviewImages()
+  // 設定ロード後に適切な画像を生成
+  nextTick(() => {
+    generatePreviewImages()
+  })
 })
 
 // Cleanup on unmount
@@ -977,7 +1118,7 @@ onUnmounted(() => {
           <div class="layout-preview">
             <div class="layout-sample-small">
               <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
-              <div class="layout-title-overlay">split_40</div>
+              <div class="layout-title-overlay">Corne v4</div>
             </div>
           </div>
         </div>
@@ -1057,14 +1198,14 @@ onUnmounted(() => {
       <!-- モバイル表示（タブ切り替え） -->
       <div class="control-panel-mobile">
         <div class="control-tab-buttons">
-          <button :class="['control-tab-btn', { active: controlPanelTab === 'layout' }]" @click="handleControlPanelTabChanged('layout')">
-            Layout
-          </button>
           <button :class="['control-tab-btn', { active: controlPanelTab === 'upload' }]" @click="handleControlPanelTabChanged('upload')">
             Files
           </button>
           <button :class="['control-tab-btn', { active: controlPanelTab === 'format' }]" @click="handleControlPanelTabChanged('format')">
             Settings
+          </button>
+          <button :class="['control-tab-btn', { active: controlPanelTab === 'layout' }]" @click="handleControlPanelTabChanged('layout')">
+            Layout
           </button>
         </div>
         
@@ -1073,7 +1214,7 @@ onUnmounted(() => {
             <div class="layout-preview">
               <div class="layout-sample-small">
                 <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
-                <div class="layout-title-overlay">split_40</div>
+                <div class="layout-title-overlay">Corne v4</div>
               </div>
             </div>
           </div>
@@ -1205,6 +1346,12 @@ onUnmounted(() => {
           @download="handleDownload"
         />
       </div>
+      
+      <!-- 詳細設定領域 -->
+      <AdvancedSettings
+        :replace-rules="replaceRules"
+        @rules-changed="handleReplaceRulesChanged"
+      />
     </main>
   </div>
 </template>
@@ -1255,12 +1402,25 @@ onUnmounted(() => {
   align-items: stretch;
 }
 
+.control-panel-desktop .layout-section {
+  order: 3;
+}
+
+.control-panel-desktop .upload-section {
+  order: 1;
+}
+
+.control-panel-desktop .format-section {
+  order: 2;
+}
+
 .control-panel-mobile {
   display: none;
 }
 
 .control-tab-buttons {
   display: flex;
+  justify-content: center;
   border-bottom: 1px solid #dee2e6;
   margin-bottom: 15px;
 }
@@ -1275,7 +1435,7 @@ onUnmounted(() => {
   font-weight: 500;
   border-bottom: 2px solid transparent;
   transition: all 0.2s ease;
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .control-tab-btn.active {

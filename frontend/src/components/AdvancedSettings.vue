@@ -1,124 +1,111 @@
 <template>
   <div class="advanced-settings">
-    <div class="setting-group">
-      <label class="setting-item">
-        <input 
-          type="checkbox" 
-          :checked="settings.highlightComboKeys"
-          @change="updateSetting('highlightComboKeys', $event.target.checked)"
-        />
-        <span class="setting-label">Combo Highlight</span>
-      </label>
+    <div class="settings-header">
+      <h3>Advanced Settings</h3>
     </div>
     
-    <div class="setting-group">
-      <label class="setting-item">
-        <input 
-          type="checkbox" 
-          :checked="settings.highlightSubtextKeys"
-          @change="updateSetting('highlightSubtextKeys', $event.target.checked)"
+    <div class="settings-tabs">
+      <div class="tab-buttons">
+        <button 
+          :class="['tab-btn', { active: currentTab === 'replace' }]"
+          @click="currentTab = 'replace'"
+        >
+          Replace
+        </button>
+        <!-- 将来的に他のタブを追加 -->
+      </div>
+      
+      <div class="tab-content">
+        <ReplaceTab 
+          v-show="currentTab === 'replace'"
+          :replace-rules="replaceRules"
+          @rules-changed="handleRulesChanged"
         />
-        <span class="setting-label">Subtext Highlight</span>
-      </label>
-    </div>
-    
-    <div class="setting-group">
-      <div class="setting-label">Output Format</div>
-      <select 
-        :value="settings.outputFormat"
-        @change="updateSetting('outputFormat', $event.target.value)"
-        class="format-select"
-      >
-        <option value="separated">Separated</option>
-        <option value="vertical">Vertical</option>
-        <option value="horizontal">Horizontal</option>
-      </select>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-interface AdvancedSettings {
-  highlightComboKeys: boolean
-  highlightSubtextKeys: boolean
-  outputFormat: 'separated' | 'vertical' | 'horizontal'
+import { ref } from 'vue'
+import ReplaceTab from './ReplaceTab.vue'
+
+export interface ReplaceRule {
+  id: string
+  enabled: boolean
+  from: string
+  to: string
 }
 
 const props = defineProps<{
-  settings: AdvancedSettings
+  replaceRules: ReplaceRule[]
 }>()
 
 const emit = defineEmits<{
-  settingsChanged: [settings: AdvancedSettings]
+  rulesChanged: [rules: ReplaceRule[]]
 }>()
 
-const updateSetting = (key: keyof AdvancedSettings, value: any) => {
-  const newSettings = {
-    ...props.settings,
-    [key]: value
-  }
-  emit('settingsChanged', newSettings)
+const currentTab = ref('replace')
+
+const handleRulesChanged = (rules: ReplaceRule[]) => {
+  emit('rulesChanged', rules)
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .advanced-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.setting-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.setting-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 6px;
-  transition: background-color 0.2s;
-}
-
-.setting-item:hover {
-  background: #f8f9fa;
-}
-
-.setting-label {
-  font-size: 0.875rem;
-  color: #495057;
-  font-weight: 500;
-}
-
-.setting-group > .setting-label {
-  font-size: 0.875rem;
-  color: #6c757d;
-  font-weight: 500;
-  margin-bottom: 0.25rem;
-}
-
-.format-select {
-  padding: 0.5rem;
-  border: 1px solid #ced4da;
-  border-radius: 6px;
   background: white;
-  font-size: 0.875rem;
-  color: #495057;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  margin-top: 20px;
+  overflow: hidden;
 }
 
-.format-select:focus {
-  outline: none;
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+.settings-header {
+  background: #f8f9fa;
+  padding: 12px 20px;
+  border-bottom: 1px solid #dee2e6;
+  
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #495057;
+  }
 }
 
-input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: #0d6efd;
+.settings-tabs {
+  .tab-buttons {
+    display: flex;
+    border-bottom: 1px solid #dee2e6;
+    background: #f8f9fa;
+  }
+  
+  .tab-btn {
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+    
+    &:hover:not(.active) {
+      color: #495057;
+      background: #e9ecef;
+    }
+    
+    &.active {
+      color: #007bff;
+      border-bottom-color: #007bff;
+      background: white;
+    }
+  }
+  
+  .tab-content {
+    padding: 20px;
+  }
 }
 </style>
