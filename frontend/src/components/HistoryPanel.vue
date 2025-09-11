@@ -207,7 +207,7 @@ const loadHistory = async () => {
     const saved = localStorage.getItem('vial-generation-history')
     if (saved) {
       const parsed = JSON.parse(saved)
-      history.value = parsed.map((entry: any) => ({
+      history.value = parsed.map((entry: {timestamp: string, settings: object, images: object[]}) => ({
         ...entry,
         timestamp: new Date(entry.timestamp)
       })).sort((a: HistoryEntry, b: HistoryEntry) => 

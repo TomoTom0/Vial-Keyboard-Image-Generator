@@ -1,12 +1,68 @@
 // 型定義モジュール
 
-// Vial設定の型定義
+// KeyOverride設定の型定義
+export interface KeyOverride {
+    trigger: string | number;
+    replacement: string | number;
+    layers: number;
+    trigger_mods: number;
+    negative_mod_mask: number;
+    suppressed_mods: number;
+    options: number;
+}
+
+// VialSettings設定の型定義
+export interface VialSettings {
+    [key: string]: number;
+}
+
+// TapDance設定の型定義 - [tap, hold, double_tap, tap_hold, tapping_term] - jq分析により最初の4つは文字列、最後は数値
+export interface TapDanceInfo {
+    readonly 0: string;  // tap keycode
+    readonly 1: string;  // hold keycode
+    readonly 2: string;  // double tap keycode (通常KC_NO)
+    readonly 3: string;  // tap hold keycode (通常KC_NO)
+    readonly 4: number;  // tapping term (ミリ秒)
+    readonly length: 5;
+}
+
+// Combo設定の型定義 - [key1, key2, key3, key4, result] - jq分析により全て文字列の5要素配列
+export interface ComboEntry extends Array<string> {
+    0: string;  // first key
+    1: string;  // second key  
+    2: string;  // third key (KC_NO if unused)
+    3: string;  // fourth key (KC_NO if unused)
+    4: string;  // result keycode
+}
+
+// Encoder設定の型定義 - [clockwise, counter_clockwise]
+export interface EncoderEntry extends Array<string> {
+    0: string;  // clockwise rotation (文字列)
+    1: string;  // counter-clockwise rotation (文字列)
+}
+
+// レイヤー構造の型定義
+export type KeyCode = string | -1;  // キーコードは文字列または-1（無効位置）
+
+export interface KeymapLayer {
+    [rowIndex: number]: KeyCode[];  // 各行のキー配列
+}
+
+// Vial設定の型定義（完全版）
 export interface VialConfig {
     version: number;
     uid: number;
-    layout: (string | number)[][][];
-    tap_dance: string[][];
-    combo: string[][];
+    layout: KeymapLayer[];                     // レイヤー配列（-1は無効位置のみ）
+    encoder_layout: string[][][];              // [layer][encoder][direction] 文字列のみ
+    layout_options: number;
+    macro: string[][];                         // [macro_index][step] 文字列のみ
+    vial_protocol: number;
+    via_protocol: number;
+    tap_dance: TapDanceInfo[];                 // [tap_dance_index] 最後の要素のみ数値（タイミング）
+    combo: string[][];                         // [combo_index] 文字列のみ
+    key_override: KeyOverride[];               // [override_index]
+    alt_repeat_key: unknown[];                 // alternate repeat key settings
+    settings: VialSettings;                    // numbered settings
 }
 
 // キーの位置とサイズ
@@ -94,7 +150,10 @@ export const COLORS = {
 // 後方互換性のために古い形式も維持
 export const COLORS_LEGACY = COLORS.dark;
 
+// カラーパレットの型定義
+export type ThemeColors = typeof COLORS.dark;
+
 // テーマに基づいて色を取得するヘルパー関数
-export function getThemeColors(theme: 'dark' | 'light' = 'dark') {
+export function getThemeColors(theme: 'dark' | 'light' = 'dark'): ThemeColors {
     return COLORS[theme];
 }

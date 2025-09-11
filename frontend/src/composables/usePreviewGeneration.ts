@@ -1,5 +1,16 @@
 import { ref } from 'vue'
 
+// APIレスポンスの画像データ構造
+interface ApiImageData {
+  id?: string
+  filename: string
+  type: 'combined' | 'layer'
+  layer?: number
+  url: string
+  size?: number
+  timestamp?: string | number
+}
+
 export interface PreviewOptions {
   theme: 'light' | 'dark'
   format: 'individual' | 'vertical' | 'horizontal'
@@ -51,7 +62,7 @@ export function usePreviewGeneration() {
         throw new Error(data.error || 'Preview generation failed')
       }
 
-      const images = data.images.map((img: any) => ({
+      const images = data.images.map((img: ApiImageData) => ({
         ...img,
         timestamp: new Date(img.timestamp)
       }))
@@ -89,7 +100,7 @@ export function usePreviewGeneration() {
         throw new Error(data.error || 'Sample preview generation failed')
       }
 
-      const images = data.images.map((img: any) => ({
+      const images = data.images.map((img: ApiImageData) => ({
         ...img,
         timestamp: new Date(img.timestamp)
       }))

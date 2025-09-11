@@ -20,6 +20,9 @@ interface ComponentGeneratorOptions {
     quality: 'high' | 'low';
     replaceRules?: ReplaceRule[];
     keyboardLanguage?: string;
+    outputFormat?: 'separated' | 'vertical' | 'rectangular';
+    showHeader?: boolean;
+    showCombos?: boolean;
 }
 
 interface GeneratedComponent {
@@ -66,7 +69,10 @@ export class BrowserComponentBatchGenerator {
                 comboHighlight,
                 subtextHighlight,
                 quality,
-                replaceRules
+                replaceRules,
+                outputFormat,
+                showHeader,
+                showCombos
             } = options;
 
             const components: GeneratedComponent[] = [];
@@ -103,11 +109,12 @@ export class BrowserComponentBatchGenerator {
             });
         }
 
-        // 2. コンボ情報画像を生成（1x, 2x, 3x幅）
-        const combos = Parser.parseComboInfo(config);
-        
-        // 1x幅でコンボ情報生成
-        const combo1xResult = CanvasDrawingUtils.drawCombos(
+        // 2. コンボ情報画像を生成（separatedフォーマット以外でのみ）
+        if (outputFormat !== 'separated' && showCombos !== false) {
+            const combos = Parser.parseComboInfo(config);
+            
+            // 1x幅でコンボ情報生成
+            const combo1xResult = CanvasDrawingUtils.drawCombos(
             this.adapter,
             combos, 
             baseImageWidth, 
@@ -156,8 +163,10 @@ export class BrowserComponentBatchGenerator {
             type: 'combo',
             name: `combo-3x-${quality}`
         });
+        }
 
-        // 3. レイアウト見出し画像を生成（1x, 2x, 3x幅）
+        // 3. レイアウト見出し画像を生成（separatedフォーマット以外でのみ）
+        if (outputFormat !== 'separated' && showHeader !== false) {
         // 1x幅ヘッダー
         const header1xCanvas = CanvasDrawingUtils.generateHeaderImage(
             this.adapter,
@@ -199,6 +208,7 @@ export class BrowserComponentBatchGenerator {
             type: 'header',
             name: `header-3x-${quality}`
         });
+        }
 
         // 4. 結合画像を生成（TODO: 必要に応じて実装）
         // 縦配置結合と横配置結合は別途実装

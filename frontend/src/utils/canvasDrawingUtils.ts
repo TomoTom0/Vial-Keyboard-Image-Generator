@@ -1,16 +1,40 @@
 // Canvas描画共通ユーティリティ
 // Node.js版とブラウザ版で共通のCanvas描画ロジック
 
-import type { VialConfig, RenderOptions, ComboInfo } from './types';
+import type { VialConfig, RenderOptions, ComboInfo, KeyLabel, ThemeColors } from './types';
 import { getThemeColors } from './types';
 import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
 import type { ReplaceRule } from '../components/AdvancedSettings.vue';
 
+interface KeyPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// KeyLabelはtypes.tsからインポート
+
+interface ComboData {
+  keys: (string | number)[];
+  keycodes: (string | number)[];
+  result: string | number;
+  [key: string]: unknown;
+}
+
+interface ThemeColors {
+  background: string;
+  text: string;
+  keyBackground: string;
+  keyBorder: string;
+  [key: string]: string;
+}
+
 export interface CanvasAdapter {
-  createCanvas(width: number, height: number): any;
-  getContext(canvas: any): CanvasRenderingContext2D;
-  toBuffer?(canvas: any, format: string): Buffer;
-  loadImage?(imagePath: string): Promise<any>;
+  createCanvas(width: number, height: number): HTMLCanvasElement;
+  getContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D;
+  toBuffer?(canvas: HTMLCanvasElement, format: string): Buffer;
+  loadImage?(imagePath: string): Promise<HTMLImageElement>;
 }
 
 export class CanvasDrawingUtils {
@@ -46,7 +70,7 @@ export class CanvasDrawingUtils {
   // キー配置情報を取得（元のutils.tsと同じ配置で、width, heightも含める）
   static getKeyPositions() {
     const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = this;
-    const positions: (any | null)[][] = [];
+    const positions: (KeyPosition | null)[][] = [];
 
     // 行0: 左上段
     positions[0] = [
@@ -167,7 +191,7 @@ export class CanvasDrawingUtils {
     options: RenderOptions,
     scale: number = 1.0,
     replaceRules?: ReplaceRule[]
-  ): any {
+  ): HTMLCanvasElement {
     // 画像サイズを計算
     const contentWidth = this.unitX * 14.0 + 30.0 + this.keyWidth;
     const contentHeight = this.unitY * 3.0 + this.keyHeight;
@@ -204,12 +228,12 @@ export class CanvasDrawingUtils {
     const combos: ComboInfo[] = [];
     if (config.combo && Array.isArray(config.combo)) {
       // 簡易的なCombo解析（実際のParserロジックは複雑なのでシンプル版）
-      config.combo.forEach((comboData: any, index: number) => {
+      config.combo.forEach((comboData: ComboData, index: number) => {
         if (Array.isArray(comboData) && comboData.length >= 2) {
           const keys = comboData.slice(0, -1); // 最後以外がキー
           combos.push({
-            keys: keys.map((k: any) => String(k)),
-            keycodes: keys.map((k: any) => String(k)),
+            keys: keys.map((k: string | number) => String(k)),
+            keycodes: keys.map((k: string | number) => String(k)),
             keySubTexts: [],
             action: String(comboData[comboData.length - 1]),
             description: `Combo ${index + 1}`,
@@ -258,10 +282,10 @@ export class CanvasDrawingUtils {
   static drawKey(
     ctx: CanvasRenderingContext2D,
     pos: {x: number, y: number, width: number, height: number},
-    label: any,
+    label: KeyLabel,
     keycode: string,
     options: RenderOptions,
-    colors: any,
+    colors: ThemeColors,
     combos?: ComboInfo[]
   ) {
     const {
@@ -313,10 +337,10 @@ export class CanvasDrawingUtils {
   static drawText(
     ctx: CanvasRenderingContext2D,
     pos: {x: number, y: number, width: number, height: number},
-    label: any,
+    label: KeyLabel,
     keycode: string,
     options: RenderOptions,
-    colors: any,
+    colors: ThemeColors,
     combos?: ComboInfo[],
     replaceRules?: ReplaceRule[]
   ) {
@@ -405,7 +429,7 @@ export class CanvasDrawingUtils {
     layerIndex: number,
     width: number,
     height: number,
-    colors: any
+    colors: ThemeColors
   ) {
     // レイヤー番号を三行目の中央の隙間（左右ボタンの中間）に表示
     const keyWidth = KEYBOARD_CONSTANTS.keyWidth;
@@ -442,7 +466,7 @@ export class CanvasDrawingUtils {
     scale: number = 1.0,
     highlightComboKeys: boolean = true,
     showComboMarkers: boolean = true
-  ): { canvas: any, height: number } {
+  ): { canvas: HTMLCanvasElement, height: number } {
     if (combos.length === 0) {
       // Comboがない場合は高さ0のキャンバスを返す
       const canvas = adapter.createCanvas(width, 1);
@@ -583,7 +607,7 @@ export class CanvasDrawingUtils {
     theme: 'dark' | 'light' = 'dark',
     label?: string,
     scale: number = 1
-  ): any {
+  ): HTMLCanvasElement {
     const scaledWidth = Math.floor(width * scale);
     const scaledHeight = Math.floor(45 * scale);
     
@@ -644,7 +668,7 @@ export class CanvasDrawingUtils {
     combo: ComboInfo, 
     startX: number, 
     y: number, 
-    colors: any, 
+    colors: ThemeColors, 
     scale: number = 1.0, 
     highlightComboKeys: boolean = true, 
     showComboMarkers: boolean = true
@@ -691,7 +715,7 @@ export class CanvasDrawingUtils {
     isAction: boolean = false, 
     subTexts?: string[], 
     isComboInputKey: boolean = false, 
-    colors?: any, 
+    colors?: ThemeColors, 
     scale: number = 1.0, 
     highlightComboKeys: boolean = true, 
     showComboMarkers: boolean = true

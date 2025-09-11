@@ -75,10 +75,10 @@ const generateCacheKey = (fileName: string, theme: string, showCombos: boolean, 
 
 // 結合画像を生成する関数
 const generateCombinedImage = (
-  layerComponents: any[],
-  headerComponent: any,
-  comboComponent: any,
-  settings: any
+  layerComponents: {canvas: HTMLCanvasElement, type: string}[],
+  headerComponent: {canvas: HTMLCanvasElement} | null,
+  comboComponent: {canvas: HTMLCanvasElement} | null,
+  settings: {showHeader?: boolean, showCombos?: boolean, outputFormat?: string}
 ): HTMLCanvasElement => {
   const margin = KEYBOARD_CONSTANTS.margin
   let totalWidth = 0
@@ -406,7 +406,10 @@ const handleGenerate = async () => {
         comboHighlight: settingsStore.showCombos,
         subtextHighlight: settingsStore.highlightEnabled,
         quality: 'high', // 最終出力は高品質
-        replaceRules: settingsStore.replaceRules || []
+        replaceRules: settingsStore.replaceRules || [],
+        outputFormat: settingsStore.outputFormat,
+        showHeader: settingsStore.showHeader,
+        showCombos: settingsStore.showCombos
       }
     )
     

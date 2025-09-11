@@ -4,6 +4,20 @@ import { useSettingsStore } from './settings'
 import { useUiStore } from './ui'
 import { useVialStore, type VialData } from './vial'
 
+// 型定義
+interface GeneratedComponent {
+  canvas: HTMLCanvasElement;
+  type: 'layer' | 'combo' | 'header' | 'combined';
+  name: string;
+}
+
+interface RenderSettings {
+  outputFormat?: string;
+  quality?: 'high' | 'low';
+  colorMode?: 'dark' | 'light';
+  [key: string]: unknown;
+}
+
 export interface GeneratedImage {
   id: string
   layer: number
@@ -370,7 +384,7 @@ export const useImagesStore = defineStore('images', () => {
   // 適切な列数を計算する関数（統一ロジック）
   const calculateDisplayColumns = (
     outputFormat?: string, 
-    selectedLayerComponents?: any[], 
+    selectedLayerComponents?: GeneratedComponent[], 
     forOutputGeneration: boolean = false
   ): number => {
     const settingsStore = useSettingsStore()
@@ -580,9 +594,9 @@ export const useImagesStore = defineStore('images', () => {
   
   // 結合キャンバス生成 (App.vueのgenerateCombinedImageと同等の実装)
   const generateCombinedCanvas = async (
-    components: any[], 
-    selectedLayerComponents: any[], 
-    settings: any
+    components: GeneratedComponent[], 
+    selectedLayerComponents: GeneratedComponent[], 
+    settings: RenderSettings
   ): Promise<HTMLCanvasElement> => {
     const { KEYBOARD_CONSTANTS } = await import('../constants/keyboard')
     const margin = KEYBOARD_CONSTANTS.margin
@@ -598,9 +612,9 @@ export const useImagesStore = defineStore('images', () => {
     
     // ヘッダーとコンボコンポーネントを適切な幅で取得
     const headerComponent = settings.showHeader ? 
-      components.find((comp: any) => comp.name.includes(`header-${displayColumns}x-high`)) : null
+      components.find((comp: GeneratedComponent) => comp.name.includes(`header-${displayColumns}x-high`)) : null
     const comboComponent = settings.showCombos ? 
-      components.find((comp: any) => comp.name.includes(`combo-${displayColumns}x-high`)) : null
+      components.find((comp: GeneratedComponent) => comp.name.includes(`combo-${displayColumns}x-high`)) : null
     
     // 各コンポーネントのサイズを取得
     const componentList = []
@@ -634,7 +648,7 @@ export const useImagesStore = defineStore('images', () => {
       // レイヤーグリッドの高さ
       if (selectedLayerComponents.length > 0) {
         totalHeight += imageHeight * gridRows
-        selectedLayerComponents.forEach((comp: any) => {
+        selectedLayerComponents.forEach((comp: GeneratedComponent) => {
           componentList.push({ canvas: comp.canvas, type: 'layer' })
         })
       }
@@ -654,7 +668,7 @@ export const useImagesStore = defineStore('images', () => {
         totalHeight += headerComponent.canvas.height
       }
       
-      selectedLayerComponents.forEach((comp: any) => {
+      selectedLayerComponents.forEach((comp: GeneratedComponent) => {
         componentList.push({ canvas: comp.canvas, type: 'layer' })
         maxWidth = Math.max(maxWidth, comp.canvas.width)
         totalHeight += comp.canvas.height

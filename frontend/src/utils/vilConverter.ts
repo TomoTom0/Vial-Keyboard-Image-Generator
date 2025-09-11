@@ -1,13 +1,48 @@
 // VILファイル変換ユーティリティ
 import { getCharacterFromKeycode, getKeycodeForCharacter } from './keyboardConfig'
 
-export interface VialConfig {
+export interface KeyOverride {
+  trigger: string | number
+  replacement: string | number
+  layers: number
+  trigger_mods: number
+  negative_mod_mask: number
+  suppressed_mods: number
+  options: number
+}
+
+interface VialSettings {
+  [key: string]: number
+}
+
+export interface ComboInfo {
+  keys: (string | number)[]
+  result: string | number
+  [key: string]: unknown
+}
+
+interface TapDanceInfo extends Array<string | number> {
+  0: string | number  // tap
+  1: string | number  // hold
+  2: string | number  // double tap
+  3: string | number  // tap hold
+  4: number           // tapping term
+}
+
+interface VialConfig {
   version: number
   uid: number
-  layout: (string | number)[][]
-  combos?: any[]
-  tap_dance?: any[]
-  [key: string]: any
+  layout: (string | number)[][][]  // [layer][row][key]
+  encoder_layout: (string | number)[][][]
+  layout_options: number
+  macro: string[][]
+  vial_protocol: number
+  via_protocol: number
+  tap_dance: TapDanceInfo[]
+  combo: (string | number)[][]
+  key_override: KeyOverride[]
+  alt_repeat_key: unknown[]
+  settings: VialSettings
 }
 
 /**
@@ -78,7 +113,7 @@ export function convertVialConfig(config: VialConfig, fromLanguage: string, toLa
   
   // コンボの変換（存在する場合）
   if (convertedConfig.combos) {
-    convertedConfig.combos = convertedConfig.combos.map((combo: any) => {
+    convertedConfig.combos = convertedConfig.combos.map((combo: ComboInfo) => {
       if (combo.keycode) {
         const converted = convertKeycode(combo.keycode, fromLanguage, toLanguage)
         if (converted !== combo.keycode) {
@@ -92,7 +127,7 @@ export function convertVialConfig(config: VialConfig, fromLanguage: string, toLa
 
   // タップダンスの変換（存在する場合）
   if (convertedConfig.tap_dance) {
-    convertedConfig.tap_dance = convertedConfig.tap_dance.map((td: any) => {
+    convertedConfig.tap_dance = convertedConfig.tap_dance.map((td: TapDanceInfo) => {
       if (td.keycodes) {
         td.keycodes = td.keycodes.map((keycode: string | number) => {
           const converted = convertKeycode(keycode, fromLanguage, toLanguage)

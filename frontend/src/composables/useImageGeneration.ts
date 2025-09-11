@@ -21,6 +21,17 @@ export interface GenerationOptions {
   showComboInfo?: boolean
 }
 
+// APIレスポンスの画像データ構造
+interface ApiImageData {
+  id?: string
+  filename: string
+  type: 'combined' | 'layer'
+  layer?: number
+  url: string
+  size?: number
+  timestamp?: string | number
+}
+
 export function useImageGeneration() {
   const images = ref<GeneratedImage[]>([])
   const isGenerating = ref(false)
@@ -96,7 +107,7 @@ export function useImageGeneration() {
       progress.value = 95
 
       // レスポンスをGeneratedImage形式に変換
-      const newImages: GeneratedImage[] = result.images.map((img: any) => ({
+      const newImages: GeneratedImage[] = result.images.map((img: ApiImageData) => ({
         id: img.id || `${img.type}-${img.layer || 0}-${Date.now()}`,
         filename: img.filename,
         type: img.type,
@@ -188,7 +199,7 @@ export function useImageGeneration() {
       progress.value = 95
 
       // レスポンスをGeneratedImage形式に変換
-      const newImages: GeneratedImage[] = result.images.map((img: any) => ({
+      const newImages: GeneratedImage[] = result.images.map((img: ApiImageData) => ({
         id: img.id || `${img.type}-${img.layer || 0}-${Date.now()}`,
         filename: img.filename,
         type: img.type,

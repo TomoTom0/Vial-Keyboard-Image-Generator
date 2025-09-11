@@ -152,8 +152,8 @@ $transition-duration: 0.2s;
   padding: 15px;
   margin: 5px auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: calc(100vw - 20px);
-  width: fit-content;
+  max-width: calc(100vw - 60px);
+  width: 100%;
   transition: all 0.3s ease-in-out;
   box-sizing: border-box;
   overflow-x: auto;
@@ -306,7 +306,7 @@ $transition-duration: 0.2s;
   }
   
   .preview-container {
-    max-width: 98%;
+    max-width: calc(100vw - 60px);
   }
   
   .generate-button {

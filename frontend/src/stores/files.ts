@@ -60,7 +60,7 @@ export const useFilesStore = defineStore('files', () => {
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          recentFiles.value = parsed.map((file: any) => ({
+          recentFiles.value = parsed.map((file: {name: string, timestamp: string}) => ({
             ...file,
             timestamp: new Date(file.timestamp)
           }))

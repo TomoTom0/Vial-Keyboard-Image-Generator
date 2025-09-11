@@ -245,7 +245,7 @@ const loadRecentFiles = () => {
     const saved = localStorage.getItem('vial-recent-files')
     if (saved) {
       const parsed = JSON.parse(saved)
-      recentFiles.value = parsed.map((f: any) => ({
+      recentFiles.value = parsed.map((f: {name: string, timestamp: string}) => ({
         ...f,
         timestamp: new Date(f.timestamp)
       }))

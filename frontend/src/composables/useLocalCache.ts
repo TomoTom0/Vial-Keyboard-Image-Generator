@@ -1,5 +1,12 @@
 import { ref, computed } from 'vue'
 
+// 画像生成設定の型
+interface ImageSettings {
+  theme: 'dark' | 'light'
+  format: 'vertical' | 'horizontal' | 'individual'
+  showComboInfo: boolean
+}
+
 interface CachedImage {
   id: string
   filename: string
@@ -16,6 +23,25 @@ interface CachedImage {
 interface CacheEntry {
   images: CachedImage[]
   timestamp: Date
+  fileHash: string
+  originalFilename: string
+}
+
+// JSONから取得される生データの型（Date型がstring型になっている）
+interface RawCacheEntry {
+  images: Array<{
+    id: string
+    filename: string
+    url: string
+    size: number
+    timestamp: string
+    settings: {
+      theme: 'dark' | 'light'
+      format: 'vertical' | 'horizontal' | 'individual'
+      showComboInfo: boolean
+    }
+  }>
+  timestamp: string
   fileHash: string
   originalFilename: string
 }
@@ -51,7 +77,7 @@ export function useLocalCache() {
       const cached = localStorage.getItem('vial-image-cache')
       if (!cached) return
 
-      const parsed: any[] = JSON.parse(cached)
+      const parsed: RawCacheEntry[] = JSON.parse(cached)
       
       // 期限切れのエントリを除外
       const now = new Date()
@@ -64,7 +90,7 @@ export function useLocalCache() {
       cacheEntries.value = validEntries.map(entry => ({
         ...entry,
         timestamp: new Date(entry.timestamp),
-        images: entry.images.map((img: any) => ({
+        images: entry.images.map(img => ({
           ...img,
           timestamp: new Date(img.timestamp)
         }))
@@ -111,7 +137,7 @@ export function useLocalCache() {
   /**
    * キャッシュから画像を検索
    */
-  const getCachedImages = async (file: File, settings: any): Promise<CachedImage[] | null> => {
+  const getCachedImages = async (file: File, settings: ImageSettings): Promise<CachedImage[] | null> => {
     const fileHash = await generateFileHash(file)
     
     const entry = cacheEntries.value.find(entry => 
@@ -133,8 +159,8 @@ export function useLocalCache() {
    */
   const cacheImages = async (
     file: File, 
-    images: any[], 
-    settings: any
+    images: CachedImage[], 
+    settings: ImageSettings
   ): Promise<void> => {
     const fileHash = await generateFileHash(file)
     
