@@ -176,11 +176,15 @@ $transition-duration: 0.2s;
 .preview-header-image {
   @include preview-image-base;
   border-radius: 8px 8px 0 0;
+  margin: 0 auto;
+  align-self: center;
 }
 
 .preview-combo-image {
   @include preview-image-base;
   border-radius: 0 0 8px 8px;
+  margin: 0 auto;
+  align-self: center;
 }
 
 .preview-layer-image {
@@ -258,7 +262,12 @@ $transition-duration: 0.2s;
   
   .preview-container {
     max-width: calc(100vw - 60px);
+    align-items: center;
+    
+    // 小画面では画像スケールを調整
+    --image-scale: clamp(0.8, 2.5vw, 1.5);
   }
+  
   
 }
 </style>

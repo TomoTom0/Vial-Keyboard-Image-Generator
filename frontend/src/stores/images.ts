@@ -396,34 +396,74 @@ export const useImagesStore = defineStore('images', () => {
     const uiStore = useUiStore()
     const format = outputFormat || settingsStore.outputFormat
     
+    console.log('🔍 calculateDisplayColumns called:')
+    console.log('   format:', format)
+    console.log('   activeTab:', uiStore.activeTab)
+    console.log('   forOutputGeneration:', forOutputGeneration)
+    console.log('   layerSelection:', settingsStore.layerSelection)
+    
     if (format === 'vertical') {
+      console.log('   → vertical format: returning 1')
       return 1
     } else if (format === 'rectangular') {
       if (forOutputGeneration && selectedLayerComponents) {
         // 出力生成時：選択されたレイヤー数で判断
+        console.log('   → output generation with', selectedLayerComponents.length, 'components')
         if (selectedLayerComponents.length >= 5) return 3
         if (selectedLayerComponents.length >= 2) return 2
         return 1
       } else if (uiStore.activeTab === 'select') {
         // SelectTabでは全レイヤー数で判断
         const allLayerCount = images.value.filter(img => img.type === 'layer').length
+        console.log('   → select tab with', allLayerCount, 'total layers')
         if (allLayerCount >= 5) return 3
         if (allLayerCount >= 2) return 2
         return 1
       } else {
         // PreviewTabでは選択レイヤー数で判断
         const selectedCount = Object.values(settingsStore.layerSelection).filter(Boolean).length
+        console.log('   → preview tab with', selectedCount, 'selected layers')
         if (selectedCount >= 5) return 3
         if (selectedCount >= 2) return 2
         return 1
       }
     } else { // separated
+      // separatedの場合もプレビュータブでは実際の表示列数を考慮
+      if (uiStore.activeTab === 'preview') {
+        const selectedCount = Object.values(settingsStore.layerSelection).filter(Boolean).length
+        console.log('   → separated format, preview tab with', selectedCount, 'selected layers')
+        // 画面幅も考慮（PreviewTab.vueのロジックと合わせる）
+        if (typeof window !== 'undefined') {
+          const screenWidth = window.innerWidth
+          console.log('   → screen width:', screenWidth)
+          if (selectedCount <= 1 || screenWidth < 600) {
+            console.log('   → returning 1 column')
+            return 1
+          } else if (selectedCount <= 4 || screenWidth < 900) {
+            console.log('   → returning 2 columns')
+            return 2
+          } else {
+            console.log('   → returning 3 columns')
+            return 3
+          }
+        }
+        // フォールバック
+        console.log('   → fallback logic')
+        if (selectedCount >= 5) return 3
+        if (selectedCount >= 2) return 2
+      }
+      console.log('   → default: returning 1')
       return 1
     }
   }
 
   const getHeaderImageUrl = (): string => {
     const displayColumns = calculateDisplayColumns()
+    console.log('🔍 Header image selection:')
+    console.log('   Display columns:', displayColumns)
+    console.log('   Available header images:', 
+      images.value.filter(img => img.type === 'header').map(img => img.id)
+    )
     
     const headerImage = images.value.find(img => 
       img.type === 'header' && (
@@ -439,12 +479,17 @@ export const useImagesStore = defineStore('images', () => {
     )
     const result = headerImage || fallback
     
-    console.log(`🔍 ImagesStore: getHeaderImageUrl - displayColumns: ${displayColumns}, found: ${result?.id}`)
+    console.log('   Selected header:', result?.id || 'none')
     return result ? (result.dataUrl || result.url || '') : ''
   }
   
   const getComboImageUrl = (): string => {
     const displayColumns = calculateDisplayColumns()
+    console.log('🔍 Combo image selection:')
+    console.log('   Display columns:', displayColumns)
+    console.log('   Available combo images:', 
+      images.value.filter(img => img.type === 'combo').map(img => img.id)
+    )
     
     const comboImage = images.value.find(img => 
       img.type === 'combo' && (
@@ -460,7 +505,7 @@ export const useImagesStore = defineStore('images', () => {
     )
     const result = comboImage || fallback
     
-    console.log(`🔍 ImagesStore: getComboImageUrl - displayColumns: ${displayColumns}, found: ${result?.id}`)
+    console.log('   Selected combo:', result?.id || 'none')
     return result ? (result.dataUrl || result.url || '') : ''
   }
 

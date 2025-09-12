@@ -683,6 +683,27 @@ onUnmounted(() => {
 
 /* ワークスペース レスポンシブ */
 @media (max-width: 768px) {
+  .page-header {
+    padding: 10px 15px;
+  }
+  
+  .page-title {
+    font-size: 20px;
+    position: static;
+    transform: none;
+    text-align: right;
+    flex: 1;
+  }
+  
+  .header-filename {
+    font-size: 14px;
+    padding: 4px 8px;
+  }
+  
+  .header-spacer {
+    display: none;
+  }
+  
   .workspace-header {
     padding: 0 10px;
     min-height: 50px;
@@ -697,6 +718,27 @@ onUnmounted(() => {
 }
 
 @media (max-width: 480px) {
+  .page-header {
+    padding: 8px 10px;
+  }
+  
+  .page-title {
+    font-size: 18px;
+    position: static;
+    transform: none;
+    text-align: right;
+    flex: 1;
+  }
+  
+  .header-filename {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
+  
+  .header-spacer {
+    display: none;
+  }
+  
   .workspace-header {
     padding: 0 5px;
     min-height: 48px;

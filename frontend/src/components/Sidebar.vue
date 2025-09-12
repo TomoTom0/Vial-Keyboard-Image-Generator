@@ -1,5 +1,5 @@
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ collapsed: uiStore.sidebarCollapsed }">
     <!-- 細長い左側領域 -->
     <div class="sidebar-narrow">
       <div class="nav-items">
@@ -35,7 +35,7 @@
     </div>
 
     <!-- メインサイドバーコンテンツ -->
-    <div class="sidebar-main">
+    <div class="sidebar-main" v-show="!uiStore.sidebarCollapsed">
       <div class="sidebar-content">
         
         <!-- ファイル選択領域（Files選択時のみ表示） -->
@@ -197,7 +197,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import FileUpload from './FileUpload.vue'
 import FileHistory from './FileHistory.vue'
 import KeyboardTab from './KeyboardTab.vue'
@@ -213,6 +213,27 @@ const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
 const imagesStore = useImagesStore()
 
+// Debounced preview generation
+let generateTimeout: NodeJS.Timeout | null = null
+const debouncedGeneratePreview = () => {
+  console.log('🔄 Setting changed, regenerating in 100ms...')
+  if (generateTimeout) {
+    clearTimeout(generateTimeout)
+  }
+  generateTimeout = setTimeout(() => {
+    console.log('⏰ Timeout reached, starting generation')
+    generatePreviewImages()
+  }, 100) // 100ms delay
+}
+
+// Preview generation
+const generatePreviewImages = async () => {
+  await imagesStore.generatePreviewImages(
+    vialStore.selectedVialId || 'sample', 
+    vialStore.currentVial
+  )
+}
+
 // Computed properties
 const selectedFile = computed(() => vialStore.selectedVialId || 'sample')
 const hasSelectedFile = computed(() => vialStore.selectedVialId && vialStore.selectedVialId !== 'sample')
@@ -221,44 +242,47 @@ const formatDisplayName = computed(() => {
   const formats = {
     separated: 'Separated',
     vertical: 'Vertical',
-    horizontal: 'Horizontal'
+    rectangular: 'Rectangular'
   }
   return formats[settingsStore.outputFormat] || 'Separated'
 })
 
 const highlightDisplayName = computed(() => {
-  return settingsStore.subtextHighlight ? 'ON' : 'OFF'
+  return settingsStore.highlightEnabled ? 'ON' : 'OFF'
 })
 
 const darkModeDisplayName = computed(() => {
-  const modes = {
-    light: 'Light',
-    dark: 'Dark'
-  }
-  return modes[settingsStore.colorMode] || 'Light'
+  return settingsStore.enableDarkMode ? 'Dark' : 'Light'
 })
 
 // Methods
 const switchNavSection = (section: 'files' | 'generate' | 'settings') => {
-  uiStore.setSidebarSection(section)
+  // 現在開いているセクションと同じアイコンをクリックした場合は折りたたみを切り替え
+  if (uiStore.sidebarSection === section && !uiStore.sidebarCollapsed) {
+    uiStore.toggleSidebarCollapsed()
+  } else {
+    // 違うセクションをクリックした場合は展開してそのセクションに切り替え
+    uiStore.setSidebarCollapsed(false)
+    uiStore.setSidebarSection(section)
+  }
 }
 
 const cycleFormat = (direction: number) => {
-  const formats = ['separated', 'vertical', 'horizontal'] as const
+  const formats = ['separated', 'vertical', 'rectangular'] as const
   const currentIndex = formats.indexOf(settingsStore.outputFormat)
   const newIndex = (currentIndex + direction + formats.length) % formats.length
   settingsStore.outputFormat = formats[newIndex]
+  debouncedGeneratePreview()
 }
 
 const cycleHighlight = (direction: number) => {
-  settingsStore.subtextHighlight = !settingsStore.subtextHighlight
+  settingsStore.highlightEnabled = !settingsStore.highlightEnabled
+  debouncedGeneratePreview()
 }
 
 const cycleDarkMode = (direction: number) => {
-  const modes = ['light', 'dark'] as const
-  const currentIndex = modes.indexOf(settingsStore.colorMode)
-  const newIndex = (currentIndex + direction + modes.length) % modes.length
-  settingsStore.colorMode = modes[newIndex]
+  settingsStore.enableDarkMode = !settingsStore.enableDarkMode
+  debouncedGeneratePreview()
 }
 
 const handleGenerate = async () => {
@@ -288,6 +312,20 @@ const deleteSelectedFile = async () => {
     }
   }
 }
+
+// 小画面かどうかを判定
+const isSmallScreen = computed(() => {
+  // window.innerWidth が 768px 以下の場合は小画面として扱う
+  if (typeof window === 'undefined') return false
+  return window.innerWidth < 768
+})
+
+// 小画面での初期状態設定
+onMounted(() => {
+  if (isSmallScreen.value) {
+    uiStore.setSidebarCollapsed(true)
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -301,6 +339,11 @@ const deleteSelectedFile = async () => {
   flex-shrink: 0; /* サイドバーの幅を固定 */
   display: flex;
   flex-direction: row;
+  transition: width 0.3s ease;
+
+  &.collapsed {
+    width: 40px;
+  }
 }
 
 /* 細長い左側領域 */
@@ -697,4 +740,5 @@ const deleteSelectedFile = async () => {
     cursor: not-allowed;
   }
 }
+
 </style>
