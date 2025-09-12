@@ -11,12 +11,7 @@ import { useVialStore } from './stores/vial'
 import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
 import { useImagesStore } from './stores/images'
-import { useFileUpload } from './composables/useFileUpload'
-import { useImageGeneration, type GenerationOptions } from './composables/useImageGeneration'
-import { getCurrentStructure, getCurrentKeyboardLanguage, setCurrentKeyboardLanguage } from './utils/keyboardConfig'
-
-// Types (VialStoreで管理)
-
+import { getCurrentKeyboardLanguage, setCurrentKeyboardLanguage } from './utils/keyboardConfig'
 
 // URLハッシュから初期タブを取得（hashモード形式: /#/tab）
 function getInitialTabFromHash(): 'select' | 'preview' | 'output' {
@@ -42,39 +37,8 @@ const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
 const imagesStore = useImagesStore()
 
-// Store初期化 (onMountedで実行)
-
-// Legacy functions removed - handled by stores with persist plugin
-
-// Settings managed by SettingsStore
-
-// Preview and output data managed by ImagesStore and UiStore
-
-
-
-// トースト通知はUiStoreで管理
-
-
-// キーボード設定
-const currentKeyboardStructure = getCurrentStructure()
-
-// Canvas generation cache to prevent unnecessary regeneration
-const canvasCache = new Map<string, any[]>()
+// Debounced preview generation
 let generateTimeout: NodeJS.Timeout | null = null
-
-const generateCacheKey = (fileName: string, theme: string, showCombos: boolean, highlightEnabled: boolean, tab?: string, layerSelection?: string, replaceRules?: ReplaceRule[], outputFormat?: string, keyboardLayout?: string) => {
-  if (!fileName || typeof fileName !== 'string') {
-    throw new Error('Invalid fileName for cache key generation')
-  }
-  const rulesHash = replaceRules && Array.isArray(replaceRules) 
-    ? JSON.stringify(replaceRules.filter(r => r && typeof r === 'object' && r.enabled && r.from !== '' && r.to !== '')) 
-    : 'none'
-  return `${fileName}-${theme}-${showCombos}-${highlightEnabled}-${tab || 'none'}-${layerSelection || 'none'}-${rulesHash}-${outputFormat || 'none'}-${keyboardLayout || 'japanese'}`
-}
-
-// 結合画像を生成する関数
-
-// Debounced preview generation to prevent excessive regeneration
 const debouncedGeneratePreview = () => {
   console.log('🔄 Setting changed, regenerating in 100ms...')
   if (generateTimeout) {
@@ -86,88 +50,8 @@ const debouncedGeneratePreview = () => {
   }, 100) // 100ms delay
 }
 
-// Composables
-const {
-  hasFile,
-  setFile,
-  validateFile
-} = useFileUpload()
-
-const {
-  images,
-  generateImages,
-  generateImagesFromContent,
-  clearError
-} = useImageGeneration()
-
-// Computed
-const availableFiles = computed(() => {
-  const files = ['sample']
-  if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {
-    files.push(vialStore.selectedVialId)
-  }
-  vialStore.vialFiles.forEach(file => {
-    if (!files.includes(file.name)) {
-      files.push(file.name)
-    }
-  })
-  return files
-})
-
-// ファイル内容を読み込む関数
-const readFileContent = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file) // Base64形式で読み込み
-  })
-}
-
-// Base64からFileオブジェクトを作成する関数
-const createFileFromBase64 = (content: string, name: string, type: string): File => {
-  const byteCharacters = atob(content.split(',')[1])
-  const byteNumbers = new Array(byteCharacters.length)
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i)
-  }
-  const byteArray = new Uint8Array(byteNumbers)
-  return new File([byteArray], name, { type })
-}
 
 
-
-
-
-const addToRecentFiles = async (file: File, content: string) => {
-  const newFile: RecentFile = {
-    id: Date.now().toString(),
-    name: file.name,
-    timestamp: new Date(),
-    content,
-    type: file.type
-  }
-  
-  vialStore.vialFiles = vialStore.vialFiles.filter(f => f.name !== file.name)
-  vialStore.vialFiles.unshift(newFile)
-  
-  if (vialStore.vialFiles.length > 5) {
-    vialStore.vialFiles = vialStore.vialFiles.slice(0, 5)
-  }
-  
-  saveRecentFiles()
-}
-
-// Format and theme handling
-const handleFormatChanged = (format: string) => {
-  settingsStore.setOutputFormat(format as 'separated' | 'vertical' | 'horizontal')
-  generatePreviewImages()
-}
-
-const handleThemeChanged = (theme: 'light' | 'dark') => {
-  settingsStore.toggleDarkMode(theme === 'dark')
-  debouncedGeneratePreview()
-}
 
 
 const updateOutputFormat = (format: 'separated' | 'vertical' | 'rectangular') => {
@@ -185,11 +69,6 @@ const toggleCombos = () => {
   debouncedGeneratePreview()
 }
 
-const getFormatExplanationImage = (): string => {
-  const format = settingsStore.outputFormat
-  return `/images/explanations/format-${format}.png`
-}
-
 // Tab navigation
 const handleTabChanged = (tab: 'select' | 'preview' | 'output') => {
   // Outputタブは画像生成完了後のみ選択可能
@@ -199,29 +78,10 @@ const handleTabChanged = (tab: 'select' | 'preview' | 'output') => {
   uiStore.setActiveTab(tab)
 }
 
-const handleDisplayFileChanged = (fileName: string) => {
-  vialStore.selectedVialId = fileName
-  generatePreviewImages()
-}
-
 // Control panel tab handling
 const handleControlPanelTabChanged = (tab: 'layout' | 'upload' | 'format') => {
   uiStore.setControlPanelTab(tab)
 }
-
-
-const handleComboToggled = (enabled: boolean) => {
-  settingsStore.showCombos = enabled
-  debouncedGeneratePreview()
-}
-
-const handleHeaderToggled = (enabled: boolean) => {
-  settingsStore.showHeader = enabled
-  generatePreviewImages()
-}
-
-
-
 
 // Preview generation (delegated to ImagesStore)
 const generatePreviewImages = async () => {
@@ -231,53 +91,10 @@ const generatePreviewImages = async () => {
   )
 }
 
-
-
 // サンプル画像のオーバーレイ表示は常にCorne v4（キーボード構造の表示）
 const layoutTitle = computed(() => {
   return 'Corne v4'
 })
-
-// 画像生成処理をimage storeに委譲
-const handleGenerate = async () => {
-  await imagesStore.generateFinalOutputImages()
-}
-
-
-// Local storage
-const saveRecentFiles = () => {
-  try {
-    const toSave = vialStore.vialFiles.map(f => ({
-      id: f.id,
-      name: f.name,
-      timestamp: f.timestamp.toISOString(),
-      content: f.content,
-      type: f.type
-    }))
-    localStorage.setItem('vial-recent-files', JSON.stringify(toSave))
-  } catch (err) {
-    console.warn('Failed to save recent files:', err)
-  }
-}
-
-// レガシー関数削除: VialStoreのpersist機能を使用
-
-// ファイル復元時の表示ファイル同期
-const syncDisplayFileAfterLoad = () => {
-  if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {
-    // 選択されたファイルがrecentFilesに存在するかチェック
-    const fileExists = vialStore.vialFiles.some(f => f.name === vialStore.selectedVialId)
-    if (fileExists) {
-      vialStore.selectedVialId = vialStore.selectedVialId
-      console.log('📁 Restored file selection:', vialStore.selectedVialId)
-    } else {
-      // ファイルが存在しない場合はサンプルに戻す
-      vialStore.selectedVialId = 'sample'
-      vialStore.selectedVialId = 'sample'
-      console.log('📁 File not found, falling back to sample')
-    }
-  }
-}
 
 // Initialization
 // タブ変更時にハッシュを更新
@@ -326,7 +143,6 @@ onUnmounted(() => {
   if (generateTimeout) {
     clearTimeout(generateTimeout)
   }
-  canvasCache.clear()
   
   // ハッシュ変更イベントリスナーを削除
   window.removeEventListener('hashchange', handleHashChange)

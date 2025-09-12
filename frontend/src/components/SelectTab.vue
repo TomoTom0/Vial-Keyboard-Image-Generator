@@ -184,6 +184,9 @@ $background-light: #f5f5f5;
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   
   // ウィンドウサイズ基準の共通画像倍率（余裕がある場合はより大きく）
   --image-scale: clamp(0.4, 2vw, 1.2);
@@ -207,7 +210,7 @@ $background-light: #f5f5f5;
   
   // ウィンドウサイズ基準の共通倍率を適用
   transform: scale(var(--image-scale));
-  transform-origin: top left;
+  transform-origin: center;
 }
 
 

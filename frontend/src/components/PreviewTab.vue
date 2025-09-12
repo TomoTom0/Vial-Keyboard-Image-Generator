@@ -158,6 +158,9 @@ $transition-duration: 0.2s;
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   
   // ウィンドウサイズ基準の共通画像倍率（余裕がある場合はより大きく）
   --image-scale: clamp(0.8, 2.5vw, 2.0);
@@ -177,7 +180,7 @@ $transition-duration: 0.2s;
   
   // ウィンドウサイズ基準の共通倍率を適用
   transform: scale(var(--image-scale));
-  transform-origin: top left;
+  transform-origin: center;
 }
 
 .preview-header-image {
