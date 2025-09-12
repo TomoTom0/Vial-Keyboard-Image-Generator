@@ -33,16 +33,6 @@
         class="preview-combo-image"
       />
       
-      <!-- Generate button -->
-      <div class="generate-section">
-        <button 
-          class="generate-button"
-          :disabled="selectedFile === 'sample' || imagesStore.isGenerating"
-          @click="handleGenerate"
-        >
-          {{ imagesStore.isGenerating ? 'Generating...' : 'Generate' }}
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -163,7 +153,7 @@ $transition-duration: 0.2s;
   align-items: center;
   
   // ウィンドウサイズ基準の共通画像倍率（余裕がある場合はより大きく）
-  --image-scale: clamp(0.8, 2.5vw, 2.0);
+  --image-scale: clamp(1.0, 3.5vw, 2.5);
 }
 
 // Common image styles
@@ -260,48 +250,6 @@ $transition-duration: 0.2s;
   display: block;
 }
 
-.generate-section {
-  margin-top: 15px;
-  text-align: center;
-}
-
-.generate-button {
-  background: $primary-color;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all $transition-duration;
-  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
-
-  &:hover {
-    background: $primary-hover;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
-  }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
-  }
-
-  &:disabled {
-    background: #ccc;
-    color: #666;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-
-    &:hover {
-      background: #ccc;
-      transform: none;
-      box-shadow: none;
-    }
-  }
-}
 
 @media (max-width: 768px) {
   .preview-tab {
@@ -312,9 +260,5 @@ $transition-duration: 0.2s;
     max-width: calc(100vw - 60px);
   }
   
-  .generate-button {
-    padding: 10px 20px;
-    font-size: 13px;
-  }
 }
 </style>

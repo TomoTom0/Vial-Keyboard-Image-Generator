@@ -240,7 +240,7 @@ const onImageError = (image: GeneratedImage) => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .preview {
   height: 100%;
   display: flex;

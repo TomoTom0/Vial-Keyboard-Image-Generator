@@ -16,18 +16,9 @@
               class="output-image"
             />
           </div>
-          <!-- separatedの場合の一括ダウンロードボタン -->
-          <div class="bulk-download-section">
-            <button 
-              class="bulk-download-btn"
-              @click="downloadAllAsZip"
-            >
-              Download All Images (ZIP)
-            </button>
-          </div>
         </div>
         
-        <!-- separated以外の場合は従来通り個別ダウンロードボタン付き -->
+        <!-- separated以外の場合は画像のみ表示 -->
         <div v-else>
           <div 
             v-for="image in outputImages"
@@ -39,15 +30,12 @@
               :alt="getImageAlt(image)"
               class="output-image"
             />
-            <div class="download-section">
-              <button 
-                class="download-btn"
-                @click="downloadSingle(image)"
-              >
-                Download {{ getImageFilename(image) }}
-              </button>
-            </div>
           </div>
+        </div>
+        
+        <!-- ファイル名表示（画像の下） -->
+        <div v-if="outputImages.length > 0" class="filename-section">
+          <div class="filename-display">{{ getDownloadFilename() }}</div>
         </div>
       </div>
       
@@ -55,6 +43,23 @@
         <div class="empty-message">
           <h4>No Images Generated</h4>
           <p>Click the Generate button on the Preview tab to create your keyboard layout images.</p>
+        </div>
+      </div>
+      
+      <!-- Navigation buttons -->
+      <div class="navigation-buttons">
+        <button class="back-btn" @click="goBackToPreview">
+          Back
+        </button>
+        
+        <div class="right-button-area">
+          <button 
+            v-if="outputImages.length > 0" 
+            class="download-btn-fixed" 
+            @click="downloadAllAsZip"
+          >
+            Download
+          </button>
         </div>
       </div>
     </div>
@@ -66,6 +71,7 @@ import { computed } from 'vue'
 import { useImagesStore } from '../stores/images'
 import { useSettingsStore } from '../stores/settings'
 import { useVialStore } from '../stores/vial'
+import { useUiStore } from '../stores/ui'
 import { embedMetadataToPng } from '../utils/pngMetadata'
 
 interface GeneratedImage {
@@ -89,6 +95,7 @@ interface GeneratedImage {
 const imagesStore = useImagesStore()
 const settingsStore = useSettingsStore()
 const vialStore = useVialStore()
+const uiStore = useUiStore()
 
 // Store から取得するcomputed値 - generateFinalOutputImagesが設定したoutputImagesを使用
 const outputImages = computed(() => imagesStore.outputImages)
@@ -116,6 +123,24 @@ const getImageFilename = (image: GeneratedImage): string => {
   if (image.type === 'combo') return 'keyboard-combo.ytvil.png'
   if (image.type === 'layer') return `keyboard-layer-${image.layer}.ytvil.png`
   return `keyboard-${image.id}.ytvil.png`
+}
+
+const getDownloadFilename = (): string => {
+  if (outputFormat.value === 'separated') {
+    // separatedフォーマットの場合はZIPファイル名（既存の命名規則に従う）
+    if (outputImages.value.length > 0) {
+      const firstImage = outputImages.value[0]
+      const firstImageName = getImageFilename(firstImage)
+      // 既存ファイル名からベース部分を抽出してZIP名を生成
+      const baseName = firstImageName.replace(/-(L\d+|header|combo)-.*\.ytvil\.png$/, '')
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '').replace(/\./g, '')
+      return `${baseName}-all-${timestamp}.ytvil.zip`
+    }
+    return 'ytomo-vial-kb-all.ytvil.zip'
+  } else {
+    // separated以外の場合は最初の画像のファイル名
+    return outputImages.value.length > 0 ? getImageFilename(outputImages.value[0]) : ''
+  }
 }
 
 const downloadSingle = (image: GeneratedImage) => {
@@ -160,7 +185,7 @@ const downloadAllAsZip = async () => {
     const zipBlob = await zip.generateAsync({ type: 'blob' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(zipBlob)
-    link.download = 'keyboard-layout-images.zip'
+    link.download = getDownloadFilename()
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -171,6 +196,11 @@ const downloadAllAsZip = async () => {
     console.error('ZIP download failed:', error)
   }
 }
+
+// Previewタブに戻る
+const goBackToPreview = () => {
+  uiStore.setActiveTab('preview')
+}
 </script>
 
 <style scoped lang="scss">
@@ -179,6 +209,7 @@ const downloadAllAsZip = async () => {
   min-height: 0;
   padding: 10px;
   background: #f5f5f5;
+  overflow: visible;
 }
 
 .preview-container {
@@ -188,12 +219,13 @@ const downloadAllAsZip = async () => {
   padding: 15px;
   margin: 5px auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: calc(100vw - 20px);
+  position: relative;
+  min-height: 400px;
+  max-width: calc(100vw - 40px);
   width: fit-content;
   transition: all 0.3s ease-in-out;
   box-sizing: border-box;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: visible;
 }
 
 .output-section {
@@ -290,5 +322,87 @@ const downloadAllAsZip = async () => {
     transform: none;
     box-shadow: none;
   }
+}
+
+// Navigation buttons styles
+.navigation-buttons {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.back-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.download-btn-fixed {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+
+  &:hover {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.filename-section {
+  text-align: center;
+  margin: 30px 0 50px 0;
+}
+
+.filename-display {
+  font-size: 14px;
+  color: #495057;
+  font-weight: 500;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  display: inline-block;
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.button-spacer {
+  width: 96px; // Downloadボタンと同じ幅
+  height: 40px; // Downloadボタンと同じ高さ
 }
 </style>

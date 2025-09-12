@@ -13,6 +13,7 @@ export const useUiStore = defineStore('ui', () => {
   const isGenerated = ref(false)
   const activeTab = ref('preview')
   const controlPanelTab = ref<'layout' | 'upload' | 'format'>('upload')
+  const sidebarSection = ref<'files' | 'generate' | 'settings'>('files')
   const toasts = ref<ToastMessage[]>([])
   const error = ref<string | null>(null)
   
@@ -29,6 +30,11 @@ export const useUiStore = defineStore('ui', () => {
   // コントロールパネルタブを設定
   const setControlPanelTab = (tab: 'layout' | 'upload' | 'format') => {
     controlPanelTab.value = tab
+  }
+  
+  // サイドバーセクションを設定
+  const setSidebarSection = (section: 'files' | 'generate' | 'settings') => {
+    sidebarSection.value = section
   }
   
   // エラーを設定
@@ -91,11 +97,13 @@ export const useUiStore = defineStore('ui', () => {
     isGenerated,
     activeTab,
     controlPanelTab,
+    sidebarSection,
     toasts,
     error,
     setGenerating,
     setActiveTab,
     setControlPanelTab,
+    setSidebarSection,
     setError,
     addToast,
     removeToast,

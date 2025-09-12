@@ -6,12 +6,13 @@ import type { ReplaceRule } from '../utils/types'
 export const useSettingsStore = defineStore('settings', () => {
   const keyboardLanguage = ref(getCurrentKeyboardLanguage().id)
   const replaceRules = ref<ReplaceRule[]>([])
-  const outputFormat = ref<'separated' | 'vertical' | 'horizontal'>('separated')
+  const outputFormat = ref<'separated' | 'vertical' | 'rectangular'>('separated')
   const showLabels = ref(true)
   const enableDarkMode = ref(false)
   const keySize = ref(50)
   const fontSize = ref(12)
   const spacing = ref(5)
+  const outputLabel = ref('')
   
   // Advanced settings
   const highlightEnabled = ref(false)
@@ -67,9 +68,18 @@ export const useSettingsStore = defineStore('settings', () => {
   }
   
   // 出力フォーマットを変更
-  const setOutputFormat = (format: 'separated' | 'vertical' | 'horizontal') => {
+  const setOutputFormat = (format: 'separated' | 'vertical' | 'rectangular') => {
     outputFormat.value = format
-      }
+  }
+  
+  // 出力フォーマットを循環切り替え
+  const cycleOutputFormat = (direction: number = 1) => {
+    const formats: ('separated' | 'vertical' | 'rectangular')[] = ['separated', 'vertical', 'rectangular']
+    const currentIndex = formats.indexOf(outputFormat.value)
+    let newIndex = (currentIndex + direction) % formats.length
+    if (newIndex < 0) newIndex = formats.length - 1
+    outputFormat.value = formats[newIndex]
+  }
   
   // ラベル表示を切り替え
   const toggleLabels = (show: boolean) => {
@@ -94,7 +104,12 @@ export const useSettingsStore = defineStore('settings', () => {
   // スペーシングを変更
   const setSpacing = (space: number) => {
     spacing.value = space
-      }
+  }
+  
+  // ハイライトを切り替え
+  const toggleHighlight = () => {
+    highlightEnabled.value = !highlightEnabled.value
+  }
   
   
   return {
@@ -106,6 +121,7 @@ export const useSettingsStore = defineStore('settings', () => {
     keySize,
     fontSize,
     spacing,
+    outputLabel,
     highlightEnabled,
     showCombos,
     showHeader,
@@ -116,8 +132,10 @@ export const useSettingsStore = defineStore('settings', () => {
     updateReplaceRule,
     removeReplaceRule,
     setOutputFormat,
+    cycleOutputFormat,
     toggleLabels,
     toggleDarkMode,
+    toggleHighlight,
     setKeySize,
     setFontSize,
     setSpacing

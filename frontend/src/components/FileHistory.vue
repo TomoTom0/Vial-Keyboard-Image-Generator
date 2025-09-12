@@ -12,14 +12,6 @@
       >
         <div class="file-content">
           <div class="file-name">{{ file.name }}</div>
-          <div class="file-actions">
-            <button @click.stop="downloadFile(file)" class="action-btn download-btn" title="ダウンロード">
-              ↓
-            </button>
-            <button @click.stop="deleteFile(file)" class="action-btn delete-btn" title="削除">
-              ×
-            </button>
-          </div>
         </div>
       </button>
     </div>
@@ -69,7 +61,7 @@ const deleteFile = (file: VialData) => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .file-history {
   display: contents;
 }

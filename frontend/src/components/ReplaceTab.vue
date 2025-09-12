@@ -6,49 +6,54 @@
         :key="rule.id"
         class="rule-row"
       >
-        <div class="rule-checkbox">
-          <input 
-            type="checkbox"
-            :id="`rule-${rule.id}`"
-            v-model="rule.enabled"
-            @change="handleEnabledChange(index)"
-          />
-          <label :for="`rule-${rule.id}`"></label>
+        <!-- ルールヘッダー（1行目） -->
+        <div class="rule-header">
+          <div class="rule-checkbox">
+            <input 
+              type="checkbox"
+              :id="`rule-${rule.id}`"
+              v-model="rule.enabled"
+              @change="handleEnabledChange(index)"
+            />
+          </div>
+          <div class="rule-actions">
+            <button 
+              class="btn btn-save"
+              @click="saveRule(index)"
+              :disabled="!hasUnsavedChanges(index)"
+            >
+              Save
+            </button>
+            <button 
+              class="btn btn-delete"
+              @click="deleteRule(index)"
+              :disabled="isLastEmptyRule(index)"
+            >
+              Delete
+            </button>
+          </div>
         </div>
         
-        <div class="rule-input">
+        <!-- From入力（2行目） -->
+        <div class="rule-input-row">
+          <label class="input-label">From:</label>
           <input 
             type="text"
             v-model="rule.from"
-            placeholder="From"
+            placeholder="Original text"
             @input="handleRuleChange(index)"
           />
         </div>
         
-        <div class="rule-input">
+        <!-- To入力（3行目） -->
+        <div class="rule-input-row">
+          <label class="input-label">To:</label>
           <input 
             type="text"
             v-model="rule.to"
-            placeholder="To"
+            placeholder="Replace with"
             @input="handleRuleChange(index)"
           />
-        </div>
-        
-        <div class="rule-actions">
-          <button 
-            class="btn btn-save"
-            @click="saveRule(index)"
-            :disabled="!hasUnsavedChanges(index)"
-          >
-            Save
-          </button>
-          <button 
-            class="btn btn-delete"
-            @click="deleteRule(index)"
-            :disabled="isLastEmptyRule(index)"
-          >
-            Delete
-          </button>
         </div>
       </div>
     </div>
@@ -197,15 +202,14 @@ watch(() => props.replaceRules, () => {
 
 <style scoped lang="scss">
 .replace-rules {
-  padding-top: 8px;
+  padding-top: 6px;
   
   .rule-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 6px 0;
-    min-height: 40px;
+    padding: 8px 0;
     border-bottom: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     
     &:first-child {
       padding-top: 0;
@@ -213,6 +217,52 @@ watch(() => props.replaceRules, () => {
     
     &:last-child {
       border-bottom: none;
+    }
+  }
+  
+  .rule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 170px;
+  }
+  
+  .rule-input-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 170px;
+    
+    .input-label {
+      font-size: 12px;
+      color: #6c757d;
+      font-weight: 500;
+      min-width: 30px;
+      flex-shrink: 0;
+    }
+    
+    input {
+      flex: 1;
+      padding: 4px 6px;
+      border: 1px solid #ced4da;
+      border-radius: 3px;
+      font-size: 12px;
+      background: white;
+      color: black;
+      transition: border-color 0.15s;
+      box-sizing: border-box;
+      min-width: 0;
+      
+      &:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.15);
+      }
+      
+      &::placeholder {
+        color: #9ca3af;
+        font-size: 11px;
+      }
     }
   }
   
@@ -227,48 +277,32 @@ watch(() => props.replaceRules, () => {
     }
   }
   
-  .rule-input {
-    flex: 0 0 90px;
-    min-width: 90px;
-    max-width: 90px;
+  
+  .rule-checkbox {
+    flex-shrink: 0;
     
-    input {
-      width: 90px;
-      padding: 5px 6px;
-      border: 1px solid #ced4da;
-      border-radius: 3px;
-      font-size: 12px;
-      transition: border-color 0.15s;
-      box-sizing: border-box;
-      
-      &:focus {
-        outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
-      }
-      
-      &::placeholder {
-        color: #9ca3af;
-        font-size: 11px;
-      }
+    input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      cursor: pointer;
     }
   }
   
   .rule-actions {
-    flex-shrink: 0;
     display: flex;
     gap: 4px;
-    margin-left: 8px;
+    flex-shrink: 0;
     
     .btn {
-      padding: 4px 8px;
+      padding: 3px 8px;
       border: none;
       border-radius: 3px;
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.15s;
-      min-width: 40px;
+      min-width: 35px;
       
       &:disabled {
         opacity: 0.5;

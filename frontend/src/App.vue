@@ -5,12 +5,14 @@ import FileHistory from './components/FileHistory.vue'
 import SelectTab from './components/SelectTab.vue'
 import PreviewTab from './components/PreviewTab.vue'
 import OutputTab from './components/OutputTab.vue'
-import AdvancedSettings from './components/AdvancedSettings.vue'
+import KeyboardTab from './components/KeyboardTab.vue'
+import ReplaceTab from './components/ReplaceTab.vue'
 import Toast from './components/Toast.vue'
 import { useVialStore } from './stores/vial'
 import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
 import { useImagesStore } from './stores/images'
+import type { ReplaceRule } from './utils/types'
 import { getCurrentKeyboardLanguage, setCurrentKeyboardLanguage } from './utils/keyboardConfig'
 
 // URLハッシュから初期タブを取得（hashモード形式: /#/tab）
@@ -54,20 +56,8 @@ const debouncedGeneratePreview = () => {
 
 
 
-const updateOutputFormat = (format: 'separated' | 'vertical' | 'rectangular') => {
-  settingsStore.outputFormat = format
-  generatePreviewImages()
-}
 
-const toggleHighlight = () => {
-  settingsStore.highlightEnabled = !settingsStore.highlightEnabled
-  debouncedGeneratePreview()
-}
 
-const toggleCombos = () => {
-  settingsStore.showCombos = !settingsStore.showCombos
-  debouncedGeneratePreview()
-}
 
 // Tab navigation
 const handleTabChanged = (tab: 'select' | 'preview' | 'output') => {
@@ -78,10 +68,6 @@ const handleTabChanged = (tab: 'select' | 'preview' | 'output') => {
   uiStore.setActiveTab(tab)
 }
 
-// Control panel tab handling
-const handleControlPanelTabChanged = (tab: 'layout' | 'upload' | 'format') => {
-  uiStore.setControlPanelTab(tab)
-}
 
 // Preview generation (delegated to ImagesStore)
 const generatePreviewImages = async () => {
@@ -91,10 +77,101 @@ const generatePreviewImages = async () => {
   )
 }
 
-// サンプル画像のオーバーレイ表示は常にCorne v4（キーボード構造の表示）
-const layoutTitle = computed(() => {
-  return 'Corne v4'
+
+// ファイル操作関数
+const hasSelectedFile = computed(() => {
+  return vialStore.selectedVialId && vialStore.selectedVialId !== 'sample'
 })
+
+
+// ナビゲーション状態管理はUiStoreで行う
+const switchNavSection = (section: 'files' | 'generate' | 'settings') => {
+  uiStore.setSidebarSection(section)
+}
+
+const downloadSelectedFile = () => {
+  if (!hasSelectedFile.value) return
+  
+  const selectedFile = vialStore.vialFiles.find(f => f.id === vialStore.selectedVialId)
+  if (selectedFile) {
+    const jsonString = JSON.stringify(selectedFile.config, null, 2)
+    const blob = new Blob([jsonString], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = selectedFile.name.endsWith('.vil') ? selectedFile.name : `${selectedFile.name}.vil`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+}
+
+const deleteSelectedFile = () => {
+  if (!hasSelectedFile.value) return
+  
+  if (confirm('Are you sure you want to delete this file?')) {
+    vialStore.removeVialData(vialStore.selectedVialId!)
+    vialStore.selectVial('sample')
+  }
+}
+
+// Generate セクション関数
+const selectedFile = computed(() => vialStore.selectedVialId)
+
+const getFormatName = () => {
+  const format = settingsStore.outputFormat
+  switch (format) {
+    case 'separated': return 'Separated'
+    case 'vertical': return 'Vertical'
+    case 'rectangular': return 'Rectangular'
+    default: return 'Separated'
+  }
+}
+
+const cycleFormat = (direction: number) => {
+  settingsStore.cycleOutputFormat(direction)
+  debouncedGeneratePreview()
+}
+
+
+const toggleDarkMode = () => {
+  settingsStore.toggleDarkMode(!settingsStore.enableDarkMode)
+  debouncedGeneratePreview()
+}
+
+const switchTab = (tab: 'select' | 'preview') => {
+  uiStore.setActiveTab(tab)
+}
+
+// ハイライト切り替え（矢印ナビ用）
+const cycleHighlight = (direction: number) => {
+  settingsStore.toggleHighlight()
+  debouncedGeneratePreview()
+}
+
+// カラーモード切り替え（矢印ナビ用）
+const cycleDarkMode = (direction: number) => {
+  settingsStore.toggleDarkMode(!settingsStore.enableDarkMode)
+  debouncedGeneratePreview()
+}
+
+
+const handleGenerate = async () => {
+  await imagesStore.generateFinalOutputImages()
+}
+
+// Replace Rules変更ハンドラー
+const handleReplaceRulesChanged = (rules: ReplaceRule[]) => {
+  console.log('🔄 Replace rules changed:', rules)
+  settingsStore.setReplaceRules(rules)
+  
+  // プレビュー画像を再生成
+  if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {
+    console.log('🔄 Regenerating preview images due to replace rules change')
+    debouncedGeneratePreview()
+  }
+}
 
 // Initialization
 // タブ変更時にハッシュを更新
@@ -152,186 +229,220 @@ onUnmounted(() => {
 <template>
   <div class="app">
     <!-- ページヘッダー -->
-    <header class="page-header">
+    <header class="page-header" :class="{ 'sample-mode': !vialStore.selectedVialId || vialStore.selectedVialId === 'sample' }">
+      <div class="header-filename">{{ vialStore.selectedFileName || 'sample' }}</div>
       <h1 class="page-title">YTomo Vial Keyboard Image Generator</h1>
+      <div class="header-spacer"></div>
     </header>
     
-    <!-- 上部コントロールパネル -->
-    <section class="control-panel">
-      <!-- デスクトップ表示（横幅十分） -->
-      <div class="control-panel-desktop">
-        <div class="panel-section layout-section">
-          <div class="layout-preview">
-            <div class="layout-sample-small">
-              <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
-              <div class="layout-title-overlay">{{ layoutTitle }}</div>
-            </div>
+    <!-- メインレイアウトエリア -->
+    <div class="main-layout">
+      <!-- サイドバー -->
+      <aside class="sidebar">
+      <!-- 細長い左側領域 -->
+      <div class="sidebar-narrow">
+        <div class="nav-items">
+          <div 
+            :class="['nav-item', { active: uiStore.sidebarSection === 'files' }]" 
+            title="Files"
+            @click="switchNavSection('files')"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+            </svg>
           </div>
-        </div>
-        
-        <div class="panel-section upload-section">
-          <div class="file-grid">
-            <FileUpload />
-            <FileHistory />
+          <div 
+            :class="['nav-item', { active: uiStore.sidebarSection === 'generate' }]" 
+            title="Generate & Settings"
+            @click="switchNavSection('generate')"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/>
+            </svg>
           </div>
-        </div>
-        
-        <div class="panel-section format-section">
-          <div class="format-buttons">
-            <button :class="['format-btn', { active: settingsStore.outputFormat === 'separated' }]" @click="updateOutputFormat('separated')">
-              <span class="format-label">Separated</span>
-              <div class="format-diagram">
-                <div class="diagram-separated">
-                  <div class="layer-individual">L0</div>
-                  <div class="layer-individual">L1</div>
-                  <div class="layer-individual">L2</div>
-                  <div class="layer-individual">L3</div>
-                </div>
-              </div>
-            </button>
-            <button :class="['format-btn', { active: settingsStore.outputFormat === 'vertical' }]" @click="updateOutputFormat('vertical')">
-              <span class="format-label">Vertical</span>
-              <div class="format-diagram">
-                <div class="diagram-vertical">
-                  <div class="layer-stack">
-                    <div class="layer-box">L0</div>
-                    <div class="layer-box">L1</div>
-                    <div class="layer-box">L2</div>
-                    <div class="layer-box">L3</div>
-                  </div>
-                  <div class="combo-box">Combos</div>
-                </div>
-              </div>
-            </button>
-            <button :class="['format-btn', { active: settingsStore.outputFormat === 'rectangular' }]" @click="updateOutputFormat('rectangular')">
-              <span class="format-label">Rectangular</span>
-              <div class="format-diagram">
-                <div class="diagram-horizontal">
-                  <div class="horizontal-grid">
-                    <div class="layer-box">L0</div>
-                    <div class="layer-box">L2</div>
-                    <div class="layer-box">L1</div>
-                    <div class="layer-box">L3</div>
-                  </div>
-                  <div class="combo-box">Combos</div>
-                </div>
-              </div>
-            </button>
-          </div>
-          <div class="control-buttons-section">
-            <button :class="['highlight-toggle-btn', { active: settingsStore.highlightEnabled }]" @click="toggleHighlight">
-              Highlight {{ settingsStore.highlightEnabled ? 'on' : 'off' }}
-            </button>
-            <button 
-              :class="['theme-toggle-btn', { active: settingsStore.enableDarkMode }]" 
-              @click="settingsStore.toggleDarkMode(!settingsStore.enableDarkMode); debouncedGeneratePreview()"
-            >
-              {{ settingsStore.enableDarkMode ? 'Dark' : 'Light' }}
-            </button>
+          <div 
+            :class="['nav-item', { active: uiStore.sidebarSection === 'settings' }]" 
+            title="Settings"
+            @click="switchNavSection('settings')"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+            </svg>
           </div>
         </div>
       </div>
       
-      <!-- モバイル表示（タブ切り替え） -->
-      <div class="control-panel-mobile">
-        <div class="control-tab-buttons">
-          <button :class="['control-tab-btn', { active: uiStore.controlPanelTab === 'upload' }]" @click="handleControlPanelTabChanged('upload')">
-            Files
-          </button>
-          <button :class="['control-tab-btn', { active: uiStore.controlPanelTab === 'format' }]" @click="handleControlPanelTabChanged('format')">
-            Settings
-          </button>
-          <button :class="['control-tab-btn', { active: uiStore.controlPanelTab === 'layout' }]" @click="handleControlPanelTabChanged('layout')">
-            Layout
-          </button>
-        </div>
-        
-        <div class="control-tab-content">
-          <div v-show="uiStore.controlPanelTab === 'layout'" class="panel-section layout-section">
-            <div class="layout-preview">
-              <div class="layout-sample-small">
-                <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
-                <div class="layout-title-overlay">{{ layoutTitle }}</div>
-              </div>
+      <!-- メインサイドバーコンテンツ -->
+      <div class="sidebar-main">
+        <div class="sidebar-content">
+          <!-- ファイル領域（Files選択時のみ表示） -->
+          <div v-show="uiStore.sidebarSection === 'files'" class="sidebar-section file-section">
+            <div class="file-header">
+              <h3 class="sidebar-section-title">
+                Files
+                <span class="selected-file-name">{{ selectedFileName }}</span>
+              </h3>
             </div>
-          </div>
-          
-          <div v-show="uiStore.controlPanelTab === 'upload'" class="panel-section upload-section">
-            <div class="file-grid">
-              <FileUpload />
+            
+            <!-- ファイル領域のメインコンテンツ -->
+            <div class="file-controls">
+              <div class="file-actions-row">
+                <FileUpload />
+                <button 
+                  class="action-btn download-btn" 
+                  :disabled="!hasSelectedFile"
+                  @click="downloadSelectedFile"
+                  title="Download selected file"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7,10 12,15 17,10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                </button>
+                <button 
+                  class="action-btn delete-btn" 
+                  :disabled="!hasSelectedFile"
+                  @click="deleteSelectedFile"
+                  title="Delete selected file"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3,6 5,6 21,6"/>
+                    <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                    <line x1="10" y1="11" x2="10" y2="17"/>
+                    <line x1="14" y1="11" x2="14" y2="17"/>
+                  </svg>
+                </button>
+              </div>
               <FileHistory />
             </div>
           </div>
           
-          <div v-show="uiStore.controlPanelTab === 'format'" class="panel-section format-section">
-            <div class="format-buttons">
-              <button :class="['format-btn', { active: settingsStore.outputFormat === 'separated' }]" @click="updateOutputFormat('separated')">
-                <span class="format-label">Separated</span>
-                <div class="format-diagram">
-                  <div class="diagram-separated">
-                    <div class="layer-individual">L0</div>
-                    <div class="layer-individual">L1</div>
-                    <div class="layer-individual">L2</div>
-                    <div class="layer-individual">L3</div>
-                  </div>
-                </div>
-              </button>
-              <button :class="['format-btn', { active: settingsStore.outputFormat === 'vertical' }]" @click="updateOutputFormat('vertical')">
-                <span class="format-label">Vertical</span>
-                <div class="format-diagram">
-                  <div class="diagram-vertical">
-                    <div class="layer-stack">
-                      <div class="layer-box">L0</div>
-                      <div class="layer-box">L1</div>
-                      <div class="layer-box">L2</div>
-                      <div class="layer-box">L3</div>
-                    </div>
-                    <div class="combo-box">Combos</div>
-                  </div>
-                </div>
-              </button>
-              <button :class="['format-btn', { active: settingsStore.outputFormat === 'rectangular' }]" @click="updateOutputFormat('rectangular')">
-                <span class="format-label">Rectangular</span>
-                <div class="format-diagram">
-                  <div class="diagram-horizontal">
-                    <div class="horizontal-grid">
-                      <div class="layer-box">L0</div>
-                      <div class="layer-box">L2</div>
-                      <div class="layer-box">L1</div>
-                      <div class="layer-box">L3</div>
-                    </div>
-                    <div class="combo-box">Combos</div>
-                  </div>
-                </div>
-              </button>
+          <!-- 画像生成・設定領域（Generate選択時のみ表示） -->
+          <div v-show="uiStore.sidebarSection === 'generate'" class="sidebar-section generate-section">
+            <div class="generate-header">
+              <h3 class="sidebar-section-title">Generate</h3>
             </div>
-            <div class="control-buttons-section">
-              <button :class="['highlight-toggle-btn', { active: settingsStore.highlightEnabled }]" @click="toggleHighlight">
-                Highlight {{ settingsStore.highlightEnabled ? 'on' : 'off' }}
+            <div class="generate-controls">
+            <!-- フォーマット選択 -->
+            <div class="format-selector">
+              <button class="format-nav-btn" @click="cycleFormat(-1)">‹</button>
+              <div class="format-current">
+                <div class="format-icon">
+                  <svg v-if="settingsStore.outputFormat === 'separated'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="6" height="6"/>
+                    <rect x="15" y="3" width="6" height="6"/>
+                    <rect x="3" y="15" width="6" height="6"/>
+                    <rect x="15" y="15" width="6" height="6"/>
+                  </svg>
+                  <svg v-else-if="settingsStore.outputFormat === 'vertical'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="6" y="2" width="12" height="4"/>
+                    <rect x="6" y="8" width="12" height="4"/>
+                    <rect x="6" y="14" width="12" height="4"/>
+                    <rect x="6" y="20" width="12" height="2"/>
+                  </svg>
+                  <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="6" width="8" height="4"/>
+                    <rect x="14" y="6" width="8" height="4"/>
+                    <rect x="2" y="12" width="8" height="4"/>
+                    <rect x="14" y="12" width="8" height="4"/>
+                  </svg>
+                </div>
+                <span class="format-name">{{ getFormatName() }}</span>
+              </div>
+              <button class="format-nav-btn" @click="cycleFormat(1)">›</button>
+            </div>
+
+            <!-- ハイライト設定 -->
+            <div class="format-selector">
+              <button class="format-nav-btn" @click="cycleHighlight(-1)">‹</button>
+              <div class="format-current">
+                <span class="format-name">Highlight {{ settingsStore.highlightEnabled ? 'ON' : 'OFF' }}</span>
+              </div>
+              <button class="format-nav-btn" @click="cycleHighlight(1)">›</button>
+            </div>
+            <!-- カラーモード設定 -->
+            <div class="format-selector">
+              <button class="format-nav-btn" @click="cycleDarkMode(-1)">‹</button>
+              <div class="format-current">
+                <span class="format-name">{{ settingsStore.enableDarkMode ? 'Dark' : 'Light' }}</span>
+              </div>
+              <button class="format-nav-btn" @click="cycleDarkMode(1)">›</button>
+            </div>
+
+            <!-- Label入力欄 -->
+            <div class="label-input-container">
+              <label class="label-input-label">Label</label>
+              <input 
+                type="text"
+                class="label-input"
+                v-model="settingsStore.outputLabel"
+                :placeholder="vialStore.selectedFileName || 'sample'"
+              />
+            </div>
+            
+            <!-- タブ選択 -->
+            <div class="format-selector">
+              <button 
+                class="format-nav-btn tab-button" 
+                :class="{ active: uiStore.activeTab === 'select' }"
+                @click="uiStore.setActiveTab('select')"
+              >
+                Select
               </button>
               <button 
-                :class="['theme-toggle-btn', { active: settingsStore.enableDarkMode }]" 
-                @click="settingsStore.toggleDarkMode(!settingsStore.enableDarkMode); debouncedGeneratePreview()"
+                class="format-nav-btn tab-button" 
+                :class="{ active: uiStore.activeTab === 'preview' }"
+                @click="uiStore.setActiveTab('preview')"
               >
-                {{ settingsStore.enableDarkMode ? 'Dark' : 'Light' }}
+                Preview
               </button>
+            </div>
+            
+            <!-- Generateボタン -->
+            <div class="generate-button-container">
+              <button 
+                class="generate-btn-full"
+                :disabled="selectedFile === 'sample'"
+                @click="handleGenerate"
+              >
+                Generate
+              </button>
+            </div>
+            </div>
+          </div>
+          
+          <!-- 詳細設定領域（Settings選択時のみ表示） -->
+          <div v-show="uiStore.sidebarSection === 'settings'" class="sidebar-section settings-section">
+            <div class="settings-header">
+              <h3 class="sidebar-section-title">Settings</h3>
+            </div>
+            <div class="settings-content">
+              <!-- Layout設定 -->
+              <div class="settings-group">
+                <h4 class="settings-group-title">Layout</h4>
+                <KeyboardTab :selected-file="vialStore.selectedVialId" />
+              </div>
+              
+              <!-- Replace設定 -->
+              <div class="settings-group">
+                <h4 class="settings-group-title">Replace Rules</h4>
+                <ReplaceTab 
+                  :replace-rules="settingsStore.replaceRules"
+                  @rules-changed="handleReplaceRulesChanged"
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </section>
-
-    <!-- メインワークエリア -->
-    <main class="workspace">
-      <div class="workspace-header">
-        <div class="workspace-nav">
-          <div class="tab-buttons">
-            <button :class="['tab-btn', { active: uiStore.activeTab === 'select' }]" @click="handleTabChanged('select')">Select</button>
-            <button :class="['tab-btn', { active: uiStore.activeTab === 'preview' }]" @click="handleTabChanged('preview')">Preview</button>
-            <button :class="['tab-btn', { active: uiStore.activeTab === 'output', disabled: !uiStore.isGenerated }]" @click="handleTabChanged('output')" :disabled="!uiStore.isGenerated">Output</button>
-          </div>
-        </div>
-      </div>
+    </aside>
+    
+      <!-- メインコンテンツエリア -->
+      <div class="main-content">
+        <!-- メインワークエリア -->
+        <main class="workspace">
       
       <div class="workspace-content">
         <div v-if="uiStore.error" class="error-toast">
@@ -352,10 +463,10 @@ onUnmounted(() => {
         />
       </div>
       
-      <!-- 詳細設定領域 -->
-      <AdvancedSettings />
-    </main>
-  </div>
+        </main>
+      </div> <!-- main-content end -->
+    </div> <!-- main-layout end -->
+  </div> <!-- app end -->
 
   <!-- トースト通知 -->
   <Toast
@@ -368,12 +479,12 @@ onUnmounted(() => {
   />
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 /* 基本レイアウト */
 .app {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* ヘッダーを上部に配置 */
   background: #f5f5f5;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   color: #333333;
@@ -384,11 +495,31 @@ onUnmounted(() => {
 
 /* ページヘッダー */
 .page-header {
-  background: linear-gradient(135deg, #007bff, #0056b3);
-  border-bottom: 2px solid #004085;
-  padding: 16px 20px;
-  text-align: center;
+  background: linear-gradient(135deg, #007bff 0%, #004085 100%);
+  padding: 12px 20px;
+  border-bottom: 1px solid #dee2e6;
+  position: relative;
+  z-index: 1000;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-header.sample-mode {
+  background: linear-gradient(135deg, #6c757d 0%, #007bff 30%, #004085 100%);
+}
+
+.header-filename {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  min-width: 60px;
+  text-align: center;
 }
 
 .page-title {
@@ -398,405 +529,403 @@ onUnmounted(() => {
   color: #ffffff;
   letter-spacing: -0.5px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
-/* 上部コントロールパネル */
-.control-panel {
-  background: #ffffff;
-  border-bottom: 1px solid #dee2e6;
-  padding: 20px;
+.header-spacer {
+  min-width: 60px;
 }
 
-.control-panel-desktop {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 20px;
-  align-items: stretch;
-}
-
-.control-panel-desktop .layout-section {
-  order: 3;
-}
-
-.control-panel-desktop .upload-section {
-  order: 1;
-}
-
-.control-panel-desktop .format-section {
-  order: 2;
-}
-
-.control-panel-mobile {
-  display: none;
-}
-
-.control-tab-buttons {
+/* メインレイアウトエリア */
+.main-layout {
   display: flex;
-  justify-content: center;
-  border-bottom: 1px solid #dee2e6;
-  margin-bottom: 15px;
+  flex-direction: row; /* サイドバーとメインコンテンツを横並びに */
+  flex: 1;
 }
 
-.control-tab-btn {
-  padding: 10px 20px;
-  border: none;
-  background: transparent;
-  color: #6b7280;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s ease;
-  flex: 0 0 auto;
+/* サイドバー */
+.sidebar {
+  width: 250px;
+  height: auto;
+  background: #ffffff;
+  border-right: 1px solid #e0e0e0;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0; /* サイドバーの幅を固定 */
+  display: flex;
+  flex-direction: row;
 }
 
-.control-tab-btn.active {
-  color: #007bff;
-  border-bottom-color: #007bff;
+/* 細長い左側領域 */
+.sidebar-narrow {
+  width: 40px;
+  height: 100%; /* サイドバー全体の高さを使用 */
+  background: #f8f9fa;
+  border-right: 1px solid #e9ecef;
+  flex-shrink: 0;
 }
 
-.control-tab-btn:hover:not(.active) {
-  color: #374151;
-  background: #f3f4f6;
-}
-
-.control-tab-content {
-  height: 160px;
-  
-  .panel-section {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    box-sizing: border-box;
-  }
-}
-
-/* タブレット・モバイル対応 */
-@media (max-width: 1200px) and (min-width: 1101px) {
-  .control-panel-desktop {
-    display: none;
-  }
-  
-  .control-panel-mobile {
-    display: flex;
-  }
-}
-
-@media (max-width: 1100px) {
-  .control-panel-desktop {
-    display: none;
-  }
-  
-  .control-panel-mobile {
-    display: block;
-  }
-}
-
-@media (max-width: 768px) {
-  .page-header {
-    padding: 12px 15px;
-  }
-  
-  .page-title {
-    font-size: 20px;
-  }
-  
-  .control-panel {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 10px;
-  }
-  
-  .panel-section {
-    padding: 12px;
-  }
-  
-  .file-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-  }
-}
-
-@media (max-width: 480px) {
-  .control-panel {
-    padding: 8px;
-  }
-  
-  .panel-section {
-    padding: 10px;
-    gap: 8px;
-  }
-}
-
-.panel-section {
+/* ナビゲーションアイテム */
+.nav-items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 10px;
-  background: #ffffff;
-  color: #212529;
-  height: 100%;
-  box-sizing: border-box;
+  padding: 10px 0;
+  gap: 5px;
 }
 
-.upload-section {
-  min-height: 80px;
-}
-
-.file-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 8px;
-  align-items: start;
-}
-
-.layout-section {
-  text-align: center;
-}
-
-.layout-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 10px;
-  color: #212529;
-}
-
-
-.layout-preview {
-  margin: 8px 0;
-}
-
-.layout-sample-small {
-  width: 100%;
-  max-width: 320px;
-  height: 100px;
-  border: 1px dashed #ccc;
+.nav-item {
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto;
-  font-size: 12px;
-  color: #666;
-  background: #f9f9f9;
-  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #6c757d;
   position: relative;
 }
 
-.layout-title-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.1);
+.nav-item:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.nav-item.active {
+  background: #007bff;
   color: #ffffff;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 24px;
-  font-weight: 700;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  pointer-events: none;
 }
 
-@media (max-width: 768px) {
-  .layout-sample-small {
-    height: 80px;
-    font-size: 11px;
-  }
+.nav-item.active:hover {
+  background: #0056b3;
 }
 
-@media (max-width: 480px) {
-  .layout-sample-small {
-    height: 60px;
-    font-size: 10px;
-  }
+/* メインサイドバーコンテンツ */
+.sidebar-main {
+  flex: 1;
+  height: auto;
 }
 
-.sample-image {
-  width: 100%;
-  height: 100%;
-  max-width: 400px;
-  object-fit: contain;
+.sidebar-content {
+  padding: 20px;
+  height: auto;
 }
 
-.format-title {
+.sidebar-section {
+  margin-bottom: 30px;
+}
+
+.file-header,
+.generate-header,
+.settings-header {
+  background: #f8f9fa;
+  margin: -20px -20px 15px -20px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.sidebar-section-title {
   font-size: 16px;
   font-weight: 600;
-  margin-bottom: 10px;
-  color: #212529;
+  color: #333;
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.format-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 5px;
-  margin-bottom: 3px;
+.file-header .sidebar-section-title,
+.generate-header .sidebar-section-title,
+.settings-header .sidebar-section-title {
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 8px;
 }
 
-@media (max-width: 480px) {
-  .format-buttons {
-    grid-template-columns: 1fr;
-    gap: 8px;
+.selected-file-name {
+  font-size: 14px;
+  font-weight: 400;
+  color: #666;
+  background: #f8f9fa;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.file-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.file-actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-btn {
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  color: #333;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: #f8f9fa;
+  border-color: #007bff;
+  color: #007bff;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f8f9fa;
+  color: #999;
+}
+
+.download-btn:hover:not(:disabled) {
+  background: #e3f2fd;
+  border-color: #2196f3;
+  color: #2196f3;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #ffebee;
+  border-color: #f44336;
+  color: #f44336;
+}
+
+/* Generate section styles */
+.generate-section {
+  margin-bottom: 0;
+}
+
+/* Settings section styles */
+.settings-section {
+  margin-bottom: 0;
+}
+
+.settings-header {
+  background: #f8f9fa;
+  margin: -20px -20px 15px -20px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.settings-content {
+  padding: 0;
+  max-width: 170px; /* ナビ部分40px + サイドバーパディング左右40px(20px×2)を除いた実際の利用可能幅 */
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.settings-group {
+  margin-bottom: 15px;
+  padding: 0;
+  box-sizing: border-box;
+  max-width: 170px;
+  overflow: hidden;
+}
+
+.settings-group:last-child {
+  margin-bottom: 0;
+}
+
+.settings-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 8px 0;
+  padding: 6px 0 3px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.generate-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: -20px -20px 0 -20px;
+  padding: 10px 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+  max-width: 210px; /* ナビ部分40pxを除いた実際の利用可能幅 */
+}
+
+/* Format selector */
+.format-selector {
+  display: flex;
+  align-items: center;
+  background: #f8f9fa;
+  border-radius: 3px;
+  padding: 3px;
+  gap: 1px;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.format-nav-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: bold;
+  color: #495057;
+  cursor: pointer;
+  padding: 1px;
+  border-radius: 2px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #e9ecef;
+  }
+
+  &.active {
+    background: #007bff;
+    color: white;
+  }
+
+  // タブボタンの場合は幅を自動調整
+  &.tab-button {
+    width: auto;
+    padding: 8px 12px;
+    min-width: 50px;
+    height: 32px;
+    flex: 1;
   }
 }
 
-.control-buttons-section {
+.format-current {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
   justify-content: center;
-  align-items: center;
-  margin-top: 2px;
+  min-width: 0;
 }
 
-.highlight-toggle-btn {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  background: white;
-  color: #212529;
-  cursor: pointer;
+.format-icon {
+  color: #007bff;
+  flex-shrink: 0;
+}
+
+.format-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.format-name {
+  font-weight: 500;
+  font-size: 12px;
+  color: #495057;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+
+/* Label input container */
+.label-input-container {
+  margin-top: 15px;
+  max-width: 210px;
+  position: relative;
+}
+
+.label-input-label {
+  display: block;
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.label-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
   border-radius: 4px;
-  font-size: 14px;
-  transition: all 0.2s;
-  flex: 1;
-  max-width: 120px;
+  font-size: 13px;
+  background: white;
+  color: black;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
 }
 
-.highlight-toggle-btn.active {
-  background: #007bff;
-  color: white;
+.label-input:focus {
+  outline: none;
   border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
 }
 
-.theme-toggle-btn {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  background: white;
-  color: #212529;
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: all 0.2s;
-  flex: 1;
-  max-width: 120px;
+.label-input::placeholder {
+  color: #9ca3af;
 }
 
-.theme-toggle-btn.active {
-  background: #007bff;
-  color: white;
-  border-color: #007bff;
-}
-
-.format-btn {
-  padding: 8px 6px;
-  border: 1px solid #ddd;
-  background: white;
-  color: #333;
-  cursor: pointer;
-  font-size: 10px;
-  border-radius: 4px;
-  transition: all 0.2s;
+/* Generate button container */
+.generate-button-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-height: 60px;
+  width: 100%;
+  max-width: 210px;
+  box-sizing: border-box;
 }
 
-.format-btn.active {
-  background: #007bff;
+.generate-btn-full {
+  width: 100%;
+  padding: 8px 12px;
+  background: #28a745;
+  border: none;
+  border-radius: 3px;
   color: white;
-  border-color: #007bff;
-}
-
-.format-label {
+  font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  box-sizing: border-box;
   text-align: center;
 }
 
-.format-diagram {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
+.generate-btn-full:hover:not(:disabled) {
+  background: #218838;
 }
 
-.diagram-separated {
-  display: flex;
-  gap: 3px;
+.generate-btn-full:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
 }
 
-.layer-individual {
-  width: 12px;
-  height: 10px;
-  background: #e0e0e0;
-  border: 1px solid #999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 5px;
-  font-weight: bold;
-  color: #333;
-}
-
-.diagram-vertical {
+/* メインコンテンツエリア */
+.main-content {
+  flex: 1; /* 残りの幅を使用 */
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 2px;
+  height: auto;
 }
 
-.diagram-vertical .layer-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
 
-.diagram-horizontal {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: center;
-}
-
-.horizontal-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 1px;
-}
-
-.layer-box {
-  width: 16px;
-  height: 12px;
-  background: #e0e0e0;
-  border: 1px solid #999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 6px;
-  font-weight: bold;
-  color: #333;
-}
-
-.combo-box {
-  width: 36px;
-  height: 8px;
-  background: #333;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 5px;
-  font-weight: bold;
-  border-radius: 1px;
-}
-
-.highlight-section {
-  text-align: left;
-}
 
 .highlight-title {
   font-size: 14px;
@@ -835,7 +964,7 @@ onUnmounted(() => {
 }
 
 .highlight-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   color: #333;
   text-align: center;
@@ -926,12 +1055,12 @@ onUnmounted(() => {
 }
 
 .tab-btn {
-  padding: 10px 20px;
+  padding: 6px 12px;
   border: none;
   background: transparent;
   color: #6b7280;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   border-bottom: 2px solid transparent;
   transition: all 0.2s ease;
@@ -980,7 +1109,6 @@ onUnmounted(() => {
 .workspace-content {
   flex: 1;
   position: relative;
-  overflow-y: auto;
   background: #f5f5f5;
   padding: 0;
   width: 100%;

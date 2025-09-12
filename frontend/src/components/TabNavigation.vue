@@ -52,7 +52,7 @@ const selectTab = (tabId: 'select' | 'preview' | 'output') => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .tab-navigation {
   display: flex;
   gap: 0.25rem;

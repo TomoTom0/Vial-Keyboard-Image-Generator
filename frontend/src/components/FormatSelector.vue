@@ -103,7 +103,7 @@ watch(() => props.currentFormat, (newFormat) => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .format-selector {
   display: flex;
   flex-direction: column;

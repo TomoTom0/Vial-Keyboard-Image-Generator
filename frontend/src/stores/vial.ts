@@ -38,6 +38,24 @@ export const useVialStore = defineStore('vial', () => {
     return vialFiles.value.find(v => v.id === selectedVialId.value)
   })
 
+  // 選択されているファイル名
+  const selectedFileName = computed(() => {
+    console.log('🔍 selectedFileName computed:', {
+      selectedVialId: selectedVialId.value,
+      vialFilesLength: vialFiles.value.length,
+      vialFiles: vialFiles.value.map(f => ({ id: f.id, name: f.name }))
+    })
+    
+    if (!selectedVialId.value || selectedVialId.value === 'sample') {
+      console.log('📝 selectedFileName returning "sample" (no selection or sample)')
+      return 'sample'
+    }
+    const selectedFile = vialFiles.value.find(f => f.id === selectedVialId.value)
+    const result = selectedFile?.name || 'sample'
+    console.log('📝 selectedFileName result:', result, 'from selectedFile:', selectedFile)
+    return result
+  })
+
   // VILデータを追加
   const addVialData = (name: string, config: VialConfig, content: string) => {
     const id = uuidv4()
@@ -106,6 +124,7 @@ export const useVialStore = defineStore('vial', () => {
     vialFiles,
     selectedVialId,
     currentVial,
+    selectedFileName,
     addVialData,
     removeVialData,
     selectVial,

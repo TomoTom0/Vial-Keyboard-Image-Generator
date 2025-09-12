@@ -330,7 +330,7 @@ watch(currentPage, () => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .history-panel {
   width: 100%;
   max-width: 400px;

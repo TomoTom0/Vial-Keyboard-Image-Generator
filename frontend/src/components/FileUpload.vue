@@ -22,10 +22,11 @@
       />
       
       <div v-if="!uploadedFile" class="upload-content">
-        <div class="upload-text">
-          <div class="primary-text">Upload .vil file from vial.rocks</div>
-          <div class="secondary-text">or .png/.ytvil.png file with embedded settings</div>
-        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17,8 12,3 7,8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
       </div>
 
       <div v-else class="file-preview">
@@ -360,7 +361,7 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .file-upload {
   display: contents;
 }
@@ -368,12 +369,12 @@ onMounted(() => {
 .upload-zone {
   border: 1px dashed #d1d5db;
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
   background: #fafbfc;
-  height: 50px;
+  height: 36px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -383,6 +384,8 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 500;
   color: #374151;
+  flex: 1;
+  min-width: 0;
 }
 
 .upload-zone:hover {

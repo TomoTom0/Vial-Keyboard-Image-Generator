@@ -189,7 +189,7 @@ $background-light: #f5f5f5;
   align-items: center;
   
   // ウィンドウサイズ基準の共通画像倍率（余裕がある場合はより大きく）
-  --image-scale: clamp(0.4, 2vw, 1.2);
+  --image-scale: clamp(0.6, 2.5vw, 1.5);
   
   // 内部コンテンツの最小幅を確保（画像がスケールされた状態での適切な表示のため）
   > * {
@@ -345,6 +345,9 @@ $background-light: #f5f5f5;
 .combos-image-section {
   @include interactive-element;
   width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 
   &.header-disabled,
   &.combos-disabled {

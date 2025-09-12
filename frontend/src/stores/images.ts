@@ -228,7 +228,8 @@ export const useImagesStore = defineStore('images', () => {
           subtextHighlight: settingsStore.highlightEnabled,
           quality,
           replaceRules: settingsStore.replaceRules || [],
-          keyboardLanguage: settingsStore.keyboardLanguage
+          keyboardLanguage: settingsStore.keyboardLanguage,
+          outputLabel: settingsStore.outputLabel
         }
       )
       
@@ -739,7 +740,8 @@ export const useImagesStore = defineStore('images', () => {
           replaceRules: settingsStore.replaceRules || [],
           outputFormat: settingsStore.outputFormat,
           showHeader: settingsStore.showHeader,
-          showCombos: settingsStore.showCombos
+          showCombos: settingsStore.showCombos,
+          outputLabel: settingsStore.outputLabel
         }
       )
       

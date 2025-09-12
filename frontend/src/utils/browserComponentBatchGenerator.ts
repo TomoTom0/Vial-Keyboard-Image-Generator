@@ -23,6 +23,7 @@ interface ComponentGeneratorOptions {
     outputFormat?: 'separated' | 'vertical' | 'rectangular';
     showHeader?: boolean;
     showCombos?: boolean;
+    outputLabel?: string;
 }
 
 interface GeneratedComponent {
@@ -72,7 +73,8 @@ export class BrowserComponentBatchGenerator {
                 replaceRules,
                 outputFormat,
                 showHeader,
-                showCombos
+                showCombos,
+                outputLabel
             } = options;
 
             const components: GeneratedComponent[] = [];
@@ -87,10 +89,11 @@ export class BrowserComponentBatchGenerator {
         // レンダリングオプションを設定
         const renderOptions: RenderOptions = {
             theme: colorMode,
-            highlightComboKeys: comboHighlight,
+            highlightComboKeys: subtextHighlight,
             highlightSubtextKeys: subtextHighlight,
-            showComboMarkers: comboHighlight
+            showComboMarkers: subtextHighlight
         };
+        
 
         // 基準画像幅（レイヤー画像と統一した計算）
         const baseContentWidth = this.unitX * 13.5 + this.keyWidth;
@@ -121,8 +124,8 @@ export class BrowserComponentBatchGenerator {
             false, // isWideLayout
             colorMode, 
             scale, 
-            comboHighlight, // highlightComboKeys
-            comboHighlight // showComboMarkers
+            subtextHighlight, // highlightComboKeys
+            subtextHighlight // showComboMarkers
         );
         components.push({
             canvas: combo1xResult.canvas,
@@ -138,8 +141,8 @@ export class BrowserComponentBatchGenerator {
             true, // isWideLayout
             colorMode, 
             scale, 
-            comboHighlight, // highlightComboKeys
-            comboHighlight // showComboMarkers
+            subtextHighlight, // highlightComboKeys
+            subtextHighlight // showComboMarkers
         );
         components.push({
             canvas: combo2xResult.canvas,
@@ -155,8 +158,8 @@ export class BrowserComponentBatchGenerator {
             true, // isWideLayout
             colorMode, 
             scale, 
-            comboHighlight, // highlightComboKeys
-            comboHighlight // showComboMarkers
+            subtextHighlight, // highlightComboKeys
+            subtextHighlight // showComboMarkers
         );
         components.push({
             canvas: combo3xResult.canvas,
@@ -172,7 +175,7 @@ export class BrowserComponentBatchGenerator {
             this.adapter,
             baseImageWidth,
             colorMode,
-            configPath, // 実際のファイル名を使用
+            outputLabel || configPath, // outputLabelがあればそれを使用、なければconfigPathを使用
             scale
         );
         components.push({
@@ -186,7 +189,7 @@ export class BrowserComponentBatchGenerator {
             this.adapter,
             baseImageWidth * 2,
             colorMode,
-            configPath,
+            outputLabel || configPath,
             scale
         );
         components.push({
@@ -200,7 +203,7 @@ export class BrowserComponentBatchGenerator {
             this.adapter,
             baseImageWidth * 3,
             colorMode,
-            configPath,
+            outputLabel || configPath,
             scale
         );
         components.push({

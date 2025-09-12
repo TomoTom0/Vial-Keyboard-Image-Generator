@@ -43,7 +43,7 @@ const getDisplayName = (fileName: string): string => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .file-selector {
   display: flex;
   align-items: center;

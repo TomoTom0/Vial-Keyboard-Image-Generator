@@ -60,10 +60,10 @@
 
     <button
       class="generate-btn"
-      :disabled="!canGenerate || isGenerating"
+      :disabled="!canGenerate"
       @click="handleGenerate"
     >
-      {{ isGenerating ? 'Generating...' : 'Generate' }}
+      Generate
     </button>
   </div>
 </template>
@@ -194,7 +194,7 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .settings {
   display: flex;
   flex-direction: column;
@@ -210,7 +210,7 @@ onMounted(() => {
   font-weight: 500;
   color: #495057;
   margin-bottom: 0.5rem;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .options {
@@ -224,7 +224,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .checkbox-option {
@@ -232,7 +232,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1rem;
 }
 
 .layer-range {
@@ -246,7 +246,7 @@ onMounted(() => {
   border: 1px solid #ced4da;
   border-radius: 6px;
   background: white;
-  font-size: 0.875rem;
+  font-size: 0.95rem;
 }
 
 .layer-range span {
@@ -259,7 +259,7 @@ onMounted(() => {
   border: none;
   border-radius: 6px;
   padding: 0.75rem 1.5rem;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s;

@@ -34,7 +34,7 @@ const selectTheme = (theme: 'light' | 'dark') => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .color-mode-selector {
   /* Container styles handled by parent */
 }
