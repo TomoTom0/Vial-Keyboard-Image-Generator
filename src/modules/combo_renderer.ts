@@ -64,27 +64,52 @@ export class ComboRenderer {
                 const startY = y + buttonHeight * 0.65;
                 const lineHeight = Math.floor(13 * scale);
                 
-                for (let i = 0; i < subTexts.length; i += 2) {
-                    const row = Math.floor(i / 2);
+                // サブテキストの長さに応じて配置を調整
+                let i = 0;
+                let row = 0;
+                
+                while (i < subTexts.length) {
                     const subY = startY + (row * lineHeight);
                     
-                    if (i + 1 < subTexts.length) {
-                        // 一行に二個表示：左側は少し大きく、右側は通常サイズ
-                        const leftX = x + buttonWidth * 0.25;
-                        const rightX = x + buttonWidth * 0.75;
-                        
-                        // 左側（もう少し大きく、太字で視認性向上）
-                        ctx.font = `bold ${Math.floor(13 * scale)}px Arial, sans-serif`;
-                        ctx.fillText(subTexts[i], leftX, subY);
-                        
-                        // 右側（通常サイズ、太字で視認性向上）
+                    // 現在の要素が長いかチェック
+                    const currentText = subTexts[i];
+                    ctx.font = `bold ${Math.floor(13 * scale)}px Arial, sans-serif`;
+                    const textWidth = ctx.measureText(currentText).width;
+                    const maxSingleWidth = buttonWidth * 0.4; // ボタン幅の40%以下なら2個配置可能
+                    
+                    // 次の要素も存在し、両方が短い場合は2個配置
+                    if (i + 1 < subTexts.length && textWidth <= maxSingleWidth) {
+                        const nextText = subTexts[i + 1];
                         ctx.font = `bold ${Math.floor(11 * scale)}px Arial, sans-serif`;
-                        ctx.fillText(subTexts[i + 1], rightX, subY);
+                        const nextTextWidth = ctx.measureText(nextText).width;
+                        const maxSecondWidth = buttonWidth * 0.35;
+                        
+                        if (nextTextWidth <= maxSecondWidth) {
+                            // 一行に二個表示
+                            const leftX = x + buttonWidth * 0.25;
+                            const rightX = x + buttonWidth * 0.75;
+                            
+                            ctx.font = `bold ${Math.floor(13 * scale)}px Arial, sans-serif`;
+                            ctx.fillText(currentText, leftX, subY);
+                            
+                            ctx.font = `bold ${Math.floor(11 * scale)}px Arial, sans-serif`;
+                            ctx.fillText(nextText, rightX, subY);
+                            
+                            i += 2;
+                        } else {
+                            // 次の要素が長いので現在の要素のみ表示
+                            ctx.font = `bold ${Math.floor(11 * scale)}px Arial, sans-serif`;
+                            ctx.fillText(currentText, x + buttonWidth / 2, subY);
+                            i += 1;
+                        }
                     } else {
-                        // 奇数個の場合、最後の一個は中央に表示（太字で視認性向上）
+                        // 現在の要素のみ表示（長いか、最後の要素）
                         ctx.font = `bold ${Math.floor(11 * scale)}px Arial, sans-serif`;
-                        ctx.fillText(subTexts[i], x + buttonWidth / 2, subY);
+                        ctx.fillText(currentText, x + buttonWidth / 2, subY);
+                        i += 1;
                     }
+                    
+                    row++;
                 }
             }
         }

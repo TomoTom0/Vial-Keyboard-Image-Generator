@@ -401,23 +401,52 @@ export class CanvasDrawingUtils {
         const startY = pos.y + pos.height * 0.65;
         const lineHeight = 13;
         
-        for (let i = 0; i < replacedSubTexts.length; i += 2) {
-          const row = Math.floor(i / 2);
+        // サブテキストの長さに応じて配置を調整
+        let i = 0;
+        let row = 0;
+        
+        while (i < replacedSubTexts.length) {
           const y = startY + (row * lineHeight);
           
-          if (i + 1 < replacedSubTexts.length) {
-            const leftX = pos.x + pos.width * 0.25;
-            const rightX = pos.x + pos.width * 0.75;
-            
-            ctx.font = '13px Arial, sans-serif';
-            ctx.fillText(replacedSubTexts[i], leftX, y);
-            
+          // 現在の要素が長いかチェック
+          const currentText = replacedSubTexts[i];
+          ctx.font = '13px Arial, sans-serif';
+          const textWidth = ctx.measureText(currentText).width;
+          const maxSingleWidth = pos.width * 0.4; // キー幅の40%以下なら2個配置可能
+          
+          // 次の要素も存在し、両方が短い場合は2個配置
+          if (i + 1 < replacedSubTexts.length && textWidth <= maxSingleWidth) {
+            const nextText = replacedSubTexts[i + 1];
             ctx.font = '11px Arial, sans-serif';
-            ctx.fillText(replacedSubTexts[i + 1], rightX, y);
+            const nextTextWidth = ctx.measureText(nextText).width;
+            const maxSecondWidth = pos.width * 0.35;
+            
+            if (nextTextWidth <= maxSecondWidth) {
+              // 一行に二個表示
+              const leftX = pos.x + pos.width * 0.25;
+              const rightX = pos.x + pos.width * 0.75;
+              
+              ctx.font = '13px Arial, sans-serif';
+              ctx.fillText(currentText, leftX, y);
+              
+              ctx.font = '11px Arial, sans-serif';
+              ctx.fillText(nextText, rightX, y);
+              
+              i += 2;
+            } else {
+              // 次の要素が長いので現在の要素のみ表示
+              ctx.font = '11px Arial, sans-serif';
+              ctx.fillText(currentText, pos.x + pos.width / 2, y);
+              i += 1;
+            }
           } else {
+            // 現在の要素のみ表示（長いか、最後の要素）
             ctx.font = '11px Arial, sans-serif';
-            ctx.fillText(replacedSubTexts[i], pos.x + pos.width / 2, y);
+            ctx.fillText(currentText, pos.x + pos.width / 2, y);
+            i += 1;
           }
+          
+          row++;
         }
       }
     }

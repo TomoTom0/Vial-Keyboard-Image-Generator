@@ -233,6 +233,11 @@ const generatePreviewImages = async () => {
 
 
 
+// サンプル画像のオーバーレイ表示は常にCorne v4（キーボード構造の表示）
+const layoutTitle = computed(() => {
+  return 'Corne v4'
+})
+
 // 画像生成処理をimage storeに委譲
 const handleGenerate = async () => {
   await imagesStore.generateFinalOutputImages()
@@ -343,7 +348,7 @@ onUnmounted(() => {
           <div class="layout-preview">
             <div class="layout-sample-small">
               <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
-              <div class="layout-title-overlay">{{ vialStore.currentVial?.name || 'sample' }}</div>
+              <div class="layout-title-overlay">{{ layoutTitle }}</div>
             </div>
           </div>
         </div>
@@ -430,7 +435,7 @@ onUnmounted(() => {
             <div class="layout-preview">
               <div class="layout-sample-small">
                 <img src="/assets/sample/keyboard/dark/0-0/layer0-low.png" alt="Layout sample" class="sample-image" />
-                <div class="layout-title-overlay">{{ vialStore.currentVial?.name || 'sample' }}</div>
+                <div class="layout-title-overlay">{{ layoutTitle }}</div>
               </div>
             </div>
           </div>

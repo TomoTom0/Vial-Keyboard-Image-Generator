@@ -179,8 +179,19 @@ const handleYtvilPngFile = async (file: File) => {
   // VIL設定を復元
   const vilConfig = JSON.parse(metadata.vilConfig)
   
-  // ファイル名から.ytvil.pngを除去して.vilに変更
-  const originalName = file.name.replace(/\.ytvil\.png$/, '.vil')
+  // ファイル名から.ytvil.pngを除去し、ytomo-vial-kb-プレフィックスがあれば除去して.vilに変更
+  let originalName = file.name.replace(/\.ytvil\.png$/, '')
+  
+  // ytomo-vial-kb-{ファイル名}-{日時}形式の場合、プレフィックスと日時部分を除去
+  if (originalName.startsWith('ytomo-vial-kb-')) {
+    // ytomo-vial-kb-を除去
+    originalName = originalName.replace(/^ytomo-vial-kb-/, '')
+    // 末尾のタイムスタンプ部分（-YYYYMMDDHHMMSS）があれば除去
+    originalName = originalName.replace(/-\d{14}$/, '')
+  }
+  
+  // .vil拡張子を追加
+  originalName = originalName + '.vil'
   
   // VialStoreにVIL設定を保存
   const base64Content = `data:application/octet-stream;base64,${btoa(metadata.vilConfig)}`

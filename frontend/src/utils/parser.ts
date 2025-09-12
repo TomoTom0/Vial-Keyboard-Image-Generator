@@ -120,6 +120,9 @@ export class Parser {
                 switch (baseKey) {
                     case 'SPACE': keyName = 'SPACE'; break;
                     case 'TAB': keyName = 'TAB'; break;
+                    case 'ESCAPE': keyName = 'Esc'; break;
+                    case 'ENTER': keyName = 'Enter'; break;
+                    case 'BSPACE': keyName = 'Bksp'; break;
                     default: keyName = baseKey;
                 }
                 
@@ -157,7 +160,9 @@ export class Parser {
                     switch (keyName) {
                         case 'SPACE': keyName = 'SPACE'; break;
                         case 'TAB': keyName = 'TAB'; break;
-                        case 'ENTER': keyName = 'ENTER'; break;
+                        case 'ENTER': keyName = 'Enter'; break;
+                        case 'ESCAPE': keyName = 'Esc'; break;
+                        case 'BSPACE': keyName = 'Bksp'; break;
                         default: keyName = keyName;
                     }
                     
@@ -253,6 +258,13 @@ export class Parser {
         // 基本キーマッピング（KC_プレフィックス付き） - 設定に基づく配列対応
         if (keyStr.startsWith('KC_')) {
             const baseKey = keyStr.substring(3);
+            
+            // 特定のキーコードのKC_プレフィックス除去（LANG1, LANG2等）
+            if (baseKey.startsWith('LANG') || baseKey.startsWith('HENK') || baseKey.startsWith('MHEN') || 
+                baseKey.startsWith('KANA') || baseKey.startsWith('APP') || baseKey.startsWith('MENU')) {
+                return { mainText: baseKey, subText: undefined, isSpecial: false };
+            }
+            
             const currentLanguageForMapping = getCurrentKeyboardLanguage();
             const keyMapping = getKeyMapping(currentLanguageForMapping.id);
 
