@@ -1,6 +1,7 @@
 // パーサーモジュール（ブラウザ対応版）
-import type { VialConfig, KeyLabel, ComboInfo } from './types';
-import { getCurrentKeyboardLanguage, getKeyMapping, getSpecialKeys } from './keyboardConfig';
+import type { VialConfig, KeyLabel, ComboInfo, VirtualButton, PhysicalButton } from './types';
+import { getCurrentKeyboardLanguage, getKeyMapping } from './keyboardConfig';
+import { VialDataProcessor } from './vialDataProcessor';
 
 export class Parser {
     // 文字列キーコードを数値に変換
@@ -66,7 +67,23 @@ export class Parser {
         return result;
     }
 
-    // キーコード文字列をラベルに変換
+    // キーコード文字列をラベルに変換（新構造体版）
+    static keycodeToPhysicalButton(keycodeStr: string | number, config: VialConfig): PhysicalButton {
+        const keyStr = typeof keycodeStr === 'number' ? keycodeStr.toString() : keycodeStr;
+        
+        // -1 や数値、空の場合は空キーとして処理
+        if (keycodeStr === -1 || keycodeStr === '' || keycodeStr === 'KC_NO') {
+            return {
+                rawKeyCode: 'KC_NO',
+                main: { keyCode: 'KC_NO', keyText: '', isSpecial: false },
+                sub: undefined
+            };
+        }
+        
+        return VialDataProcessor.createPhysicalButton(keyStr, config);
+    }
+
+    // 後方互換性のためのラベル変換メソッド（既存コード用）
     static keycodeToLabel(keycodeStr: string | number, config: VialConfig): KeyLabel {
         // -1 や数値の場合は空キーとして処理
         if (keycodeStr === -1 || keycodeStr === '' || keycodeStr === 'KC_NO') {
@@ -247,31 +264,13 @@ export class Parser {
             }
         }
 
-        // 現在の言語設定に基づく特殊キー処理
+        // KC_付きキーマッピングから直接検索
         const currentLanguage = getCurrentKeyboardLanguage();
-        const specialKeys = currentLanguage.specialKeys;
+        const keyMapping = getKeyMapping(currentLanguage.id);
         
-        if (specialKeys[keyStr]) {
-            return { mainText: specialKeys[keyStr], subText: undefined, isSpecial: false };
-        }
-
-        // 基本キーマッピング（KC_プレフィックス付き） - 設定に基づく配列対応
-        if (keyStr.startsWith('KC_')) {
-            const baseKey = keyStr.substring(3);
-            
-            // 特定のキーコードのKC_プレフィックス除去（LANG1, LANG2等）
-            if (baseKey.startsWith('LANG') || baseKey.startsWith('HENK') || baseKey.startsWith('MHEN') || 
-                baseKey.startsWith('KANA') || baseKey.startsWith('APP') || baseKey.startsWith('MENU')) {
-                return { mainText: baseKey, subText: undefined, isSpecial: false };
-            }
-            
-            const currentLanguageForMapping = getCurrentKeyboardLanguage();
-            const keyMapping = getKeyMapping(currentLanguageForMapping.id);
-
-            const mappedKey = keyMapping[baseKey];
-            if (mappedKey) {
-                return { mainText: mappedKey, subText: undefined, isSpecial: false };
-            }
+        // keycode文字列（KC_プレフィックス付き）から表示テキストに変換
+        if (keyMapping[keyStr]) {
+            return { mainText: keyMapping[keyStr], subText: undefined, isSpecial: false };
         }
 
         // その他の特殊処理

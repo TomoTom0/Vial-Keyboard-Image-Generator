@@ -1,7 +1,7 @@
 // Canvas描画共通ユーティリティ
 // Node.js版とブラウザ版で共通のCanvas描画ロジック
 
-import type { VialConfig, RenderOptions, ComboInfo, KeyLabel, ThemeColors } from './types';
+import type { VialConfig, RenderOptions, ComboInfo, KeyLabel, ThemeColors, PhysicalButton } from './types';
 import { getThemeColors } from './types';
 import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
 import type { ReplaceRule } from '../components/AdvancedSettings.vue';
@@ -843,5 +843,136 @@ export class CanvasDrawingUtils {
     }
 
     return buttonWidth;
+  }
+
+  // PhysicalButtonを直接使用する描画メソッド
+  static drawPhysicalButton(
+    ctx: CanvasRenderingContext2D,
+    pos: {x: number, y: number, width: number, height: number},
+    physicalButton: PhysicalButton,
+    options: RenderOptions,
+    combos?: ComboInfo[]
+  ): void {
+    const colors = getThemeColors(options.theme);
+    
+    // キーの背景を描画
+    this.drawPhysicalButtonBackground(ctx, pos, physicalButton, options, colors);
+    
+    // テキストを描画
+    this.drawPhysicalButtonText(ctx, pos, physicalButton, options, colors, combos);
+  }
+
+  private static drawPhysicalButtonBackground(
+    ctx: CanvasRenderingContext2D,
+    pos: {x: number, y: number, width: number, height: number},
+    physicalButton: PhysicalButton,
+    options: RenderOptions,
+    colors: ThemeColors
+  ): void {
+    const { x, y, width, height } = pos;
+    
+    // 背景色を決定
+    let bgColor = colors.keyNormal;
+    let borderColor = colors.borderNormal;
+    
+    if (physicalButton.main.isSpecial || physicalButton.sub) {
+      if (options.changeKeyColors !== false) {
+        bgColor = colors.keySpecial;
+        borderColor = colors.borderSpecial;
+      }
+    }
+    
+    // キーの背景を描画
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(x, y, width, height);
+    
+    // 枠線を描画
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, width, height);
+  }
+
+  private static drawPhysicalButtonText(
+    ctx: CanvasRenderingContext2D,
+    pos: {x: number, y: number, width: number, height: number},
+    physicalButton: PhysicalButton,
+    options: RenderOptions,
+    colors: ThemeColors,
+    combos?: ComboInfo[]
+  ): void {
+    const { x, y, width, height } = pos;
+    
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // メインテキストを描画
+    ctx.fillStyle = physicalButton.main.isSpecial ? colors.textSpecial : colors.textNormal;
+    ctx.font = `bold 16px Arial, sans-serif`;
+    
+    let mainY = y + height / 2;
+    
+    // サブテキストがある場合はメインテキストを上に移動
+    if (physicalButton.sub) {
+      mainY = y + height * 0.3;
+    }
+    
+    ctx.fillText(physicalButton.main.keyText, x + width / 2, mainY);
+    
+    // サブテキストを描画
+    if (physicalButton.sub) {
+      const subTexts: string[] = [];
+      if (physicalButton.sub.tap) subTexts.push(physicalButton.sub.tap.keyText);
+      if (physicalButton.sub.hold) subTexts.push(physicalButton.sub.hold.keyText);
+      if (physicalButton.sub.double) subTexts.push(physicalButton.sub.double.keyText);
+      if (physicalButton.sub.taphold) subTexts.push(physicalButton.sub.taphold.keyText);
+      
+      if (subTexts.length > 0) {
+        ctx.fillStyle = colors.textSub;
+        ctx.font = '14px Arial, sans-serif';
+        
+        if (subTexts.length === 1) {
+          ctx.fillText(subTexts[0], x + width / 2, y + height * 0.75);
+        } else {
+          // 複数のサブテキストは一行に二個ずつ配置
+          const startY = y + height * 0.65;
+          const lineHeight = 13;
+          
+          for (let i = 0; i < subTexts.length; i += 2) {
+            const row = Math.floor(i / 2);
+            const subY = startY + (row * lineHeight);
+            
+            if (i + 1 < subTexts.length) {
+              // 一行に二個表示
+              const leftX = x + width * 0.25;
+              const rightX = x + width * 0.75;
+              
+              ctx.fillText(subTexts[i], leftX, subY);
+              ctx.fillText(subTexts[i + 1], rightX, subY);
+            } else {
+              // 奇数個の場合、最後のテキストは中央に
+              ctx.fillText(subTexts[i], x + width / 2, subY);
+            }
+          }
+        }
+      }
+    }
+    
+    // コンボマーカーを描画
+    if (options.showComboMarkers !== false && combos) {
+      const isComboKey = combos.some(combo => 
+        combo.keycodes.includes(physicalButton.rawKeyCode)
+      );
+      
+      if (isComboKey) {
+        const triangleSize = 8;
+        ctx.fillStyle = colors.textSpecial;
+        ctx.beginPath();
+        ctx.moveTo(x + width - triangleSize, y);
+        ctx.lineTo(x + width, y);
+        ctx.lineTo(x + width, y + triangleSize);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
   }
 }

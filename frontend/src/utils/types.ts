@@ -1,5 +1,79 @@
 // 型定義モジュール
 
+// === ボタン構造体 ===
+
+// 仮想ボタン：キーコードと表示テキストの純粋な対応
+export interface VirtualButton {
+  keyCode: string;    // "KC_A", "LT1", "LSFT" など
+  keyText: string;    // "A", "LT1", "LSFT" など表示テキスト
+  isSpecial: boolean; // 言語変更の影響を受けない特殊キー（LT, MO, OSMなど）
+}
+
+// 物理ボタン：実際のハードウェアキーの表現
+export interface PhysicalButton {
+  rawKeyCode: string;           // "KC_A", "TD(0)", "LT1(KC_SPACE)" など元のキーコード
+  main: VirtualButton;          // メイン表示用の仮想ボタン
+  sub?: {                       // サブテキスト用の仮想ボタン辞書
+    tap?: VirtualButton;
+    hold?: VirtualButton;
+    double?: VirtualButton;
+    taphold?: VirtualButton;
+  };
+}
+
+// TapDance構造体
+export interface TapDance {
+  index: number;                // TD(0)のindex番号
+  rawData: TapDanceInfo;        // 元のVIALデータ
+  tap: VirtualButton;           // タップ動作
+  hold?: VirtualButton;         // ホールド動作
+  double?: VirtualButton;       // ダブルタップ動作
+  taphold?: VirtualButton;      // タップ+ホールド動作
+}
+
+// Combo構造体  
+export interface Combo {
+  index: number;                // 元のコンボインデックス
+  rawKeys: string[];            // 元のキー配列
+  keys: VirtualButton[];        // 組み合わせキーの仮想ボタン配列
+  action: VirtualButton;        // 実行アクションの仮想ボタン
+  description: string;          // 説明テキスト
+}
+
+// === ParsedVial構造体 ===
+
+// 配置・描画情報を含む物理ボタン
+export interface PositionedPhysicalButton {
+  button: PhysicalButton;           // 物理ボタン情報
+  layoutPosition: KeyPosition;      // 配置座標（論理位置）
+  drawPosition: KeyPosition;        // 描画座標（実際の描画位置）
+  rowIndex: number;                 // 行インデックス
+  colIndex: number;                 // 列インデックス
+}
+
+// 解析済みレイヤー情報
+export interface ParsedLayer {
+  layerIndex: number;                      // レイヤー番号
+  buttons: PositionedPhysicalButton[];     // 配置済み物理ボタン配列
+  name?: string;                           // レイヤー名（オプション）
+  enabled?: boolean;                       // レイヤー有効状態（オプション）
+}
+
+// 解析済みVIAL構造体
+export interface ParsedVial {
+  original: VialConfig;             // 元のVIALデータ
+  tapDances: TapDance[];           // TapDance情報
+  combos: Combo[];                 // コンボ情報
+  layers: ParsedLayer[];           // 解析済みレイヤー情報（配置・描画座標付き）
+  keyboardName?: string;           // キーボード名（オプション）
+  metadata?: {                     // メタデータ（オプション）
+    generatedAt: Date;
+    version?: string;
+  };
+}
+
+// === 既存の型定義 ===
+
 // KeyOverride設定の型定義
 export interface KeyOverride {
     trigger: string | number;
@@ -99,6 +173,7 @@ export interface ReplaceRule {
     enabled: boolean;
     from: string;
     to: string;
+    validationStatus?: 'valid' | 'invalid' | 'unknown';  // キーボード配列でのバリデーション結果
 }
 
 // 描画オプション

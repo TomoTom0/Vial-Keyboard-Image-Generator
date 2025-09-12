@@ -1,9 +1,12 @@
 // ブラウザ対応版Vial Keyboard Image Generator
-import type { VialConfig, RenderOptions, KeyPosition, KeyLabel, ComboInfo } from './types'
+import type { VialConfig, RenderOptions, KeyPosition, KeyLabel, ComboInfo, PhysicalButton, ParsedVial, PositionedPhysicalButton } from './types'
 import { getThemeColors } from './types'
 import { Utils } from './utils'
 import { Parser } from './parser'
+import { ParserNew } from './parserNew'
+import { ParsedVialProcessor } from './parsedVialProcessor'
 import { KEYBOARD_CONSTANTS } from '../constants/keyboard'
+import { CanvasDrawingUtils } from './canvasDrawingUtils'
 
 export interface GenerationOptions {
   layerRange?: { start: number; end: number }
@@ -26,7 +29,50 @@ export class BrowserVialKeyboardImageGenerator {
   private get unitY() { return KEYBOARD_CONSTANTS.unitY }
   private get margin() { return KEYBOARD_CONSTANTS.margin }
 
-  // メイン関数：ファイルデータとオプションを受け取って全canvasを返す
+  // 新しいメイン関数：ParsedVialベースでの生成
+  public generateAllLayerCanvasesFromParsed(
+    parsedVial: ParsedVial,
+    options: GenerationOptions = {}
+  ): GenerationResult {
+    const layerStart = options.layerRange?.start || 0
+    const layerEnd = options.layerRange?.end || Math.min(3, parsedVial.layers.length - 1)
+    const quality = options.quality || 'high'
+    const scale = quality === 'low' ? 0.5 : 1.0
+    
+    console.log(`レイヤー生成開始 (ParsedVial): ${layerStart} から ${layerEnd}まで (品質: ${quality}, スケール: ${scale})`)
+    
+    const canvases: HTMLCanvasElement[] = []
+    const layerNumbers: number[] = []
+
+    // キャンバスサイズを計算
+    const canvasSize = ParsedVialProcessor.calculateCanvasSize(parsedVial)
+    
+    for (let layerIndex = layerStart; layerIndex <= layerEnd; layerIndex++) {
+      const layer = parsedVial.layers.find(l => l.layerIndex === layerIndex)
+      if (!layer) continue
+      
+      console.log(`Layer ${layerIndex} 生成中...`)
+      
+      // キャンバス作成
+      const canvas = document.createElement('canvas')
+      canvas.width = canvasSize.width * scale
+      canvas.height = canvasSize.height * scale
+      const ctx = canvas.getContext('2d')!
+      
+      // スケール適用
+      ctx.scale(scale, scale)
+      
+      // レイヤー描画
+      this.renderLayerFromParsed(ctx, layer, parsedVial, options.renderOptions || {})
+      
+      canvases.push(canvas)
+      layerNumbers.push(layerIndex)
+    }
+    
+    return { canvases, layerNumbers }
+  }
+
+  // 従来のメイン関数：後方互換性のため維持
   public generateAllLayerCanvases(
     vilFileContent: string,
     options: GenerationOptions = {}
@@ -111,21 +157,58 @@ export class BrowserVialKeyboardImageGenerator {
           if (!pos) continue
 
           const keycode = layer[rowIdx]?.[colIdx] || -1
-          const label = Parser.keycodeToLabel(keycode, config)
+          const physicalButton = ParserNew.keycodeToPhysicalButton(keycode, config)
+          // 後方互換性のためにKeyLabelに変換
+          const label = ParserNew.keycodeToLabel(keycode, config)
 
           // キーを描画（Combo情報付き）
           const stringKeycode = String(keycode)
-          Renderer.drawKey(ctx, pos, label, stringKeycode, combos, options)
-          Renderer.drawText(ctx, pos, label, stringKeycode, combos, options)
+          CanvasDrawingUtils.drawKey(ctx, pos, label, stringKeycode, combos, options)
+          CanvasDrawingUtils.drawText(ctx, pos, label, stringKeycode, combos, options)
         }
       }
     }
 
     // レイヤー番号を装飾付きで左下に表示
-    Renderer.drawLayerNumber(ctx, layerIndex, canvas.width / scale, canvas.height / scale, options)
+    CanvasDrawingUtils.drawLayerNumber(ctx, layerIndex, canvas.width / scale, canvas.height / scale, options)
 
     console.log(`レイヤー${layerIndex}の生成完了: ${imgWidth}x${imgHeight}`)
     return canvas
+  }
+
+  // ParsedVialベースのレイヤー描画
+  private renderLayerFromParsed(
+    ctx: CanvasRenderingContext2D,
+    layer: any,
+    parsedVial: ParsedVial,
+    options: RenderOptions
+  ): void {
+    // テーマ色を取得
+    const colors = getThemeColors(options.theme)
+    
+    // 背景を塗りつぶし
+    ctx.fillStyle = options.backgroundColor || colors.background
+    const canvasSize = ParsedVialProcessor.calculateCanvasSize(parsedVial)
+    ctx.fillRect(0, 0, canvasSize.width, canvasSize.height)
+    
+    // Combo情報を取得（ParsedVialから直接取得し、後方互換性のためComboInfoに変換）
+    const combos = parsedVial.combos.map(combo => ({
+      keys: combo.keys.map(k => k.keyText),
+      keycodes: combo.rawKeys,
+      keySubTexts: combo.keys.map(k => k.isSpecial ? [k.keyText] : undefined),
+      action: combo.action.keyText,
+      description: combo.description,
+      actionSubTexts: combo.action.isSpecial ? [combo.action.keyText] : undefined,
+      index: combo.index
+    }))
+    
+    // レイヤーのボタンを描画（PhysicalButtonを直接使用）
+    for (const positionedButton of layer.buttons) {
+      CanvasDrawingUtils.drawPhysicalButton(ctx, positionedButton.drawPosition, positionedButton.button, options, combos)
+    }
+    
+    // レイヤー番号を表示
+    CanvasDrawingUtils.drawLayerNumber(ctx, layer.layerIndex, canvasSize.width, canvasSize.height, options)
   }
 
   // Vial設定をJSONとしてパース
