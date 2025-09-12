@@ -175,6 +175,7 @@ watch(() => settingsStore.outputFormat, () => {
 })
 
 
+
 // ハッシュ変更を監視してタブを同期
 const handleHashChange = () => {
   const newTab = getInitialTabFromHash()

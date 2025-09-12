@@ -57,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { getCurrentKeyboardLanguage } from '../utils/keyboardConfig'
 import { useVialStore } from '../stores/vial'
 import { useSettingsStore } from '../stores/settings'
@@ -68,17 +68,13 @@ const props = defineProps<{
 }>()
 
 const selectedKeyboard = ref<string>('Corne v4')
-const selectedLayout = ref<string>('japanese')
-const targetLanguage = ref<string>('english')
 const isConverting = ref(false)
 const convertStatus = ref<{type: 'success' | 'error', message: string} | null>(null)
 
-// 現在の設定から初期値を読み込み
-onMounted(() => {
-  const currentLanguage = getCurrentKeyboardLanguage()
-  selectedLayout.value = currentLanguage.id
-  targetLanguage.value = currentLanguage.id === 'japanese' ? 'english' : 'japanese'
-})
+// storeの値を直接使用
+const selectedLayout = computed(() => settingsStore.keyboardLanguage)
+const targetLanguage = computed(() => settingsStore.keyboardLanguage === 'japanese' ? 'english' : 'japanese')
+
 
 const canConvert = computed(() => {
   const currentLanguage = getCurrentKeyboardLanguage()
@@ -93,12 +89,16 @@ const imagesStore = useImagesStore()
 
 const handleLayoutChange = () => {
   console.log('Keyboard layout changed to:', selectedLayout.value)
-  settingsStore.setKeyboardLanguage(selectedLayout.value)
   
   // 画像を再生成（sampleファイルでも言語変更の効果を確認するため）
   console.log('🔄 Current selectedVialId:', vialStore.selectedVialId)
   console.log('🔄 Regenerating preview images due to keyboard language change')
-  imagesStore.generatePreviewImages()
+  
+  // 画像を強制的にクリアしてから再生成
+  imagesStore.clearImages()
+  setTimeout(() => {
+    imagesStore.generatePreviewImages()
+  }, 50)
 }
 
 // 言語名を取得
@@ -126,7 +126,7 @@ const cycleLanguage = (direction: number) => {
   const currentIndex = languages.indexOf(selectedLayout.value)
   let newIndex = (currentIndex + direction) % languages.length
   if (newIndex < 0) newIndex = languages.length - 1
-  selectedLayout.value = languages[newIndex]
+  settingsStore.setKeyboardLanguage(languages[newIndex])
   handleLayoutChange()
 }
 

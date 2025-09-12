@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
-import { convertVialConfig, downloadVilFile, type VialConfig } from '../utils/vilConverter'
+import { convertVialConfig } from '../utils/vilConverter'
+import type { VialConfig } from '../utils/types'
 
 export interface VialData {
   id: string
@@ -113,8 +114,25 @@ export const useVialStore = defineStore('vial', () => {
     // 変換実行
     const convertedConfig = convertVialConfig(vial.config, fromLanguage, toLanguage)
     
-    // ダウンロード
-    downloadVilFile(convertedConfig, vial.name, toLanguage)
+    // 変換されたVILをJSONに変換
+    const jsonContent = JSON.stringify(convertedConfig, null, 2)
+    
+    // ファイル名を生成
+    const baseName = vial.name.replace(/\.vil$/, '')
+    const newFileName = `${baseName}_${toLanguage}.vil`
+    
+    // recent filesに追加
+    const newId = addVialData(newFileName, convertedConfig, jsonContent)
+    
+    // レイアウト言語を変換後の言語に変更
+    const { useSettingsStore } = await import('./settings')
+    const settingsStore = useSettingsStore()
+    settingsStore.setKeyboardLanguage(toLanguage)
+    
+    // UIストアを使用してプレビュータブに移動
+    const { useUiStore } = await import('./ui')
+    const uiStore = useUiStore()
+    uiStore.setActiveTab('preview')
     
     return `変換完了: ${fromLanguage} → ${toLanguage}`
   }

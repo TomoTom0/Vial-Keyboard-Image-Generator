@@ -228,10 +228,7 @@ const debouncedGeneratePreview = () => {
 
 // Preview generation
 const generatePreviewImages = async () => {
-  await imagesStore.generatePreviewImages(
-    vialStore.selectedVialId || 'sample', 
-    vialStore.currentVial
-  )
+  await imagesStore.generatePreviewImages()
 }
 
 // Computed properties
@@ -306,7 +303,7 @@ const downloadSelectedFile = async () => {
 const deleteSelectedFile = async () => {
   if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {
     try {
-      await vialStore.deleteVialFile(vialStore.selectedVialId)
+      await vialStore.removeVialData(vialStore.selectedVialId)
     } catch (error) {
       console.error('Failed to delete file:', error)
     }

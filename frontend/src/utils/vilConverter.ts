@@ -1,48 +1,11 @@
 // VILファイル変換ユーティリティ
 import { getCharacterFromKeycode, getKeycodeForCharacter } from './keyboardConfig'
-
-export interface KeyOverride {
-  trigger: string | number
-  replacement: string | number
-  layers: number
-  trigger_mods: number
-  negative_mod_mask: number
-  suppressed_mods: number
-  options: number
-}
-
-interface VialSettings {
-  [key: string]: number
-}
+import type { VialConfig } from './types'
 
 export interface ComboInfo {
   keys: (string | number)[]
   result: string | number
   [key: string]: unknown
-}
-
-interface TapDanceInfo extends Array<string | number> {
-  0: string | number  // tap
-  1: string | number  // hold
-  2: string | number  // double tap
-  3: string | number  // tap hold
-  4: number           // tapping term
-}
-
-interface VialConfig {
-  version: number
-  uid: number
-  layout: (string | number)[][][]  // [layer][row][key]
-  encoder_layout: (string | number)[][][]
-  layout_options: number
-  macro: string[][]
-  vial_protocol: number
-  via_protocol: number
-  tap_dance: TapDanceInfo[]
-  combo: (string | number)[][]
-  key_override: KeyOverride[]
-  alt_repeat_key: unknown[]
-  settings: VialSettings
 }
 
 /**
@@ -99,14 +62,24 @@ export function convertVialConfig(config: VialConfig, fromLanguage: string, toLa
   // レイアウトの各キーコードを変換
   convertedConfig.layout = config.layout.map((layer, layerIndex) => {
     console.log(`🔄 Converting layer ${layerIndex}`)
-    return layer.map((keycode, keyIndex) => {
-      const converted = convertKeycode(keycode, fromLanguage, toLanguage)
-      if (converted !== keycode) {
-        console.log(`  Key[${keyIndex}]: ${keycode} → ${converted}`)
-        totalConverted++
+    const convertedLayer: { [rowIndex: number]: (string | number)[] } = {}
+    
+    // レイヤーの各行を処理
+    for (const rowIndex in layer) {
+      const row = layer[rowIndex]
+      if (Array.isArray(row)) {
+        convertedLayer[rowIndex] = row.map((keycode, keyIndex) => {
+          const converted = convertKeycode(keycode, fromLanguage, toLanguage)
+          if (converted !== keycode) {
+            console.log(`  Layer ${layerIndex}, Row ${rowIndex}, Key[${keyIndex}]: ${keycode} → ${converted}`)
+            totalConverted++
+          }
+          return converted
+        })
       }
-      return converted
-    })
+    }
+    
+    return convertedLayer
   })
   
   console.log(`✅ Total converted keys: ${totalConverted}`)

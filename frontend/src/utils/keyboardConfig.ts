@@ -276,3 +276,40 @@ export function getKeycodeForCharacter(character: string, languageId: string): s
   
   return null; // 見つからなかった場合
 }
+
+// 言語間キーコード変換：ある言語でのキーコードを別の言語で同じ文字を出力するキーコードに変換
+export function getEquivalentKeycode(
+  sourceLanguage: string,
+  targetLanguage: string, 
+  sourceKeycode: string
+): string | null {
+  // 元の言語でそのキーコードが出力する文字を取得
+  const character = getCharacterFromKeycode(sourceKeycode, sourceLanguage);
+  
+  if (!character) {
+    return null; // 元のキーコードが無効または文字が取得できない
+  }
+  
+  // その文字を目標言語で出力するためのキーコードを取得
+  const equivalentKeycode = getKeycodeForCharacter(character, targetLanguage);
+  
+  return equivalentKeycode;
+}
+
+// 複数のキーコードを一括変換
+export function convertKeycodeList(
+  sourceLanguage: string,
+  targetLanguage: string,
+  keycodes: string[]
+): Array<{ original: string; converted: string | null; character: string | null }> {
+  return keycodes.map(keycode => {
+    const character = getCharacterFromKeycode(keycode, sourceLanguage);
+    const converted = character ? getKeycodeForCharacter(character, targetLanguage) : null;
+    
+    return {
+      original: keycode,
+      converted,
+      character
+    };
+  });
+}

@@ -118,10 +118,15 @@ export const useImagesStore = defineStore('images', () => {
     generationError.value = error
   }
   
-  // コンテンツをデコードするヘルパー関数（base64のみ対応）
+  // コンテンツをデコードするヘルパー関数（base64とプレーンテキストに対応）
   const decodeVialContent = (content: string): string => {
-    const base64Content = content.replace(/^data:.*base64,/, '')
-    return atob(base64Content)
+    // Base64エンコードされている場合
+    if (content.startsWith('data:')) {
+      const base64Content = content.replace(/^data:.*base64,/, '')
+      return atob(base64Content)
+    }
+    // プレーンテキストの場合（convertLanguageで生成されたファイル）
+    return content
   }
 
   // プレビュー画像を生成
