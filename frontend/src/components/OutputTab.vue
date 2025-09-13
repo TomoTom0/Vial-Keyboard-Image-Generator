@@ -17,6 +17,13 @@
                 class="output-image"
               />
               <div class="filename-overlay">{{ getDownloadFilename() }}</div>
+              <button 
+                class="download-overlay-btn"
+                @click="downloadAllAsZip"
+                title="Download"
+              >
+                Download
+              </button>
             </div>
           </div>
         </div>
@@ -35,6 +42,13 @@
                 class="output-image"
               />
               <div class="filename-overlay">{{ getDownloadFilename() }}</div>
+              <button 
+                class="download-overlay-btn"
+                @click="downloadAllAsZip"
+                title="Download"
+              >
+                Download
+              </button>
             </div>
           </div>
         </div>
@@ -47,22 +61,6 @@
         </div>
       </div>
       
-      <!-- Navigation buttons -->
-      <div class="navigation-buttons">
-        <button class="back-btn" @click="goBackToPreview">
-          Back
-        </button>
-        
-        <div class="right-button-area">
-          <button 
-            v-if="outputImages.length > 0" 
-            class="download-btn-fixed" 
-            @click="downloadAllAsZip"
-          >
-            Download
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -252,10 +250,6 @@ const downloadAllAsZip = async () => {
   }
 }
 
-// Previewタブに戻る
-const goBackToPreview = () => {
-  uiStore.setActiveTab('preview')
-}
 </script>
 
 <style scoped lang="scss">
@@ -392,56 +386,27 @@ const goBackToPreview = () => {
   }
 }
 
-// Navigation buttons styles
-.navigation-buttons {
+// Download overlay button styles
+.download-overlay-btn {
   position: absolute;
-  bottom: 20px;
-  left: 20px;
-  right: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.back-btn {
-  background: #6c757d;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(40, 167, 69, 0.9);
   color: white;
   border: none;
-  padding: 12px 20px;
+  padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
   transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  
   &:hover {
-    background: #5a6268;
+    background: rgba(33, 136, 56, 0.95);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-}
-
-.download-btn-fixed {
-  background: #28a745;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
-
-  &:hover {
-    background: #218838;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 
   &:active {
@@ -473,8 +438,4 @@ const goBackToPreview = () => {
   white-space: nowrap;
 }
 
-.button-spacer {
-  width: 96px; // Downloadボタンと同じ幅
-  height: 40px; // Downloadボタンと同じ高さ
-}
 </style>

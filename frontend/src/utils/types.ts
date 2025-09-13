@@ -1,5 +1,6 @@
 // 型定義モジュール
 import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
+import { useSettingsStore } from '../stores/settings';
 
 // === ボタン構造体 ===
 
@@ -93,17 +94,21 @@ export class PhysicalButton {
     const isComboKey = this.isComboInputKey(combos);
     const shouldHighlight = (hasSubTexts && options.highlightSubtextKeys !== false) || (isComboKey && options.highlightComboKeys !== false);
     
+    // settingsStoreからフォント設定を取得
+    const settingsStore = useSettingsStore();
+    const { fontFamily, fontSizes } = settingsStore;
+    
     // メインテキストのフォントサイズを段階的に決定（文字数が多いほど小さく）
     let fontSize: number;
     if (this.main.keyText.length > 8) {
-      fontSize = 12; // 非常に長いテキスト
+      fontSize = fontSizes.main.long; // 非常に長いテキスト
     } else if (this.main.keyText.length === 1) {
-      fontSize = 22; // 単一文字
+      fontSize = fontSizes.main.single; // 単一文字
     } else {
-      fontSize = 20; // 2文字以上
+      fontSize = fontSizes.main.normal; // 2文字以上
     }
 
-    ctx.font = `${fontSize}px Arial, sans-serif`;
+    ctx.font = `${fontSize}px ${fontFamily}`;
     ctx.fillStyle = (shouldHighlight && options.showTextColors !== false) ? colors.textSpecial : colors.textNormal;
     ctx.textAlign = 'center';
     
@@ -135,7 +140,7 @@ export class PhysicalButton {
             subFontSize = 16; // 短いサブテキスト
           }
           
-          ctx.font = `${subFontSize}px Arial, sans-serif`;
+          ctx.font = `${subFontSize}px ${fontFamily}`;
           const subY = y + height * 0.75;
           ctx.fillText(subTexts[0], x + width / 2, subY);
         } else {
@@ -151,7 +156,7 @@ export class PhysicalButton {
               const subY = startY + (i * lineHeight);
               let fontSize = subTexts[i].length > 5 ? 9 : 11;
               
-              ctx.font = `${fontSize}px Arial, sans-serif`;
+              ctx.font = `${fontSize}px ${fontFamily}`;
               ctx.fillText(subTexts[i], x + width / 2, subY);
             }
           } else {
@@ -167,13 +172,13 @@ export class PhysicalButton {
                 const leftX = x + width * 0.25;
                 const rightX = x + width * 0.75;
                 
-                ctx.font = '13px Arial, sans-serif';
+                ctx.font = `${fontSizes.sub.normal}px ${fontFamily}`;
                 ctx.fillText(subTexts[i], leftX, subY);
                 
-                ctx.font = '11px Arial, sans-serif';
+                ctx.font = `${fontSizes.sub.small}px ${fontFamily}`;
                 ctx.fillText(subTexts[i + 1], rightX, subY);
               } else {
-                ctx.font = '11px Arial, sans-serif';
+                ctx.font = `${fontSizes.sub.small}px ${fontFamily}`;
                 ctx.fillText(subTexts[i], x + width / 2, subY);
               }
             }
@@ -233,6 +238,10 @@ export class Combo {
   async draw(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, options: RenderOptions, qualityScale: number = 1.0): Promise<void> {
     const colors = getThemeColors(options.theme);
     const { keyWidth, keyHeight } = KEYBOARD_CONSTANTS;
+    
+    // settingsStoreからフォント設定を取得
+    const settingsStore = useSettingsStore();
+    const { fontFamily, fontSizes } = settingsStore;
     const buttonHeight = keyHeight;
     const buttonWidth = keyWidth;
     const spacing = 10;
@@ -242,7 +251,7 @@ export class Combo {
     
     // インデックス番号を描画（より大きなフォント）
     ctx.fillStyle = colors.textNormal;
-    ctx.font = `bold 20px Arial, sans-serif`;
+    ctx.font = `bold ${fontSizes.combo.index}px ${fontFamily}`;
     ctx.textAlign = 'left';
     ctx.fillText(`#${this.index + 1}`, currentX, buttonY + buttonHeight / 2 + 5);
     currentX += 40;
@@ -255,7 +264,7 @@ export class Combo {
     
     // ダッシュを描画
     ctx.fillStyle = colors.textSub;
-    ctx.font = `16px Arial, sans-serif`;
+    ctx.font = `${fontSizes.header.info}px ${fontFamily}`;
     ctx.textAlign = 'center';
     ctx.fillText('—', currentX + 15, buttonY + buttonHeight / 2 + 5);
     currentX += 40;
@@ -302,6 +311,10 @@ export class ParsedLayer {
   drawLayerNumber(ctx: CanvasRenderingContext2D, layerNumber: number, x: number, y: number, options: RenderOptions, qualityScale: number = 1.0): void {
     const colors = getThemeColors(options.theme);
     
+    // settingsStoreからフォント設定を取得
+    const settingsStore = useSettingsStore();
+    const { fontFamily, fontSizes } = settingsStore;
+    
     // 三行目の中央の隙間（左右ボタンの中間）に表示する座標を計算
     const { keyWidth, keyHeight, keyGap, margin } = KEYBOARD_CONSTANTS;
     const unitX = KEYBOARD_CONSTANTS.unitX;
@@ -315,7 +328,7 @@ export class ParsedLayer {
     const rightKeyStartX = margin + unitX * 8.0;
     const centerX = (leftKeyEndX + rightKeyStartX) / 2 + 15; // 15px右にずらす
     
-    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.font = `bold ${fontSizes.combo.title}px ${fontFamily}`;
     ctx.fillStyle = colors.textSub;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -417,12 +430,16 @@ export class ParsedVial {
       
       const colors = getThemeColors(options.theme);
       
+      // settingsStoreからフォント設定を取得
+      const settingsStore = useSettingsStore();
+      const { fontFamily, fontSizes } = settingsStore;
+      
       // 背景色を描画
       ctx.fillStyle = colors.headerBackground;
       ctx.fillRect(0, 0, width, 37);
       
       // ヘッダーテキストを描画（左側）
-      ctx.font = 'bold 32px Arial, sans-serif';
+      ctx.font = `bold ${fontSizes.header.title}px ${fontFamily}`;
       ctx.fillStyle = colors.headerText;
       ctx.textAlign = 'left';
       ctx.fillText('LAYOUTS', 15, 28);
@@ -430,7 +447,7 @@ export class ParsedVial {
       // ラベル（ファイル名など）を右側に描画
       if (label || this.keyboardName) {
         const displayLabel = label || this.keyboardName || '';
-        ctx.font = '28px Arial, sans-serif';
+        ctx.font = `${fontSizes.header.subtitle}px ${fontFamily}`;
         ctx.fillStyle = colors.textSub;
         ctx.textAlign = 'right';
         ctx.fillText(displayLabel, width - 15, 28);
@@ -448,6 +465,10 @@ export class ParsedVial {
   
   async generateComboListCanvas(options: RenderOptions, qualityScale: number): Promise<HTMLCanvasElement[]> {
     const canvases: HTMLCanvasElement[] = [];
+    
+    // settingsStoreからフォント設定を取得
+    const settingsStore = useSettingsStore();
+    const { fontFamily, fontSizes } = settingsStore;
     
     // KEYBOARD_CONSTANTSを使用した統一計算式
     const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
@@ -474,7 +495,7 @@ export class ParsedVial {
         ctx.fillRect(0, 0, width, height);
         
         ctx.fillStyle = colors.textNormal;
-        ctx.font = '16px Arial, sans-serif';
+        ctx.font = `${fontSizes.header.info}px ${fontFamily}`;
         ctx.textAlign = 'center';
         ctx.fillText('No combos defined', width / 2, 30);
         
@@ -498,6 +519,10 @@ export class ParsedVial {
       
       const colors = getThemeColors(options.theme);
       
+      // settingsStoreからフォント設定を取得
+      const settingsStore = useSettingsStore();
+      const { fontFamily, fontSizes } = settingsStore;
+      
       // 背景
       ctx.fillStyle = options.backgroundColor || colors.background;
       ctx.fillRect(0, 0, width, totalHeight);
@@ -507,7 +532,7 @@ export class ParsedVial {
       ctx.fillRect(0, 0, width, headerHeight - 8);
       
       ctx.fillStyle = colors.headerText;
-      ctx.font = 'bold 32px Arial, sans-serif';
+      ctx.font = `bold ${fontSizes.header.title}px ${fontFamily}`;
       ctx.textAlign = 'left';
       ctx.fillText('COMBOS', 15, 28);
       
