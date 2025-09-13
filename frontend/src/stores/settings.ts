@@ -21,31 +21,6 @@ export const useSettingsStore = defineStore('settings', () => {
   const spacing = ref(5)
   const outputLabel = ref('')
   
-  // Font and style settings
-  const fontFamily = ref("Consolas, 'Courier New', Monaco, 'Liberation Mono', monospace")
-  const fontSizes = ref({
-    main: {
-      single: 22,     // 単一文字
-      normal: 20,     // 2文字以上
-      long: 12        // 8文字超
-    },
-    sub: {
-      normal: 13,
-      small: 11,
-      mini: 9
-    },
-    header: {
-      title: 32,
-      subtitle: 28,
-      info: 16
-    },
-    combo: {
-      title: 24,
-      content: 16,
-      index: 20
-    }
-  })
-  
   // Advanced settings
   const highlightEnabled = ref(false)
   const showCombos = ref(true)
@@ -281,8 +256,6 @@ export const useSettingsStore = defineStore('settings', () => {
     fontSize,
     spacing,
     outputLabel,
-    fontFamily,
-    fontSizes,
     highlightEnabled,
     showCombos,
     showHeader,
