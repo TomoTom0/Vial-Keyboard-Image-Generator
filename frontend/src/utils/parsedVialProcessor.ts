@@ -3,7 +3,6 @@ import type { VialConfig, KeyPosition, KeymapLayer } from './types';
 import { ParsedVial, ParsedLayer, PositionedPhysicalButton } from './types';
 import { VialDataProcessor } from './vialDataProcessor';
 import { Utils } from './utils';
-import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
 
 /**
  * VIALデータを解析済み構造体に変換する処理クラス
@@ -81,13 +80,8 @@ export class ParsedVialProcessor {
   ): PositionedPhysicalButton[] {
     const buttons: PositionedPhysicalButton[] = [];
     
-    // キーボードレイアウトの位置情報を取得（共通定数を使用）
-    const keyPositions = Utils.getKeyPositions(
-      KEYBOARD_CONSTANTS.keyWidth, 
-      KEYBOARD_CONSTANTS.keyHeight, 
-      KEYBOARD_CONSTANTS.keyGap, 
-      KEYBOARD_CONSTANTS.margin
-    );
+    // キーボードレイアウトの位置情報を取得（TSV生成データを使用）
+    const keyPositions = Utils.getKeyPositions();
     
     // 実際のVialデータはKeymapLayerインデックス付きオブジェクトとして来る
     for (const [rowIndexStr, row] of Object.entries(layer)) {
@@ -127,72 +121,6 @@ export class ParsedVialProcessor {
     }
     
     return buttons;
-  }
-  
-  /**
-   * キーボードレイアウトの位置情報を取得
-   * 注意: これは仮実装です。実際のキーボードレイアウトに応じて調整が必要
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private static getKeyboardLayout(): (KeyPosition | null)[][] {
-    // 標準的な60%キーボードのレイアウト例
-    // 実際の実装では、キーボード種別に応じて動的に生成する必要がある
-    
-    const keyWidth = 50;
-    const keyHeight = 50;
-    const keyGap = 5;
-    const unitWidth = keyWidth + keyGap;
-    const unitHeight = keyHeight + keyGap;
-    
-    // 各行の開始位置とキー配置を定義
-    const rows: (KeyPosition | null)[][] = [
-      // Row 0: Number row
-      Array.from({ length: 14 }, (_, i) => ({
-        x: i * unitWidth,
-        y: 0,
-        width: keyWidth,
-        height: keyHeight,
-        rotation: 0
-      })),
-      
-      // Row 1: QWERTY row
-      Array.from({ length: 14 }, (_, i) => ({
-        x: i * unitWidth,
-        y: unitHeight,
-        width: keyWidth,
-        height: keyHeight,
-        rotation: 0
-      })),
-      
-      // Row 2: ASDF row
-      Array.from({ length: 13 }, (_, i) => ({
-        x: i * unitWidth,
-        y: unitHeight * 2,
-        width: keyWidth,
-        height: keyHeight,
-        rotation: 0
-      })),
-      
-      // Row 3: ZXCV row
-      Array.from({ length: 12 }, (_, i) => ({
-        x: i * unitWidth,
-        y: unitHeight * 3,
-        width: keyWidth,
-        height: keyHeight,
-        rotation: 0
-      })),
-      
-      // Row 4: Bottom row (space, etc.)
-      Array.from({ length: 8 }, (_, i) => ({
-        x: i * unitWidth,
-        y: unitHeight * 4,
-        width: keyWidth,
-        height: keyHeight,
-        rotation: 0
-      }))
-    ];
-    
-    return rows;
   }
   
   /**
