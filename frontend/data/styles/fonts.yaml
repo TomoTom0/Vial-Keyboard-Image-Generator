@@ -1,0 +1,29 @@
+# フォント設定
+fontFamily: "Consolas, 'Courier New', Monaco, 'Liberation Mono', monospace"
+headerFontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+
+# フォントサイズ設定
+fontSizes:
+  # メインテキスト（キー上の主要文字）
+  main:
+    single: 22    # 単一文字（A, 1など）- 透明などは少し小さく
+    normal: 20    # 2-8文字（Enter, Spaceなど）
+    long: 12      # 8文字超（長いカスタムキー名など）
+  
+  # サブテキスト（タップダンスなどの副機能）
+  sub:
+    normal: 16    # 標準サブテキスト（13→16に増加）
+    small: 14     # 小さなサブテキスト（11→14に増加）
+    mini: 11      # 極小サブテキスト（9→11に増加）
+  
+  # ヘッダー部分
+  header:
+    title: 32     # "LAYOUTS", "COMBOS"などの大見出し
+    subtitle: 28  # ファイル名などの副見出し
+    info: 16      # 情報テキスト（"No combos defined"など）
+  
+  # コンボ表示
+  combo:
+    title: 24     # レイヤー番号（#1など）
+    content: 16   # ダッシュ記号など
+    index: 20     # コンボインデックス番号

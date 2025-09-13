@@ -1,5 +1,6 @@
 // 型定義モジュール
 import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
+import { getFontConfig, getThemeColors } from './styleConfig.generated';
 
 // === ボタン構造体 ===
 
@@ -93,17 +94,28 @@ export class PhysicalButton {
     const isComboKey = this.isComboInputKey(combos);
     const shouldHighlight = (hasSubTexts && options.highlightSubtextKeys !== false) || (isComboKey && options.highlightComboKeys !== false);
     
+    // フォント設定を取得
+    const styleConfig = getFontConfig();
+    
     // メインテキストのフォントサイズを段階的に決定（文字数が多いほど小さく）
     let fontSize: number;
+    
+    // 特定の1文字テキストは小さくする（マッピングファイルから取得した正確な文字）
+    const smallSingleChars = ['▽']; // KC_TRNS（透明キー）
+    
     if (this.main.keyText.length > 8) {
-      fontSize = 12; // 非常に長いテキスト
+      fontSize = styleConfig.fontSizes.main.long; // 非常に長いテキスト
     } else if (this.main.keyText.length === 1) {
-      fontSize = 22; // 単一文字
+      if (smallSingleChars.includes(this.main.keyText)) {
+        fontSize = styleConfig.fontSizes.main.normal; // 特定の1文字は通常サイズ
+      } else {
+        fontSize = styleConfig.fontSizes.main.single; // 通常の単一文字
+      }
     } else {
-      fontSize = 20; // 2文字以上
+      fontSize = styleConfig.fontSizes.main.normal; // 2文字以上
     }
 
-    ctx.font = `${fontSize}px Arial, sans-serif`;
+    ctx.font = `${fontSize}px ${getFontConfig().fontFamily}`;
     ctx.fillStyle = (shouldHighlight && options.showTextColors !== false) ? colors.textSpecial : colors.textNormal;
     ctx.textAlign = 'center';
     
@@ -124,58 +136,124 @@ export class PhysicalButton {
       if (subTexts.length > 0) {
         ctx.fillStyle = colors.textSub;
         
-        if (subTexts.length === 1) {
-          // 単一サブテキストのフォントサイズを文字数に応じて決定（少し大きめ）
-          let subFontSize: number;
-          if (subTexts[0].length > 6) {
-            subFontSize = 12; // 長いサブテキスト
-          } else if (subTexts[0].length > 3) {
-            subFontSize = 14; // 中程度のサブテキスト
-          } else {
-            subFontSize = 16; // 短いサブテキスト
-          }
+        // 等幅フォントの文字幅を計算（おおよその値）
+        const getCharWidth = (fontSize: number): number => fontSize * 0.6;
+        
+        // テキスト幅に基づいて最適なフォントサイズを計算
+        const calculateOptimalFontSize = (text: string, maxWidth: number): number => {
+          const targetSizes = [styleConfig.fontSizes.sub.normal, styleConfig.fontSizes.sub.small, styleConfig.fontSizes.sub.mini];
           
-          ctx.font = `${subFontSize}px Arial, sans-serif`;
+          for (const size of targetSizes) {
+            const estimatedWidth = text.length * getCharWidth(size);
+            if (estimatedWidth <= maxWidth) {
+              return size;
+            }
+          }
+          return styleConfig.fontSizes.sub.mini; // 最小サイズ
+        };
+
+        if (subTexts.length === 1) {
+          // 単一サブテキスト：幅に応じて動的にサイズ調整
+          const availableWidth = width * 0.9; // 少し余裕を持つ
+          const optimalFontSize = calculateOptimalFontSize(subTexts[0], availableWidth);
+          
+          ctx.font = `${optimalFontSize}px ${styleConfig.fontFamily}`;
           const subY = y + height * 0.75;
           ctx.fillText(subTexts[0], x + width / 2, subY);
-        } else {
-          // 複数サブテキスト：長いテキストがある場合は一行一つずつ表示
-          const hasLongText = subTexts.some(text => text.length > 4);
           
-          if (hasLongText) {
-            // 長いテキストがある場合：一行一つずつ表示
-            const startY = y + height * 0.65;
-            const lineHeight = 12;
+        } else if (subTexts.length === 2) {
+          // 2個の場合は積極的に2行レイアウトを使用
+          const availableWidth = width * 0.9;
+          const startY = y + height * 0.65;
+          const lineHeight = 16; // 行間を少し広げる
+          
+          for (let i = 0; i < subTexts.length; i++) {
+            const optimalFontSize = calculateOptimalFontSize(subTexts[i], availableWidth);
+            ctx.font = `${optimalFontSize}px ${styleConfig.fontFamily}`;
+            const subY = startY + (i * lineHeight);
+            ctx.fillText(subTexts[i], x + width / 2, subY);
+          }
+          
+        } else if (subTexts.length === 3) {
+          // 3個の場合：文字数に基づいて最適な改行位置を決定
+          const displayTexts = subTexts.slice(0, 3);
+          const startY = y + height * 0.65;
+          const lineHeight = 16;
+          const leftAvailableWidth = width * 0.4;
+          const rightAvailableWidth = width * 0.4;
+          const centerAvailableWidth = width * 0.9;
+          
+          // 各要素の文字数を取得
+          const lengths = displayTexts.map(text => text.length);
+          
+          // パターン1: [2個][1個] と パターン2: [1個][2個] の総文字数を比較
+          const pattern1TotalChars = lengths[0] + lengths[1]; // 1行目2個
+          const pattern2TotalChars = lengths[1] + lengths[2]; // 2行目2個
+          
+          // より文字数が少ない方を2個並べる行にする
+          const usePattern1 = pattern1TotalChars <= pattern2TotalChars;
+          
+          if (usePattern1) {
+            // パターン1: [要素0, 要素1] / [要素2]
+            // 1行目：左右に2個
+            const leftFontSize = calculateOptimalFontSize(displayTexts[0], leftAvailableWidth);
+            ctx.font = `${leftFontSize}px ${styleConfig.fontFamily}`;
+            ctx.fillText(displayTexts[0], x + width * 0.25, startY);
             
-            for (let i = 0; i < subTexts.length; i++) {
-              const subY = startY + (i * lineHeight);
-              let fontSize = subTexts[i].length > 5 ? 9 : 11;
-              
-              ctx.font = `${fontSize}px Arial, sans-serif`;
-              ctx.fillText(subTexts[i], x + width / 2, subY);
-            }
+            const rightFontSize = calculateOptimalFontSize(displayTexts[1], rightAvailableWidth);
+            ctx.font = `${rightFontSize}px ${styleConfig.fontFamily}`;
+            ctx.fillText(displayTexts[1], x + width * 0.75, startY);
+            
+            // 2行目：中央に1個
+            const centerFontSize = calculateOptimalFontSize(displayTexts[2], centerAvailableWidth);
+            ctx.font = `${centerFontSize}px ${styleConfig.fontFamily}`;
+            ctx.fillText(displayTexts[2], x + width / 2, startY + lineHeight);
           } else {
-            // 短いテキストのみ：従来の2列表示
-            const startY = y + height * 0.65;
-            const lineHeight = 13;
+            // パターン2: [要素0] / [要素1, 要素2]
+            // 1行目：中央に1個
+            const topCenterFontSize = calculateOptimalFontSize(displayTexts[0], centerAvailableWidth);
+            ctx.font = `${topCenterFontSize}px ${styleConfig.fontFamily}`;
+            ctx.fillText(displayTexts[0], x + width / 2, startY);
             
-            for (let i = 0; i < subTexts.length; i += 2) {
-              const row = Math.floor(i / 2);
-              const subY = startY + (row * lineHeight);
+            // 2行目：左右に2個
+            const bottomLeftFontSize = calculateOptimalFontSize(displayTexts[1], leftAvailableWidth);
+            ctx.font = `${bottomLeftFontSize}px ${styleConfig.fontFamily}`;
+            ctx.fillText(displayTexts[1], x + width * 0.25, startY + lineHeight);
+            
+            const bottomRightFontSize = calculateOptimalFontSize(displayTexts[2], rightAvailableWidth);
+            ctx.font = `${bottomRightFontSize}px ${styleConfig.fontFamily}`;
+            ctx.fillText(displayTexts[2], x + width * 0.75, startY + lineHeight);
+          }
+          
+        } else if (subTexts.length > 3) {
+          // 4個以上の場合：最大4個を2行×2列に納める
+          const displayTexts = subTexts.slice(0, 4); // 最大4個まで
+          const startY = y + height * 0.65;
+          const lineHeight = 16;
+          const leftAvailableWidth = width * 0.4;
+          const rightAvailableWidth = width * 0.4;
+          
+          for (let i = 0; i < displayTexts.length; i += 2) {
+            const row = Math.floor(i / 2);
+            const subY = startY + (row * lineHeight);
+            
+            if (i + 1 < displayTexts.length) {
+              // 左側
+              const leftX = x + width * 0.25;
+              const leftFontSize = calculateOptimalFontSize(displayTexts[i], leftAvailableWidth);
+              ctx.font = `${leftFontSize}px ${styleConfig.fontFamily}`;
+              ctx.fillText(displayTexts[i], leftX, subY);
               
-              if (i + 1 < subTexts.length) {
-                const leftX = x + width * 0.25;
-                const rightX = x + width * 0.75;
-                
-                ctx.font = '13px Arial, sans-serif';
-                ctx.fillText(subTexts[i], leftX, subY);
-                
-                ctx.font = '11px Arial, sans-serif';
-                ctx.fillText(subTexts[i + 1], rightX, subY);
-              } else {
-                ctx.font = '11px Arial, sans-serif';
-                ctx.fillText(subTexts[i], x + width / 2, subY);
-              }
+              // 右側
+              const rightX = x + width * 0.75;
+              const rightFontSize = calculateOptimalFontSize(displayTexts[i + 1], rightAvailableWidth);
+              ctx.font = `${rightFontSize}px ${styleConfig.fontFamily}`;
+              ctx.fillText(displayTexts[i + 1], rightX, subY);
+            } else {
+              // 中央（奇数の最後）- 通常は発生しない
+              const centerFontSize = calculateOptimalFontSize(displayTexts[i], width * 0.9);
+              ctx.font = `${centerFontSize}px ${styleConfig.fontFamily}`;
+              ctx.fillText(displayTexts[i], x + width / 2, subY);
             }
           }
         }
@@ -233,6 +311,7 @@ export class Combo {
   async draw(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, options: RenderOptions, qualityScale: number = 1.0): Promise<void> {
     const colors = getThemeColors(options.theme);
     const { keyWidth, keyHeight } = KEYBOARD_CONSTANTS;
+    const styleConfig = getFontConfig();
     const buttonHeight = keyHeight;
     const buttonWidth = keyWidth;
     const spacing = 10;
@@ -242,7 +321,7 @@ export class Combo {
     
     // インデックス番号を描画（より大きなフォント）
     ctx.fillStyle = colors.textNormal;
-    ctx.font = `bold 20px Arial, sans-serif`;
+    ctx.font = `bold ${styleConfig.fontSizes.combo.index}px ${styleConfig.headerFontFamily}`;
     ctx.textAlign = 'left';
     ctx.fillText(`#${this.index + 1}`, currentX, buttonY + buttonHeight / 2 + 5);
     currentX += 40;
@@ -255,7 +334,7 @@ export class Combo {
     
     // ダッシュを描画
     ctx.fillStyle = colors.textSub;
-    ctx.font = `16px Arial, sans-serif`;
+    ctx.font = `${styleConfig.fontSizes.combo.content}px ${styleConfig.fontFamily}`;
     ctx.textAlign = 'center';
     ctx.fillText('—', currentX + 15, buttonY + buttonHeight / 2 + 5);
     currentX += 40;
@@ -301,6 +380,7 @@ export class ParsedLayer {
   // レイヤー番号を描画（元実装準拠：キーボード中央の空きスペースに配置）
   drawLayerNumber(ctx: CanvasRenderingContext2D, layerNumber: number, x: number, y: number, options: RenderOptions, qualityScale: number = 1.0): void {
     const colors = getThemeColors(options.theme);
+    const styleConfig = getFontConfig();
     
     // 三行目の中央の隙間（左右ボタンの中間）に表示する座標を計算
     const { keyWidth, keyHeight, keyGap, margin } = KEYBOARD_CONSTANTS;
@@ -315,7 +395,7 @@ export class ParsedLayer {
     const rightKeyStartX = margin + unitX * 8.0;
     const centerX = (leftKeyEndX + rightKeyStartX) / 2 + 15; // 15px右にずらす
     
-    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.font = `bold ${styleConfig.fontSizes.combo.title}px ${styleConfig.headerFontFamily}`;
     ctx.fillStyle = colors.textSub;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -396,6 +476,7 @@ export class ParsedVial {
   
   generateLayoutHeaderCanvas(options: RenderOptions, qualityScale: number, label?: string): HTMLCanvasElement[] {
     const canvases: HTMLCanvasElement[] = [];
+    const styleConfig = getFontConfig();
     
     // KEYBOARD_CONSTANTSを使用した統一計算式
     const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
@@ -422,7 +503,7 @@ export class ParsedVial {
       ctx.fillRect(0, 0, width, 37);
       
       // ヘッダーテキストを描画（左側）
-      ctx.font = 'bold 32px Arial, sans-serif';
+      ctx.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
       ctx.fillStyle = colors.headerText;
       ctx.textAlign = 'left';
       ctx.fillText('LAYOUTS', 15, 28);
@@ -430,7 +511,7 @@ export class ParsedVial {
       // ラベル（ファイル名など）を右側に描画
       if (label || this.keyboardName) {
         const displayLabel = label || this.keyboardName || '';
-        ctx.font = '28px Arial, sans-serif';
+        ctx.font = `${styleConfig.fontSizes.header.subtitle}px ${styleConfig.headerFontFamily}`;
         ctx.fillStyle = colors.textSub;
         ctx.textAlign = 'right';
         ctx.fillText(displayLabel, width - 15, 28);
@@ -447,7 +528,13 @@ export class ParsedVial {
   }
   
   async generateComboListCanvas(options: RenderOptions, qualityScale: number): Promise<HTMLCanvasElement[]> {
+    // コンボがない場合は空の配列を返す（画像を生成しない）
+    if (this.combos.length === 0) {
+      return [];
+    }
+    
     const canvases: HTMLCanvasElement[] = [];
+    const styleConfig = getFontConfig();
     
     // KEYBOARD_CONSTANTSを使用した統一計算式
     const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
@@ -457,30 +544,6 @@ export class ParsedVial {
     // 1x, 2x, 3x の3つの幅倍率で生成
     for (let widthScale = 1; widthScale <= 3; widthScale++) {
       const canvas = document.createElement('canvas');
-      
-      if (this.combos.length === 0) {
-        const width = baseImageWidth * widthScale;
-        const height = 50;
-        
-        canvas.width = width * qualityScale;
-        canvas.height = height * qualityScale;
-        const ctx = canvas.getContext('2d')!;
-        
-        ctx.scale(qualityScale, qualityScale);
-        
-        const colors = getThemeColors(options.theme);
-        
-        ctx.fillStyle = options.backgroundColor || colors.background;
-        ctx.fillRect(0, 0, width, height);
-        
-        ctx.fillStyle = colors.textNormal;
-        ctx.font = '16px Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('No combos defined', width / 2, 30);
-        
-        canvases.push(canvas);
-        continue;
-      }
       
       const width = baseImageWidth * widthScale;
       // 古い実装に合わせた高さ計算
@@ -507,7 +570,7 @@ export class ParsedVial {
       ctx.fillRect(0, 0, width, headerHeight - 8);
       
       ctx.fillStyle = colors.headerText;
-      ctx.font = 'bold 32px Arial, sans-serif';
+      ctx.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
       ctx.textAlign = 'left';
       ctx.fillText('COMBOS', 15, 28);
       
@@ -644,68 +707,10 @@ export interface RenderOptions {
     highlightSubtextKeys?: boolean;    // サブテキスト付きキーの背景色変更 (デフォルト: true)
     showComboMarkers?: boolean;        // Combo入力キーの右上三角形マーカー (デフォルト: true)
     showTextColors?: boolean;          // 特別な文字色 (デフォルト: true)
-    backgroundColor?: string;          // キャンバス背景色 (デフォルト: COLORS.background)
+    backgroundColor?: string;          // キャンバス背景色 (デフォルト: getThemeColors().background)
     showComboInfo?: boolean;           // Combo情報を画像に含める (デフォルト: true)
     changeKeyColors?: boolean;         // キーの背景色を変更する (デフォルト: true)
     changeEmptyKeyColors?: boolean;    // 空白ボタンの背景色を変更する (デフォルト: true)
     theme?: 'dark' | 'light';         // テーマモード (デフォルト: 'dark')
 }
 
-// カラーパレット
-export const COLORS = {
-    dark: {
-        background: '#1c1c20',
-        keyNormal: '#343a46',
-        keySpecial: '#2d3446',
-        keyEmpty: '#282a30',
-        borderNormal: '#444c5c',
-        borderSpecial: '#41497e',
-        borderEmpty: '#32353d',
-        textNormal: '#f0f6fc',
-        textSpecial: '#9cdcfe',
-        textSub: '#e5e7eb',
-        headerBackground: '#2a2d35',
-        headerBorder: '#4a5568',
-        headerText: '#ffffff'
-    },
-    light: {
-        background: '#f5f5f5',
-        keyNormal: '#ffffff',
-        keySpecial: '#e3f2fd',
-        keyEmpty: '#eeeeee',
-        borderNormal: '#d0d7de',
-        borderSpecial: '#90caf9',
-        borderEmpty: '#c6c6c6',
-        textNormal: '#212529',
-        textSpecial: '#1976d2',
-        textSub: '#343a40',
-        headerBackground: '#ffffff',
-        headerBorder: '#dee2e6',
-        headerText: '#212529'
-    }
-} as const;
-
-// 後方互換性のために古い形式も維持
-export const COLORS_LEGACY = COLORS.dark;
-
-// カラーパレットの型定義
-export type ThemeColors = {
-  readonly background: string;
-  readonly keyNormal: string;
-  readonly keySpecial: string;
-  readonly keyEmpty: string;
-  readonly borderNormal: string;
-  readonly borderSpecial: string;
-  readonly borderEmpty: string;
-  readonly textNormal: string;
-  readonly textSpecial: string;
-  readonly textSub: string;
-  readonly headerBackground: string;
-  readonly headerBorder: string;
-  readonly headerText: string;
-};
-
-// テーマに基づいて色を取得するヘルパー関数
-export function getThemeColors(theme: 'dark' | 'light' = 'dark'): ThemeColors {
-    return COLORS[theme];
-}

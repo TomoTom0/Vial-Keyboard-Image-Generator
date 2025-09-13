@@ -179,8 +179,19 @@ export const useImagesStore = defineStore('images', () => {
       setGenerationError(null)
       
       if (parsedVial) {
-        // ParsedVialが利用可能な場合（新方式・常にこのパスを使用）
-        await generateVialImagesFromParsed(parsedVial, fileId)
+        // ParsedVialが利用可能で、必要なメソッドを持っている場合（新方式）
+        if (typeof parsedVial.generateLayerCanvas === 'function') {
+          await generateVialImagesFromParsed(parsedVial, fileId)
+        } else {
+          // ParsedVialがメソッドを持たない場合は、VialConfigから再作成
+          const vialStore = useVialStore()
+          const currentVial = vialStore.currentVial
+          if (currentVial?.config) {
+            const { ParsedVialProcessor } = await import('../utils/parsedVialProcessor')
+            const properParsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, currentVial.name)
+            await generateVialImagesFromParsed(properParsedVial, fileId)
+          }
+        }
       } else if (fileId === 'sample') {
         // サンプルファイルの場合のみ従来処理（ParsedVialを作成してから新方式を使用）
         try {
@@ -983,10 +994,12 @@ export const useImagesStore = defineStore('images', () => {
       uiStore.isGenerating = true
       uiStore.error = null
       
-      const parsedVial = vialStore.currentParsedVial
+      const currentVial = vialStore.currentVial
       
-      if (parsedVial) {
-        // ParsedVialが利用可能な場合（新方式・高性能・常にこのパスを使用）
+      if (currentVial) {
+        // 現在のVialConfigからParsedVialを再作成（クラスメソッドを保持するため）
+        const { ParsedVialProcessor } = await import('../utils/parsedVialProcessor')
+        const parsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, currentVial.name)
         await generateFinalOutputFromParsed(parsedVial)
       } else if (vialStore.selectedVialId === 'sample') {
         // サンプルファイルの場合のみ、ParsedVialを作成してから新方式を使用

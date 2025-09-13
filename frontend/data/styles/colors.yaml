@@ -1,0 +1,49 @@
+# 色設定（ダークモード・ライトモード）
+
+dark:
+  # 背景色
+  background: '#1c1c20'
+  
+  # キー色
+  keyNormal: '#343a46'      # 通常のキー
+  keySpecial: '#2d3446'     # 特殊キー（サブテキストあり、コンボキーなど）
+  keyEmpty: '#282a30'       # 空白キー
+  
+  # ボーダー色
+  borderNormal: '#444c5c'   # 通常のキーボーダー
+  borderSpecial: '#41497e'  # 特殊キーボーダー
+  borderEmpty: '#32353d'    # 空白キーボーダー
+  
+  # テキスト色
+  textNormal: '#f0f6fc'     # 通常テキスト
+  textSpecial: '#9cdcfe'    # 特殊テキスト（ハイライト）
+  textSub: '#e5e7eb'        # サブテキスト
+  
+  # ヘッダー色
+  headerBackground: '#2a2d35'
+  headerBorder: '#4a5568'
+  headerText: '#ffffff'
+
+light:
+  # 背景色
+  background: '#f5f5f5'
+  
+  # キー色
+  keyNormal: '#ffffff'      # 通常のキー
+  keySpecial: '#e3f2fd'     # 特殊キー
+  keyEmpty: '#eeeeee'       # 空白キー
+  
+  # ボーダー色
+  borderNormal: '#d0d7de'   # 通常のキーボーダー
+  borderSpecial: '#90caf9'  # 特殊キーボーダー
+  borderEmpty: '#c6c6c6'    # 空白キーボーダー
+  
+  # テキスト色
+  textNormal: '#212529'     # 通常テキスト
+  textSpecial: '#1976d2'    # 特殊テキスト
+  textSub: '#343a40'        # サブテキスト
+  
+  # ヘッダー色
+  headerBackground: '#ffffff'
+  headerBorder: '#dee2e6'
+  headerText: '#212529'
