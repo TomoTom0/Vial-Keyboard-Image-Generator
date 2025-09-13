@@ -3,6 +3,7 @@ import type { VialConfig, KeyPosition, KeymapLayer } from './types';
 import { ParsedVial, ParsedLayer, PositionedPhysicalButton } from './types';
 import { VialDataProcessor } from './vialDataProcessor';
 import { Utils } from './utils';
+import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
 
 /**
  * VIALデータを解析済み構造体に変換する処理クラス
@@ -80,8 +81,13 @@ export class ParsedVialProcessor {
   ): PositionedPhysicalButton[] {
     const buttons: PositionedPhysicalButton[] = [];
     
-    // キーボードレイアウトの位置情報を取得（元実装と同じサイズ）
-    const keyPositions = Utils.getKeyPositions(78, 60, 4, 20);
+    // キーボードレイアウトの位置情報を取得（共通定数を使用）
+    const keyPositions = Utils.getKeyPositions(
+      KEYBOARD_CONSTANTS.keyWidth, 
+      KEYBOARD_CONSTANTS.keyHeight, 
+      KEYBOARD_CONSTANTS.keyGap, 
+      KEYBOARD_CONSTANTS.margin
+    );
     
     // 実際のVialデータはKeymapLayerインデックス付きオブジェクトとして来る
     for (const [rowIndexStr, row] of Object.entries(layer)) {

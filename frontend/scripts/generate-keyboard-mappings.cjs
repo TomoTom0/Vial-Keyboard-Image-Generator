@@ -35,9 +35,48 @@ function generateMappings(data) {
   return { keyMapping, shiftMapping };
 }
 
+// レイアウト情報を生成する関数
+function generateLayouts(layoutsData) {
+  const layouts = {};
+  
+  for (const [layoutName, data] of Object.entries(layoutsData)) {
+    const positions = [];
+    
+    data.forEach(row => {
+      const vialRow = parseInt(row.vial_row);
+      const vialCol = parseInt(row.vial_col);
+      
+      // 配列を必要に応じて拡張
+      while (positions.length <= vialRow) {
+        positions.push([]);
+      }
+      while (positions[vialRow].length <= vialCol) {
+        positions[vialRow].push(null);
+      }
+      
+      // ポジション情報を設定
+      positions[vialRow][vialCol] = {
+        x: parseFloat(row.canvas_x),
+        y: parseFloat(row.canvas_y),
+        width: parseInt(row.canvas_width),
+        height: parseInt(row.canvas_height),
+        rotation: parseFloat(row.canvas_rotation),
+        layoutRow: parseInt(row.layout_row),
+        layoutCol: parseInt(row.layout_col),
+        description: row.description
+      };
+    });
+    
+    layouts[layoutName] = positions;
+  }
+  
+  return layouts;
+}
+
 // メイン処理
 function main() {
   const keymapsDir = path.join(__dirname, '../data/keymaps');
+  const layoutsDir = path.join(__dirname, '../data/layouts');
   const outputDir = path.join(__dirname, '../src/utils');
   
   // common.tsvを読み込み
@@ -77,6 +116,23 @@ function main() {
     languages.japanese = japaneseMappings;
   }
   
+  // レイアウトTSVファイルを読み込み
+  const layoutsData = {};
+  if (fs.existsSync(layoutsDir)) {
+    const layoutFiles = fs.readdirSync(layoutsDir).filter(file => file.endsWith('.tsv'));
+    
+    layoutFiles.forEach(file => {
+      const layoutName = path.basename(file, '.tsv');
+      const layoutPath = path.join(layoutsDir, file);
+      const layoutContent = fs.readFileSync(layoutPath, 'utf-8');
+      const layoutData = parseTSV(layoutContent);
+      layoutsData[layoutName] = layoutData;
+    });
+  }
+  
+  // レイアウト情報を生成
+  const layouts = generateLayouts(layoutsData);
+  
   // TypeScriptファイルを生成
   const tsContent = `// 自動生成されたファイル - 直接編集しないでください
 // 生成日時: ${new Date().toISOString()}
@@ -87,6 +143,23 @@ export interface KeyboardLanguage {
   keyMapping: { [key: string]: string };
   specialKeys: { [key: string]: string };
   shiftMapping: { [key: string]: string };
+}
+
+export interface KeyPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  layoutRow: number;
+  layoutCol: number;
+  description: string;
+}
+
+export interface KeyboardLayout {
+  id: string;
+  name: string;
+  positions: (KeyPosition | null)[][];
 }
 
 // キーボードマッピングデータ
@@ -117,6 +190,15 @@ export const KEYBOARD_LANGUAGES: { [key: string]: KeyboardLanguage } = {
     specialKeys: {},
     shiftMapping: KEYBOARD_MAPPINGS.japanese.shiftMapping
   }
+};
+
+// キーボードレイアウトデータ
+export const KEYBOARD_LAYOUTS: { [key: string]: KeyboardLayout } = {
+${Object.entries(layouts).map(([layoutName, positions]) => `  ${layoutName}: {
+    id: '${layoutName}',
+    name: '${layoutName.charAt(0).toUpperCase() + layoutName.slice(1).replace('_', ' ')}',
+    positions: ${JSON.stringify(positions, null, 4)}
+  }`).join(',\n')}
 };
 
 // 現在の言語を取得する関数（後方互換性のため）

@@ -1,5 +1,5 @@
 // 自動生成されたファイル - 直接編集しないでください
-// 生成日時: 2025-09-13T10:56:00.783Z
+// 生成日時: 2025-09-13T11:19:05.211Z
 
 export interface KeyboardLanguage {
   id: string;
@@ -7,6 +7,23 @@ export interface KeyboardLanguage {
   keyMapping: { [key: string]: string };
   specialKeys: { [key: string]: string };
   shiftMapping: { [key: string]: string };
+}
+
+export interface KeyPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  layoutRow: number;
+  layoutCol: number;
+  description: string;
+}
+
+export interface KeyboardLayout {
+  id: string;
+  name: string;
+  positions: (KeyPosition | null)[][];
 }
 
 // キーボードマッピングデータ
@@ -315,6 +332,498 @@ export const KEYBOARD_LANGUAGES: { [key: string]: KeyboardLanguage } = {
     keyMapping: KEYBOARD_MAPPINGS.japanese.keyMapping,
     specialKeys: {},
     shiftMapping: KEYBOARD_MAPPINGS.japanese.shiftMapping
+  }
+};
+
+// キーボードレイアウトデータ
+export const KEYBOARD_LAYOUTS: { [key: string]: KeyboardLayout } = {
+  corne_v4: {
+    id: 'corne_v4',
+    name: 'Corne v4',
+    positions: [
+    [
+        {
+            "x": 20,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 0,
+            "description": "Left top row - TO(0)"
+        },
+        {
+            "x": 102,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 1,
+            "description": "Left top row - Q"
+        },
+        {
+            "x": 184,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 2,
+            "description": "Left top row - W"
+        },
+        {
+            "x": 266,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 3,
+            "description": "Left top row - E"
+        },
+        {
+            "x": 348,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 4,
+            "description": "Left top row - R"
+        },
+        {
+            "x": 430,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 5,
+            "description": "Left top row - T"
+        },
+        {
+            "x": 512,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 6,
+            "description": "Left top row - Print Screen"
+        }
+    ],
+    [
+        {
+            "x": 20,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 0,
+            "description": "Left home row - Caps"
+        },
+        {
+            "x": 102,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 1,
+            "description": "Left home row - A"
+        },
+        {
+            "x": 184,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 2,
+            "description": "Left home row - S"
+        },
+        {
+            "x": 266,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 3,
+            "description": "Left home row - D"
+        },
+        {
+            "x": 348,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 4,
+            "description": "Left home row - F"
+        },
+        {
+            "x": 430,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 5,
+            "description": "Left home row - G"
+        },
+        {
+            "x": 512,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 6,
+            "description": "Left home row - Tab"
+        }
+    ],
+    [
+        {
+            "x": 20,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 0,
+            "description": "Left bottom row - LShift"
+        },
+        {
+            "x": 102,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 1,
+            "description": "Left bottom row - Z"
+        },
+        {
+            "x": 184,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 2,
+            "description": "Left bottom row - X"
+        },
+        {
+            "x": 266,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 3,
+            "description": "Left bottom row - C"
+        },
+        {
+            "x": 348,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 4,
+            "description": "Left bottom row - V"
+        },
+        {
+            "x": 430,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 5,
+            "description": "Left bottom row - B"
+        }
+    ],
+    [
+        null,
+        null,
+        null,
+        {
+            "x": 266,
+            "y": 212,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 3,
+            "layoutCol": 3,
+            "description": "Left thumb cluster - MHEN"
+        },
+        {
+            "x": 348,
+            "y": 212,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 3,
+            "layoutCol": 4,
+            "description": "Left thumb cluster - LT1 Space"
+        },
+        {
+            "x": 430,
+            "y": 212,
+            "width": 117,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 3,
+            "layoutCol": 5,
+            "description": "Left thumb cluster - LCtrl (wide)"
+        }
+    ],
+    [
+        {
+            "x": 1131,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 13,
+            "description": "Right top row - KC_NO"
+        },
+        {
+            "x": 1049,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 12,
+            "description": "Right top row - P"
+        },
+        {
+            "x": 967,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 11,
+            "description": "Right top row - O"
+        },
+        {
+            "x": 885,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 10,
+            "description": "Right top row - I"
+        },
+        {
+            "x": 803,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 9,
+            "description": "Right top row - U"
+        },
+        {
+            "x": 721,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 8,
+            "description": "Right top row - Y"
+        },
+        {
+            "x": 639,
+            "y": 20,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 0,
+            "layoutCol": 7,
+            "description": "Right top row - RAlt"
+        }
+    ],
+    [
+        {
+            "x": 1131,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 13,
+            "description": "Right home row - TD(0)"
+        },
+        {
+            "x": 1049,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 12,
+            "description": "Right home row - Bksp"
+        },
+        {
+            "x": 967,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 11,
+            "description": "Right home row - L"
+        },
+        {
+            "x": 885,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 10,
+            "description": "Right home row - K"
+        },
+        {
+            "x": 803,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 9,
+            "description": "Right home row - J"
+        },
+        {
+            "x": 721,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 8,
+            "description": "Right home row - H"
+        },
+        {
+            "x": 639,
+            "y": 84,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 1,
+            "layoutCol": 7,
+            "description": "Right home row - RShift"
+        }
+    ],
+    [
+        {
+            "x": 1131,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 13,
+            "description": "Right bottom row - Enter"
+        },
+        {
+            "x": 1049,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 12,
+            "description": "Right bottom row - ?"
+        },
+        {
+            "x": 967,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 11,
+            "description": "Right bottom row - ;"
+        },
+        {
+            "x": 885,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 10,
+            "description": "Right bottom row - M"
+        },
+        {
+            "x": 803,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 9,
+            "description": "Right bottom row - ,"
+        },
+        {
+            "x": 721,
+            "y": 148,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 2,
+            "layoutCol": 8,
+            "description": "Right bottom row - N"
+        }
+    ],
+    [
+        null,
+        null,
+        null,
+        {
+            "x": 885,
+            "y": 212,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 3,
+            "layoutCol": 10,
+            "description": "Right thumb cluster - RGui"
+        },
+        {
+            "x": 803,
+            "y": 212,
+            "width": 78,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 3,
+            "layoutCol": 9,
+            "description": "Right thumb cluster - LT2 Space"
+        },
+        {
+            "x": 686,
+            "y": 212,
+            "width": 117,
+            "height": 60,
+            "rotation": 0,
+            "layoutRow": 3,
+            "layoutCol": 8,
+            "description": "Right thumb cluster - LT3 Tab (wide)"
+        }
+    ]
+]
   }
 };
 

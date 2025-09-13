@@ -1,5 +1,6 @@
 // ユーティリティモジュール（ブラウザ対応版）
 import type { VialConfig, KeyPosition } from './types';
+import { KEYBOARD_LAYOUTS } from './keyboardConfig.generated';
 
 export class Utils {
 
@@ -8,8 +9,15 @@ export class Utils {
         return JSON.parse(content);
     }
 
-    // キー配置座標を定義
+    // キー配置座標を定義（TSV生成データを使用）
     static getKeyPositions(keyWidth: number, keyHeight: number, keyGap: number, margin: number): (KeyPosition | null)[][] {
+        // TSV生成データからcorne_v4レイアウトを取得
+        const corneLayout = KEYBOARD_LAYOUTS.corne_v4;
+        if (corneLayout) {
+            return corneLayout.positions;
+        }
+        
+        // フォールバック: 従来のハードコード座標
         const unitX = keyWidth + keyGap;
         const unitY = keyHeight + keyGap;
         const positions: (KeyPosition | null)[][] = [];
