@@ -21,6 +21,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useVialStore } from '../stores/vial'
+// 他のストアのimportは削除（VialStoreで自動判断）
 import type { VialData } from '../stores/vial'
 
 const vialStore = useVialStore()
@@ -43,17 +44,7 @@ const selectFile = (file: VialData) => {
 }
 
 const downloadFile = (file: VialData) => {
-  // VIL configをダウンロード
-  const jsonString = JSON.stringify(file.config, null, 2)
-  const blob = new Blob([jsonString], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = file.name.endsWith('.vil') ? file.name : `${file.name}.vil`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  vialStore.downloadConfig(file.id) // Store経由で自動判断（特定ファイル指定）
 }
 
 const deleteFile = (file: VialData) => {

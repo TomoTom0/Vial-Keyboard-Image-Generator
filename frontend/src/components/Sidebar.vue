@@ -203,6 +203,7 @@ import { useVialStore } from '../stores/vial'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
 import { useImagesStore } from '../stores/images'
+// VilConverterのimportは削除（VialStoreで処理）
 import type { ReplaceRule } from '../utils/types'
 
 const vialStore = useVialStore()
@@ -284,7 +285,7 @@ const cycleDarkMode = (direction: number) => {
 const downloadSelectedFile = async () => {
   if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {
     try {
-      await vialStore.downloadVialFile(vialStore.selectedVialId)
+      vialStore.downloadConfig() // Store経由で自動判断
     } catch (error) {
       console.error('Failed to download file:', error)
     }

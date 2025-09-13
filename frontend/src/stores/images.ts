@@ -5,6 +5,7 @@ import { useUiStore } from './ui'
 import { useVialStore, type VialData } from './vial'
 import type { ParsedVial } from '../utils/types'
 import { embedMetadataToPng, type PngMetadata } from '../utils/pngMetadata'
+import { VialDataProcessor } from '../utils/vialDataProcessor'
 
 // 型定義
 interface GeneratedComponent {
@@ -133,6 +134,13 @@ export const useImagesStore = defineStore('images', () => {
   // プレビュー画像を生成
   const generatePreviewImages = async () => {
     const vialStore = useVialStore()
+    const settingsStore = useSettingsStore()
+    
+    // Replace RulesとConfigを設定
+    VialDataProcessor.setReplaceRules(settingsStore.replaceRules)
+    if (vialStore.currentVial) {
+      VialDataProcessor.setConfig(vialStore.currentVial)
+    }
     
     const selectedVial = vialStore.currentVial
     const parsedVial = vialStore.currentParsedVial
@@ -142,6 +150,7 @@ export const useImagesStore = defineStore('images', () => {
     console.log('🔍 selectedVial:', selectedVial)
     console.log('🔍 parsedVial:', parsedVial)
     console.log('🔍 fileId:', fileId)
+    console.log('🔧 Replace Rules set:', settingsStore.replaceRules)
     
     if (!fileId) {
       console.log('🚫 No file selected, skipping image generation')
@@ -222,12 +231,12 @@ export const useImagesStore = defineStore('images', () => {
       const renderOptions = {
         theme: settingsStore.enableDarkMode ? 'dark' : 'light' as 'dark' | 'light',
         backgroundColor: undefined,
-        highlightComboKeys: settingsStore.showCombos,
+        highlightComboKeys: settingsStore.highlightEnabled,
         highlightSubtextKeys: settingsStore.highlightEnabled,
-        showComboMarkers: settingsStore.showCombos,
-        showTextColors: true,
+        showComboMarkers: settingsStore.highlightEnabled,
+        showTextColors: settingsStore.highlightEnabled,
         showComboInfo: settingsStore.showCombos,
-        changeKeyColors: true
+        changeKeyColors: settingsStore.highlightEnabled
       }
       
       const qualityScale = quality === 'high' ? 1.0 : 0.5
@@ -300,7 +309,7 @@ export const useImagesStore = defineStore('images', () => {
         // 個別コンボ画像を生成（1x, 2x, 3x）
         const comboImages: HTMLCanvasElement[][] = []
         for (const combo of parsedVial.combos) {
-          const comboCanvases = combo.generateComboImage(renderOptions, qualityScale)
+          const comboCanvases = await combo.generateComboImage(renderOptions, qualityScale)
           comboImages.push(comboCanvases)
         }
         
@@ -964,6 +973,12 @@ export const useImagesStore = defineStore('images', () => {
     const settingsStore = useSettingsStore()
     const uiStore = useUiStore()
     
+    // Replace RulesとConfigを設定
+    VialDataProcessor.setReplaceRules(settingsStore.replaceRules)
+    if (vialStore.currentVial) {
+      VialDataProcessor.setConfig(vialStore.currentVial)
+    }
+    
     if (!vialStore.selectedVialId) return
     
     try {
@@ -1047,12 +1062,12 @@ export const useImagesStore = defineStore('images', () => {
     const renderOptions = {
       theme: settingsStore.enableDarkMode ? 'dark' : 'light' as 'dark' | 'light',
       backgroundColor: undefined,
-      highlightComboKeys: settingsStore.showCombos,
+      highlightComboKeys: settingsStore.highlightEnabled,
       highlightSubtextKeys: settingsStore.highlightEnabled,
-      showComboMarkers: settingsStore.showCombos,
-      showTextColors: true,
+      showComboMarkers: settingsStore.highlightEnabled,
+      showTextColors: settingsStore.highlightEnabled,
       showComboInfo: settingsStore.showCombos,
-      changeKeyColors: true
+      changeKeyColors: settingsStore.highlightEnabled
     }
     
     const qualityScale = 1.0 // 高品質固定

@@ -221,7 +221,9 @@ export function compareKeycodeResult(keycode: string, languageId1: string, langu
 // 文字からキーコード逆引き：特定の文字を入力するのに必要なキーコードを取得
 export function getKeycodeForCharacter(character: string, languageId: string): string | null {
   const language = keyboardLanguages.find(l => l.id === languageId);
-  if (!language) return null;
+  if (!language) {
+    return null;
+  }
   
   // KC_付きキーマッピングから逆引き
   for (const [keycode, mappedChar] of Object.entries(language.keyMapping)) {

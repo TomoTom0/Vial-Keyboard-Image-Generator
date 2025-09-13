@@ -16,6 +16,9 @@ export class ParsedVialProcessor {
     console.log('🚨 ParsedVialProcessor: parseVialConfig called for:', keyboardName, '- Call stack:', new Error().stack?.split('\n').slice(1, 4).join(' | '));
     console.log('🔧 config object keys:', Object.keys(config));
     
+    // VialDataProcessorにconfigを設定
+    VialDataProcessor.setConfig(config);
+    
     // TapDanceとCombo情報を事前取得
     const tapDances = VialDataProcessor.getTapDances(config);
     const combos = VialDataProcessor.getCombos(config);
@@ -102,7 +105,7 @@ export class ParsedVialProcessor {
         // }
         
         // 物理ボタンの生成（空きボタンも含める）
-        const physicalButton = VialDataProcessor.createPhysicalButton(normalizedKeycode, config);
+        const physicalButton = VialDataProcessor.createPhysicalButton(normalizedKeycode);
         
         // 描画位置の計算（配置位置から実際の描画座標を計算）
         const drawPosition = ParsedVialProcessor.calculateDrawPosition(layoutPosition);

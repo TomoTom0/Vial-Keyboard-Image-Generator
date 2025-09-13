@@ -18,6 +18,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const highlightEnabled = ref(false)
   const showCombos = ref(true)
   const showHeader = ref(true)
+  const enableReplacedVilDownload = ref(false)
   
   // Layer selection
   const layerSelection = ref({
@@ -172,6 +173,18 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
   
+  // 単一フィールドのバリデーション（FromまたはTo個別用）
+  const validateSingleField = (text: string): 'valid' | 'invalid' | 'none' => {
+    if (!text.trim()) {
+      return 'none'
+    }
+    
+    // 現在の言語で文字からキーコードを取得できるかチェック
+    const keycode = getKeycodeForCharacter(text.trim(), keyboardLanguage.value)
+    
+    return keycode ? 'valid' : 'invalid'
+  }
+  
   // 全ての置換ルールのバリデーション状態を更新
   const updateReplaceRulesValidation = () => {
     replaceRules.value = replaceRules.value.map(rule => ({
@@ -219,6 +232,7 @@ export const useSettingsStore = defineStore('settings', () => {
     highlightEnabled,
     showCombos,
     showHeader,
+    enableReplacedVilDownload,
     layerSelection,
     setKeyboardLanguage,
     setReplaceRules,
@@ -235,6 +249,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setSpacing,
     validateReplaceRule,
     validateReplaceRuleWithReason,
+    validateSingleField,
     updateReplaceRulesValidation,
     selectDisplayColumns,
     previewDisplayColumns

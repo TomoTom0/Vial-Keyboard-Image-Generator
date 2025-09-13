@@ -9,6 +9,7 @@ import { useVialStore } from './stores/vial'
 import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
 import { useImagesStore } from './stores/images'
+// VilConverterのimportは削除（VialStoreで処理）
 import type { ReplaceRule } from './utils/types'
 
 // URLハッシュから初期タブを取得（hashモード形式: /#/tab）
@@ -100,20 +101,7 @@ const switchNavSection = (section: 'files' | 'generate' | 'settings') => {
 
 const downloadSelectedFile = () => {
   if (!hasSelectedFile.value) return
-  
-  const selectedFile = vialStore.vialFiles.find(f => f.id === vialStore.selectedVialId)
-  if (selectedFile) {
-    const jsonString = JSON.stringify(selectedFile.config, null, 2)
-    const blob = new Blob([jsonString], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = selectedFile.name.endsWith('.vil') ? selectedFile.name : `${selectedFile.name}.vil`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
+  vialStore.downloadConfig() // Store経由で自動判断
 }
 
 const deleteSelectedFile = () => {

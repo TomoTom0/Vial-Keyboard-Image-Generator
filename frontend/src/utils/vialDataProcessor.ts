@@ -1,5 +1,5 @@
 // VIALデータ統一処理モジュール
-import type { VialConfig, VirtualButton, TapDance } from './types';
+import type { VialConfig, VirtualButton, TapDance, ReplaceRule } from './types';
 import { PhysicalButton, Combo } from './types';
 import { getCurrentKeyboardLanguage, getKeyMapping } from './keyboardConfig';
 
@@ -7,6 +7,24 @@ import { getCurrentKeyboardLanguage, getKeyMapping } from './keyboardConfig';
  * VIALデータを統一的な構造体に変換する処理クラス
  */
 export class VialDataProcessor {
+  // 静的なReplace Rules（画像生成時に設定）
+  private static currentReplaceRules: ReplaceRule[] = [];
+  // 静的なVialConfig（画像生成時に設定）
+  private static currentConfig: VialConfig | null = null;
+  
+  /**
+   * Replace Rulesを設定
+   */
+  static setReplaceRules(replaceRules: ReplaceRule[]) {
+    this.currentReplaceRules = replaceRules || [];
+  }
+  
+  /**
+   * VialConfigを設定
+   */
+  static setConfig(config: VialConfig) {
+    this.currentConfig = config;
+  }
   
   /**
    * keycode文字列から仮想ボタンを作成
@@ -32,11 +50,37 @@ export class VialDataProcessor {
       }
     }
     
+    // Replace rulesを適用
+    if (this.currentReplaceRules.length > 0) {
+      keyText = this.applyReplaceRules(keyText, this.currentReplaceRules);
+    }
+    
     return {
       keyCode: keycode,
       keyText: keyText,
       isSpecial: isSpecial
     };
+  }
+  
+  /**
+   * Replace rulesをkeyTextに適用（完全一致のみ）
+   */
+  private static applyReplaceRules(keyText: string, replaceRules: ReplaceRule[]): string {
+    // 有効なルールのみ適用
+    const enabledRules = replaceRules.filter(rule => rule.enabled && rule.from.trim() && rule.to.trim());
+    
+    // 各ルールを順番に適用（完全一致のみ）
+    for (const rule of enabledRules) {
+      const fromText = rule.from.trim();
+      const toText = rule.to.trim();
+      
+      // 完全一致の場合のみ置換
+      if (keyText === fromText) {
+        return toText;
+      }
+    }
+    
+    return keyText;
   }
   
   /**
@@ -168,7 +212,13 @@ export class VialDataProcessor {
   /**
    * raw keycodeから物理ボタンを作成
    */
-  static createPhysicalButton(rawKeycode: string, config: VialConfig): PhysicalButton {
+  static createPhysicalButton(rawKeycode: string): PhysicalButton {
+    const config = this.currentConfig;
+    if (!config) {
+      console.warn('VialDataProcessor: config is not set. Call setConfig() first.');
+      // フォールバック: 基本的な仮想ボタンを作成
+      return new PhysicalButton(rawKeycode, this.createVirtualButton(rawKeycode));
+    }
     // Tap Dance処理
     if (rawKeycode.startsWith('TD(')) {
       const match = rawKeycode.match(/TD\((\d+)\)/);
@@ -322,7 +372,7 @@ export class VialDataProcessor {
       const layerButtons: PhysicalButton[][] = [];
       for (const [rowIndex, row] of Object.entries(layer)) {
         if (Array.isArray(row)) {
-          layerButtons[parseInt(rowIndex)] = row.map((keycode: any) => this.createPhysicalButton(keycode, config));
+          layerButtons[parseInt(rowIndex)] = row.map((keycode: any) => this.createPhysicalButton(keycode));
         }
       }
       return layerButtons;

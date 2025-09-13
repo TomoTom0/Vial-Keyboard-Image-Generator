@@ -84,7 +84,7 @@ export class Parser {
             );
         }
         
-        return VialDataProcessor.createPhysicalButton(keyStr, config);
+        return VialDataProcessor.createPhysicalButton(keyStr);
     }
 
     // 後方互換性のためのラベル変換メソッド（既存コード用）

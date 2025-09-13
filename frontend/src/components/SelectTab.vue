@@ -25,13 +25,16 @@
             <img 
               :src="imagesStore.getLayerImageUrl(layer)"
               :alt="`Layer ${layer}`"
-              class="layer-preview"
+              :class="['layer-preview', { 'image-loaded': imageLoadedStates[layer] }]"
+              loading="eager"
+              @load="handleImageLoad(layer)"
+              @loadstart="handleImageLoadStart(layer)"
               @error="handleImageError"
             />
           </template>
           <template v-else>
             <div class="layer-placeholder">
-              <div class="placeholder-text">Layer {{ layer }}</div>
+              <!-- プレースホルダーを非表示にして、画像読み込み時の見切り感を軽減 -->
             </div>
           </template>
         </div>
@@ -72,6 +75,10 @@ const generatedImages = computed(() => imagesStore.images)
 
 // Available layers
 const availableLayers = LAYERS.AVAILABLE
+
+// 画像読み込み状態管理
+const imageLoadingStates = ref<{[key: number]: boolean}>({})
+const imageLoadedStates = ref<{[key: number]: boolean}>({})
 
 // 画面幅を監視してレイアウト変更をトリガー
 const screenWidth = ref(window.innerWidth)
@@ -140,6 +147,17 @@ const getOrderedLayers = () => {
 }
 
 
+
+// 画像読み込みイベントハンドラー
+const handleImageLoad = (layer: number) => {
+  imageLoadedStates.value[layer] = true
+  imageLoadingStates.value[layer] = false
+}
+
+const handleImageLoadStart = (layer: number) => {
+  imageLoadingStates.value[layer] = true
+  imageLoadedStates.value[layer] = false
+}
 
 const handleImageError = (event: Event) => {
   console.warn('Failed to load layer image')
@@ -242,6 +260,12 @@ $background-light: #f5f5f5;
 
 .layer-preview {
   @include image-base;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  
+  &.image-loaded {
+    opacity: 1;
+  }
 }
 
 
@@ -321,7 +345,7 @@ $background-light: #f5f5f5;
 
 
 .layer-placeholder {
-  color: #999;
+  color: transparent;
   font-size: 24px;
   font-weight: bold;
   display: flex;
@@ -330,6 +354,8 @@ $background-light: #f5f5f5;
   text-align: center;
   min-height: 60px;
   width: 100%;
+  background: #f5f5f5;
+  border-radius: 8px;
 }
 
 .placeholder-text {

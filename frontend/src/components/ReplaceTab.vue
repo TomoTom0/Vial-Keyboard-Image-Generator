@@ -43,6 +43,22 @@
             placeholder="Original text"
             @input="handleRuleChange(index)"
           />
+          <div class="validation-indicator">
+            <span 
+              v-if="getFromValidationStatus(index) === 'valid'" 
+              class="validation-icon valid"
+              title="認識済み"
+            >
+              ✓
+            </span>
+            <span 
+              v-else-if="getFromValidationStatus(index) === 'invalid'" 
+              class="validation-icon invalid"
+              title="未認識"
+            >
+              ?
+            </span>
+          </div>
         </div>
         
         <!-- To入力（3行目） -->
@@ -56,16 +72,16 @@
           />
           <div class="validation-indicator">
             <span 
-              v-if="getValidationStatus(index) === 'valid'" 
+              v-if="getToValidationStatus(index) === 'valid'" 
               class="validation-icon valid"
-              title="有効なルール"
+              title="認識済み"
             >
               ✓
             </span>
             <span 
-              v-else-if="getValidationStatus(index) === 'invalid'" 
+              v-else-if="getToValidationStatus(index) === 'invalid'" 
               class="validation-icon invalid"
-              :title="getValidationReason(index) || '無効なルール'"
+              title="未認識"
             >
               ?
             </span>
@@ -88,7 +104,7 @@
           type="checkbox"
           id="download-replaced"
           class="checkbox-input"
-          v-model="enableDownloadReplaced"
+          v-model="settingsStore.enableReplacedVilDownload"
         />
         <label for="download-replaced" class="checkbox-label">
           Enable replaced VIL download
@@ -101,12 +117,13 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue'
 import { useSettingsStore } from '../stores/settings'
+import { useImagesStore } from '../stores/images'
 import type { ReplaceRule } from '../utils/types'
 
 const settingsStore = useSettingsStore()
+const imagesStore = useImagesStore()
 
-// Download with Replaced設定
-const enableDownloadReplaced = ref(false)
+// Download with Replaced設定は設定ストアで管理
 
 // ローカルな作業用ルールリスト（未保存の変更を含む）
 const localRules = ref<ReplaceRule[]>([])
@@ -157,7 +174,7 @@ const handleEnabledChange = async (index: number) => {
   // 既存のルールで有効無効の変更の場合は自動保存
   const savedRule = savedRules.value.find(r => r.id === rule.id)
   if (savedRule && (rule.from !== '' || rule.to !== '')) {
-    saveRule(index)
+    await saveRule(index)
   }
   
   await handleRuleChange(index)
@@ -196,7 +213,7 @@ const isLastEmptyRule = (index: number): boolean => {
 }
 
 // ルールを保存
-const saveRule = (index: number) => {
+const saveRule = async (index: number) => {
   const rule = localRules.value[index]
   
   // バリデーション: 両方のフィールドに値が入っている場合のみ保存
@@ -219,10 +236,19 @@ const saveRule = (index: number) => {
   
   // バリデーション状態を更新
   settingsStore.updateReplaceRulesValidation()
+  
+  // Replace Rule保存後に画像を再生成
+  console.log('🔄 Replace Rule保存後、画像を再生成中...')
+  try {
+    await imagesStore.generatePreviewImages()
+    console.log('✅ 画像再生成が完了しました')
+  } catch (error) {
+    console.error('❌ 画像再生成でエラーが発生:', error)
+  }
 }
 
 // ルールを削除
-const deleteRule = (index: number) => {
+const deleteRule = async (index: number) => {
   const rule = localRules.value[index]
   
   // ローカルリストから削除
@@ -239,6 +265,15 @@ const deleteRule = (index: number) => {
     
     // バリデーション状態を更新
     settingsStore.updateReplaceRulesValidation()
+    
+    // Replace Rule削除後に画像を再生成
+    console.log('🔄 Replace Rule削除後、画像を再生成中...')
+    try {
+      await imagesStore.generatePreviewImages()
+      console.log('✅ 画像再生成が完了しました')
+    } catch (error) {
+      console.error('❌ 画像再生成でエラーが発生:', error)
+    }
   }
   
   // 空のルールを追加
@@ -280,6 +315,75 @@ const getValidationReason = (index: number): string => {
   }
   
   return ''
+}
+
+// シンプルなバリデーション理由を取得
+const getSimpleValidationReason = (index: number): string => {
+  const rule = localRules.value[index]
+  
+  // 編集中や未保存の場合は理由なし
+  if (hasUnsavedChanges(index)) {
+    return '未認識'
+  }
+  
+  // 保存済みルールの場合、シンプルなバリデーション実行
+  const savedRule = savedRules.value.find(r => r.id === rule.id)
+  if (savedRule) {
+    const result = settingsStore.validateReplaceRuleWithReason(rule)
+    
+    // シンプルなメッセージに変換
+    if (result.status === 'invalid') {
+      return '未認識'
+    }
+  }
+  
+  return '未認識'
+}
+
+// From フィールドのバリデーション状況を取得
+const getFromValidationStatus = (index: number): 'valid' | 'invalid' | 'none' => {
+  const rule = localRules.value[index]
+  
+  // 編集中（未保存の変更がある）場合はバリデーションを表示しない
+  if (hasUnsavedChanges(index)) {
+    return 'none'
+  }
+  
+  // 空の場合は表示しない
+  if (!rule.from.trim()) {
+    return 'none'
+  }
+  
+  // 保存済みルールの場合、Fromフィールドをバリデーション
+  const savedRule = savedRules.value.find(r => r.id === rule.id)
+  if (savedRule) {
+    return settingsStore.validateSingleField(rule.from.trim())
+  }
+  
+  return 'none'
+}
+
+// To フィールドのバリデーション状況を取得
+const getToValidationStatus = (index: number): 'valid' | 'invalid' | 'none' => {
+  const rule = localRules.value[index]
+  
+  // 編集中（未保存の変更がある）場合はバリデーションを表示しない
+  if (hasUnsavedChanges(index)) {
+    return 'none'
+  }
+  
+  // 空の場合は表示しない
+  if (!rule.to.trim()) {
+    return 'none'
+  }
+  
+  // 保存済みルールの場合、Toフィールドをバリデーション
+  const savedRule = savedRules.value.find(r => r.id === rule.id)
+  if (savedRule) {
+    return settingsStore.validateSingleField(rule.to.trim())
+  }
+  
+  return 'none'
 }
 
 // settingsStoreのreplaceRulesの変更を監視

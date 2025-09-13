@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
-import { convertVialConfig } from '../utils/vilConverter'
+import { convertVialConfig, getReplacedVialConfig, downloadVilFile } from '../utils/vilConverter'
+import { useSettingsStore } from './settings'
 import type { VialConfig, ParsedVial } from '../utils/types'
 
 export interface VialData {
@@ -149,6 +150,48 @@ export const useVialStore = defineStore('vial', () => {
     return `変換完了: ${fromLanguage} → ${toLanguage}`
   }
 
+  /**
+   * 現在のConfigを取得（Replace Rules適用状況を自動判断）
+   */
+  const getCurrentConfig = (fileId?: string): VialConfig | null => {
+    const targetFile = fileId ? vialFiles.value.find(f => f.id === fileId) : currentVial.value
+    if (!targetFile) return null
+
+    const settingsStore = useSettingsStore()
+    
+    // Replace Rules適用が有効な場合
+    if (settingsStore.enableReplacedVilDownload) {
+      return getReplacedVialConfig(
+        targetFile.config,
+        settingsStore.replaceRules,
+        settingsStore.keyboardLanguage
+      )
+    }
+    
+    // 通常のconfig
+    return targetFile.config
+  }
+
+  /**
+   * ファイルをダウンロード（Replace Rules適用状況を自動判断）
+   */
+  const downloadConfig = (fileId?: string) => {
+    const targetFile = fileId ? vialFiles.value.find(f => f.id === fileId) : currentVial.value
+    if (!targetFile) return
+
+    const settingsStore = useSettingsStore()
+    const config = getCurrentConfig(fileId)
+    if (!config) return
+
+    // Replace Rules適用が有効な場合はファイル名に_replacedを付加
+    let filename = targetFile.name
+    if (settingsStore.enableReplacedVilDownload) {
+      const baseName = targetFile.name.replace(/\.vil$/, '')
+      filename = `${baseName}_replaced.vil`
+    }
+
+    downloadVilFile(config, filename)
+  }
 
   return {
     vialFiles,
@@ -160,7 +203,9 @@ export const useVialStore = defineStore('vial', () => {
     removeVialData,
     selectVial,
     convertLanguage,
-    migrateData
+    migrateData,
+    getCurrentConfig,
+    downloadConfig
   }
 }, {
   persist: {

@@ -204,9 +204,10 @@ export class Combo {
     public description: string           // 説明テキスト
   ) {}
   
-  generateComboImage(options: RenderOptions, qualityScale: number): HTMLCanvasElement[] {
+  async generateComboImage(options: RenderOptions, qualityScale: number): Promise<HTMLCanvasElement[]> {
+    const { keyHeight } = KEYBOARD_CONSTANTS;
     const baseWidth = 300;
-    const baseHeight = 60;
+    const baseHeight = keyHeight;
     const canvases: HTMLCanvasElement[] = [];
     
     // 1x, 2x, 3x の3つの幅倍率で生成
@@ -222,17 +223,18 @@ export class Combo {
       // 品質スケールのみ適用（widthScaleは既にcanvasサイズに反映済み）
       ctx.scale(qualityScale, qualityScale);
       
-      this.draw(ctx, 0, 0, baseWidth * widthScale, baseHeight, options, 1.0);
+      await this.draw(ctx, 0, 0, baseWidth * widthScale, baseHeight, options, 1.0);
       canvases.push(canvas);
     }
     
     return canvases;
   }
 
-  draw(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, options: RenderOptions, qualityScale: number = 1.0): void {
+  async draw(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, options: RenderOptions, qualityScale: number = 1.0): Promise<void> {
     const colors = getThemeColors(options.theme);
-    const buttonHeight = 60;  // 元実装と同じサイズ
-    const buttonWidth = 78;   // 元実装と同じサイズ
+    const { keyWidth, keyHeight } = KEYBOARD_CONSTANTS;
+    const buttonHeight = keyHeight;
+    const buttonWidth = keyWidth;
     const spacing = 10;
     
     let currentX = x + spacing;
@@ -246,7 +248,8 @@ export class Combo {
     currentX += 40;
     
     // アクションボタンを描画
-    const actionButton = new PhysicalButton(this.action.keyCode, this.action);
+    const { VialDataProcessor } = await import('./vialDataProcessor');
+    const actionButton = VialDataProcessor.createPhysicalButton(this.action.keyCode);
     actionButton.draw(ctx, currentX, buttonY, buttonWidth, buttonHeight, options, [], qualityScale);
     currentX += buttonWidth + spacing;
     
@@ -259,7 +262,7 @@ export class Combo {
     
     // 組み合わせキーを描画
     for (const keyButton of this.keys) {
-      const physicalKey = new PhysicalButton(keyButton.keyCode, keyButton);
+      const physicalKey = VialDataProcessor.createPhysicalButton(keyButton.keyCode);
       physicalKey.draw(ctx, currentX, buttonY, buttonWidth, buttonHeight, options, [this], qualityScale); // comboとして自分を渡す
       currentX += buttonWidth + spacing / 2;
     }
@@ -520,7 +523,7 @@ export class ParsedVial {
         const x = 15 + col * columnWidth;
         const y = headerHeight + 10 + row * lineHeight;
         
-        combo.draw(ctx, x, y, columnWidth - 10, 60, options, qualityScale);
+        combo.draw(ctx, x, y, columnWidth - 10, KEYBOARD_CONSTANTS.keyHeight, options, qualityScale);
       });
       
       canvases.push(canvas);

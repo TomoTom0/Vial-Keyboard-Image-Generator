@@ -20,7 +20,10 @@
             v-if="imagesStore.getLayerImageUrl(layer)"
             :src="imagesStore.getLayerImageUrl(layer)"
             :alt="`Layer ${layer}`"
-            class="layer-preview"
+            :class="['layer-preview', { 'image-loaded': imageLoadedStates[layer] }]"
+            loading="eager"
+            @load="handleImageLoad(layer)"
+            @loadstart="handleImageLoadStart(layer)"
             @error="handleImageError"
           />
         </div>
@@ -54,6 +57,10 @@ const imagesStore = useImagesStore()
 
 // Store から取得するcomputed値（計算が必要なもののみ）
 const generatedImages = computed(() => imagesStore.images)
+
+// 画像読み込み状態管理
+const imageLoadingStates = ref<{[key: number]: boolean}>({})
+const imageLoadedStates = ref<{[key: number]: boolean}>({})
 
 // 画面幅を監視してレイアウト変更をトリガー
 const screenWidth = ref(window.innerWidth)
@@ -98,6 +105,17 @@ const getLayersLayoutClass = (): string => {
   return 'layers-separated'
 }
 
+
+// 画像読み込みイベントハンドラー
+const handleImageLoad = (layer: number) => {
+  imageLoadedStates.value[layer] = true
+  imageLoadingStates.value[layer] = false
+}
+
+const handleImageLoadStart = (layer: number) => {
+  imageLoadingStates.value[layer] = true
+  imageLoadedStates.value[layer] = false
+}
 
 const handleImageError = (event: Event) => {
   console.warn('Failed to load layer image')
@@ -276,10 +294,16 @@ $transition-duration: 0.2s;
 
 .layer-preview {
   @include preview-image-base;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  
+  &.image-loaded {
+    opacity: 1;
+  }
 }
 
 .layer-placeholder {
-  color: #999;
+  color: transparent;
   font-size: 24px;
   font-weight: bold;
   display: flex;
@@ -288,6 +312,8 @@ $transition-duration: 0.2s;
   text-align: center;
   min-height: 60px;
   width: 100%;
+  background: #f5f5f5;
+  border-radius: 8px;
 }
 
 .placeholder-text {
