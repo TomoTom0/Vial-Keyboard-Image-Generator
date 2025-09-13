@@ -43,7 +43,8 @@ export interface GeneratedImage {
 }
 
 export const useImagesStore = defineStore('images', () => {
-  const previewImages = ref<GeneratedImage[]>([])  // プレビュー用画像
+  const previewImages = ref<GeneratedImage[]>([])  // 現在表示中の画像
+  const nextPreviewImages = ref<GeneratedImage[]>([])  // 生成中の次世代画像
   const outputImages = ref<GeneratedImage[]>([])   // 最終出力用画像
   const isGenerating = ref(false)
   const generationProgress = ref(0)
@@ -76,6 +77,28 @@ export const useImagesStore = defineStore('images', () => {
     }
     
     images.value.push(newImage)
+  }
+
+  // 次世代配列に画像を追加（二重バッファリング用）
+  const addImageToNext = (image: Omit<GeneratedImage, 'timestamp'>) => {
+    const newImage: GeneratedImage = {
+      timestamp: new Date(),
+      ...image
+    }
+    
+    // 既存の同じIDの画像を削除
+    const existingIndex = nextPreviewImages.value.findIndex(img => img.id === image.id)
+    if (existingIndex > -1) {
+      nextPreviewImages.value.splice(existingIndex, 1)
+    }
+    
+    nextPreviewImages.value.push(newImage)
+  }
+
+  // 次世代画像を現在の画像に切り替え
+  const swapToNextImages = () => {
+    previewImages.value = [...nextPreviewImages.value]
+    nextPreviewImages.value = []
   }
   
   // 画像を削除
@@ -236,7 +259,8 @@ export const useImagesStore = defineStore('images', () => {
         showComboMarkers: settingsStore.highlightEnabled,
         showTextColors: settingsStore.highlightEnabled,
         showComboInfo: settingsStore.showCombos,
-        changeKeyColors: settingsStore.highlightEnabled
+        changeKeyColors: settingsStore.highlightEnabled,
+        changeEmptyKeyColors: true  // 空白ボタンの背景色は常に変更
       }
       
       const qualityScale = quality === 'high' ? 1.0 : 0.5
@@ -257,25 +281,33 @@ export const useImagesStore = defineStore('images', () => {
       
       console.log('🎯 Generated components directly from ParsedVial:', result.canvases.length, 'canvases')
       
-      // 品質に応じて画像をクリア
+      // 二重バッファリング: 次世代配列をクリア
       if (quality === 'low') {
-        // プレビュー画像: 既存のlow品質画像のみクリア
-        previewImages.value = previewImages.value.filter(img => !img.id.includes('-low'))
+        nextPreviewImages.value = []
       } else {
         // 最終出力画像: 既存のhigh品質画像のみクリア  
         outputImages.value = outputImages.value.filter(img => !img.id.includes('-high'))
       }
       
-      // レイヤー画像追加
+      // レイヤー画像を次世代配列に追加
       result.canvases.forEach((canvas, index) => {
         const layerIndex = result.layerNumbers[index]
         const dataURL = canvas.toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
-        addImage({
-          id: `parsed-layer-${layerIndex}-${quality}`,
-          layer: layerIndex,
-          dataUrl: dataURL,
-          type: 'layer'
-        })
+        if (quality === 'low') {
+          addImageToNext({
+            id: `parsed-layer-${layerIndex}-${quality}`,
+            layer: layerIndex,
+            dataUrl: dataURL,
+            type: 'layer'
+          })
+        } else {
+          addImage({
+            id: `parsed-layer-${layerIndex}-${quality}`,
+            layer: layerIndex,
+            dataUrl: dataURL,
+            type: 'layer'
+          })
+        }
       })
       
       // ParsedVialからコンボ情報とヘッダー情報も生成
@@ -329,12 +361,21 @@ export const useImagesStore = defineStore('images', () => {
           additionalComponents.headerImages.forEach((headerCanvas, index) => {
             const width = index + 1
             const headerURL = headerCanvas.toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
-            addImage({
-              id: `parsed-header-${width}x-${quality}`,
-              layer: -1,
-              url: headerURL,
-              type: 'header'
-            })
+            if (quality === 'low') {
+              addImageToNext({
+                id: `parsed-header-${width}x-${quality}`,
+                layer: -1,
+                url: headerURL,
+                type: 'header'
+              })
+            } else {
+              addImage({
+                id: `parsed-header-${width}x-${quality}`,
+                layer: -1,
+                url: headerURL,
+                type: 'header'
+              })
+            }
           })
         }
         
@@ -348,12 +389,21 @@ export const useImagesStore = defineStore('images', () => {
           additionalComponents.comboListImages.forEach((comboCanvas, index) => {
             const width = index + 1
             const comboURL = comboCanvas.toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
-            addImage({
-              id: `parsed-combo-${width}x-${quality}`,
-              layer: -2,
-              url: comboURL,
-              type: 'combo'
-            })
+            if (quality === 'low') {
+              addImageToNext({
+                id: `parsed-combo-${width}x-${quality}`,
+                layer: -2,
+                url: comboURL,
+                type: 'combo'
+              })
+            } else {
+              addImage({
+                id: `parsed-combo-${width}x-${quality}`,
+                layer: -2,
+                url: comboURL,
+                type: 'combo'
+              })
+            }
           })
           
           // 個別コンボ画像を追加（各コンボの1x, 2x, 3x）
@@ -361,14 +411,29 @@ export const useImagesStore = defineStore('images', () => {
             const comboIndex = Math.floor(index / 3)
             const width = (index % 3) + 1
             const comboURL = comboCanvas.toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
-            addImage({
-              id: `parsed-combo-${comboIndex}-${width}x-${quality}`,
-              layer: -2,
-              url: comboURL,
-              type: 'combo'
-            })
+            if (quality === 'low') {
+              addImageToNext({
+                id: `parsed-combo-${comboIndex}-${width}x-${quality}`,
+                layer: -2,
+                url: comboURL,
+                type: 'combo'
+              })
+            } else {
+              addImage({
+                id: `parsed-combo-${comboIndex}-${width}x-${quality}`,
+                layer: -2,
+                url: comboURL,
+                type: 'combo'
+              })
+            }
           })
         }
+      }
+      
+      // 低品質画像（プレビュー）の場合、一括切り替え
+      if (quality === 'low') {
+        swapToNextImages()
+        console.log('✅ Double-buffered image swap completed, total images:', previewImages.value.length)
       }
       
       console.log('✅ ParsedVial image generation completed, total images:', images.value.length)
@@ -1182,6 +1247,8 @@ export const useImagesStore = defineStore('images', () => {
     getImagesByFormat,
     getImagesByLayer,
     addImage,
+    addImageToNext,
+    swapToNextImages,
     removeImage,
     clearImages,
     clearOutputImages,

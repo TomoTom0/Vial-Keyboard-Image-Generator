@@ -1,0 +1,113 @@
+keycode	display	shift_display	description
+KC_A	A		Alphabet A
+KC_B	B		Alphabet B
+KC_C	C		Alphabet C
+KC_D	D		Alphabet D
+KC_E	E		Alphabet E
+KC_F	F		Alphabet F
+KC_G	G		Alphabet G
+KC_H	H		Alphabet H
+KC_I	I		Alphabet I
+KC_J	J		Alphabet J
+KC_K	K		Alphabet K
+KC_L	L		Alphabet L
+KC_M	M		Alphabet M
+KC_N	N		Alphabet N
+KC_O	O		Alphabet O
+KC_P	P		Alphabet P
+KC_Q	Q		Alphabet Q
+KC_R	R		Alphabet R
+KC_S	S		Alphabet S
+KC_T	T		Alphabet T
+KC_U	U		Alphabet U
+KC_V	V		Alphabet V
+KC_W	W		Alphabet W
+KC_X	X		Alphabet X
+KC_Y	Y		Alphabet Y
+KC_Z	Z		Alphabet Z
+KC_1	1	!	Number 1
+KC_2	2	@	Number 2
+KC_3	3	#	Number 3
+KC_4	4	$	Number 4
+KC_5	5	%	Number 5
+KC_6	6	^	Number 6
+KC_7	7	&	Number 7
+KC_8	8	*	Number 8
+KC_9	9	(	Number 9
+KC_0	0	)	Number 0
+KC_ENTER	Enter		Enter key
+KC_ESC	Esc		Escape key
+KC_ESCAPE	Esc		Escape key (alias)
+KC_BSPACE	Bksp		Backspace key
+KC_TAB	Tab		Tab key
+KC_SPACE	Space		Space bar
+KC_MINUS	-	_	Minus/Underscore
+KC_EQUAL	=	+	Equal/Plus
+KC_LBRACKET	[	{	Left bracket
+KC_RBRACKET	]	}	Right bracket
+KC_BSLASH	\	|	Backslash/Pipe
+KC_SCOLON	;	:	Semicolon/Colon
+KC_QUOTE	'	"	Quote/Double quote
+KC_GRAVE	`	~	Grave/Tilde
+KC_COMMA	,	<	Comma/Less than
+KC_DOT	.	>	Period/Greater than
+KC_SLASH	/	?	Slash/Question mark
+KC_NONUS_HASH	#	~	Non-US hash
+KC_RO	RO	_	RO key
+KC_INT1	INT1		INT1 key
+KC_INT3	INT3		INT3 key
+KC_CAPSLOCK	Caps		Caps Lock
+KC_PSCREEN	PrtScr		Print Screen
+KC_LCTRL	LCtrl		Left Control
+KC_LSHIFT	LShift		Left Shift
+KC_LALT	LAlt		Left Alt
+KC_LGUI	LGui		Left GUI/Super
+KC_RCTRL	RCtrl		Right Control
+KC_RSHIFT	RShift		Right Shift
+KC_RALT	RAlt		Right Alt
+KC_RGUI	RGui		Right GUI/Super
+KC_F1	F1		Function key F1
+KC_F2	F2		Function key F2
+KC_F3	F3		Function key F3
+KC_F4	F4		Function key F4
+KC_F5	F5		Function key F5
+KC_F6	F6		Function key F6
+KC_F7	F7		Function key F7
+KC_F8	F8		Function key F8
+KC_F9	F9		Function key F9
+KC_F10	F10		Function key F10
+KC_F11	F11		Function key F11
+KC_F12	F12		Function key F12
+KC_UP	↑		Up arrow
+KC_DOWN	↓		Down arrow
+KC_LEFT	←		Left arrow
+KC_RIGHT	→		Right arrow
+KC_HOME	Home		Home key
+KC_END	End		End key
+KC_PGUP	PgUp		Page Up
+KC_PGDN	PgDn		Page Down
+KC_INSERT	Ins		Insert key
+KC_DELETE	Del		Delete key
+KC_KP_0	0		Numpad 0
+KC_KP_1	1		Numpad 1
+KC_KP_2	2		Numpad 2
+KC_KP_3	3		Numpad 3
+KC_KP_4	4		Numpad 4
+KC_KP_5	5		Numpad 5
+KC_KP_6	6		Numpad 6
+KC_KP_7	7		Numpad 7
+KC_KP_8	8		Numpad 8
+KC_KP_9	9		Numpad 9
+KC_KP_DOT	.		Numpad period
+KC_KP_SLASH	/		Numpad slash
+KC_KP_ASTERISK	*		Numpad asterisk
+KC_KP_MINUS	-		Numpad minus
+KC_KP_PLUS	+		Numpad plus
+KC_KP_EQUAL	=		Numpad equal
+KC_KP_ENTER	Enter		Numpad enter
+KC_KP_COMMA	,		Numpad comma
+KC_MHEN	MHEN		Non-conversion key
+KC_HENK	HENK		Conversion key
+KC_KANA	KANA		Katakana/Hiragana key
+KC_NO			Empty key
+KC_TRNS	▽		Transparent key

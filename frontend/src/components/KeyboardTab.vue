@@ -92,11 +92,8 @@ const handleLayoutChange = () => {
   console.log('🔄 Current selectedVialId:', vialStore.selectedVialId)
   console.log('🔄 Regenerating preview images due to keyboard language change')
   
-  // 画像を強制的にクリアしてから再生成
-  imagesStore.clearImages()
-  setTimeout(() => {
-    imagesStore.generatePreviewImages()
-  }, 50)
+  // 画像を再生成
+  imagesStore.generatePreviewImages()
 }
 
 // 言語名を取得

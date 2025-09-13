@@ -42,7 +42,7 @@ export class PhysicalButton {
     
     // 空きボタンの場合
     if (this.rawKeyCode === 'KC_NO' || this.main.keyCode === 'KC_NO') {
-      if (options.changeKeyColors !== false) {
+      if (options.changeEmptyKeyColors !== false) {
         bgColor = colors.keyEmpty;
         borderColor = colors.borderEmpty;
       }
@@ -646,6 +646,7 @@ export interface RenderOptions {
     backgroundColor?: string;          // キャンバス背景色 (デフォルト: COLORS.background)
     showComboInfo?: boolean;           // Combo情報を画像に含める (デフォルト: true)
     changeKeyColors?: boolean;         // キーの背景色を変更する (デフォルト: true)
+    changeEmptyKeyColors?: boolean;    // 空白ボタンの背景色を変更する (デフォルト: true)
     theme?: 'dark' | 'light';         // テーマモード (デフォルト: 'dark')
 }
 
