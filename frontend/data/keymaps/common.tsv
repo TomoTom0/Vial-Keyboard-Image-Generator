@@ -109,5 +109,7 @@ KC_KP_COMMA	,		Numpad comma
 KC_MHEN	MHEN		Non-conversion key
 KC_HENK	HENK		Conversion key
 KC_KANA	KANA		Katakana/Hiragana key
+KC_LANG1	LANG1		Language switch key 1
+KC_LANG2	LANG2		Language switch key 2
 KC_NO			Empty key
 KC_TRNS	▽		Transparent key

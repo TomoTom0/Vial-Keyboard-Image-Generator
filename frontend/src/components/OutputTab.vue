@@ -10,11 +10,14 @@
             :key="image.id"
             class="output-section"
           >
-            <img 
-              :src="getImageUrl(image)"
-              :alt="getImageAlt(image)"
-              class="output-image"
-            />
+            <div class="image-container">
+              <img 
+                :src="getImageUrl(image)"
+                :alt="getImageAlt(image)"
+                class="output-image"
+              />
+              <div class="filename-overlay">{{ getDownloadFilename() }}</div>
+            </div>
           </div>
         </div>
         
@@ -25,17 +28,15 @@
             :key="image.id"
             class="output-section"
           >
-            <img 
-              :src="getImageUrl(image)"
-              :alt="getImageAlt(image)"
-              class="output-image"
-            />
+            <div class="image-container">
+              <img 
+                :src="getImageUrl(image)"
+                :alt="getImageAlt(image)"
+                class="output-image"
+              />
+              <div class="filename-overlay">{{ getDownloadFilename() }}</div>
+            </div>
           </div>
-        </div>
-        
-        <!-- ファイル名表示（画像の下） -->
-        <div v-if="outputImages.length > 0" class="filename-section">
-          <div class="filename-display">{{ getDownloadFilename() }}</div>
         </div>
       </div>
       
@@ -448,21 +449,25 @@ const goBackToPreview = () => {
   }
 }
 
-.filename-section {
-  text-align: center;
-  margin: 30px 0 50px 0;
+.image-container {
+  position: relative;
+  display: inline-block;
 }
 
-.filename-display {
-  font-size: 14px;
-  color: #495057;
-  font-weight: 500;
-  padding: 8px 16px;
-  background: #f8f9fa;
+.filename-overlay {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid #dee2e6;
-  display: inline-block;
-  max-width: 80%;
+  font-size: 12px;
+  font-weight: 500;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

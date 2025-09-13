@@ -200,7 +200,7 @@ export class VialDataProcessor {
           result += rightMods.join('');
         }
         
-        return result ? `OSM(${result})` : `OSM(${modifiers})`;
+        return result ? `OSM-${result}` : `OSM-${modifiers}`;
       }
       return keycode;
     }

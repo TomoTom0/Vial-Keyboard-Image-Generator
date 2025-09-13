@@ -1,5 +1,5 @@
 // 自動生成されたファイル - 直接編集しないでください
-// 生成日時: 2025-09-13T11:19:05.211Z
+// 生成日時: 2025-09-13T16:23:09.888Z
 
 export interface KeyboardLanguage {
   id: string;
@@ -140,6 +140,8 @@ export const KEYBOARD_MAPPINGS = {
     "KC_MHEN": "MHEN",
     "KC_HENK": "HENK",
     "KC_KANA": "KANA",
+    "KC_LANG1": "LANG1",
+    "KC_LANG2": "LANG2",
     "KC_NO": "",
     "KC_TRNS": "▽"
 },
@@ -281,6 +283,8 @@ export const KEYBOARD_MAPPINGS = {
     "KC_MHEN": "MHEN",
     "KC_HENK": "HENK",
     "KC_KANA": "KANA",
+    "KC_LANG1": "LANG1",
+    "KC_LANG2": "LANG2",
     "KC_NO": "",
     "KC_TRNS": "▽",
     "KC_JYEN": "JYEN",
