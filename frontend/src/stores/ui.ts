@@ -18,39 +18,9 @@ export const useUiStore = defineStore('ui', () => {
   const toasts = ref<ToastMessage[]>([])
   const error = ref<string | null>(null)
   
-  // 生成状態を設定
-  const setGenerating = (generating: boolean) => {
-    isGenerating.value = generating
-  }
-  
-  // アクティブタブを設定
-  const setActiveTab = (tab: string) => {
-    activeTab.value = tab
-  }
-  
-  // コントロールパネルタブを設定
-  const setControlPanelTab = (tab: 'layout' | 'upload' | 'format') => {
-    controlPanelTab.value = tab
-  }
-  
-  // サイドバーセクションを設定
-  const setSidebarSection = (section: 'files' | 'generate' | 'settings') => {
-    sidebarSection.value = section
-  }
-  
   // サイドバーの折りたたみ状態を切り替え
   const toggleSidebarCollapsed = () => {
     sidebarCollapsed.value = !sidebarCollapsed.value
-  }
-  
-  // サイドバーの折りたたみ状態を設定
-  const setSidebarCollapsed = (collapsed: boolean) => {
-    sidebarCollapsed.value = collapsed
-  }
-  
-  // エラーを設定
-  const setError = (errorMessage: string | null) => {
-    error.value = errorMessage
   }
   
   // トーストを追加
@@ -112,13 +82,7 @@ export const useUiStore = defineStore('ui', () => {
     sidebarCollapsed,
     toasts,
     error,
-    setGenerating,
-    setActiveTab,
-    setControlPanelTab,
-    setSidebarSection,
     toggleSidebarCollapsed,
-    setSidebarCollapsed,
-    setError,
     addToast,
     removeToast,
     clearToasts,

@@ -85,30 +85,6 @@ export const useSettingsStore = defineStore('settings', () => {
     outputFormat.value = formats[newIndex]
   }
   
-  // ラベル表示を切り替え
-  const toggleLabels = (show: boolean) => {
-    showLabels.value = show
-      }
-  
-  // ダークモードを切り替え
-  const toggleDarkMode = (enabled: boolean) => {
-    enableDarkMode.value = enabled
-      }
-  
-  // キーサイズを変更
-  const setKeySize = (size: number) => {
-    keySize.value = size
-      }
-  
-  // フォントサイズを変更
-  const setFontSize = (size: number) => {
-    fontSize.value = size
-      }
-  
-  // スペーシングを変更
-  const setSpacing = (space: number) => {
-    spacing.value = space
-  }
   
   // ハイライトを切り替え
   const toggleHighlight = () => {
@@ -241,12 +217,7 @@ export const useSettingsStore = defineStore('settings', () => {
     removeReplaceRule,
     setOutputFormat,
     cycleOutputFormat,
-    toggleLabels,
-    toggleDarkMode,
     toggleHighlight,
-    setKeySize,
-    setFontSize,
-    setSpacing,
     validateReplaceRule,
     validateReplaceRuleWithReason,
     validateSingleField,

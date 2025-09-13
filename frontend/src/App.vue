@@ -69,13 +69,9 @@ const debouncedGeneratePreview = () => {
 
 
 
-// Tab navigation
-const handleTabChanged = (tab: 'select' | 'preview' | 'output') => {
-  // Outputタブは画像生成完了後のみ選択可能
-  if (tab === 'output' && !uiStore.isGenerated) {
-    return
-  }
-  uiStore.setActiveTab(tab)
+// Tab navigation - direct UI store access
+const canSelectOutputTab = (tab: string) => {
+  return !(tab === 'output' && !uiStore.isGenerated)
 }
 
 
@@ -94,10 +90,6 @@ const hasSelectedFile = computed(() => {
 })
 
 
-// ナビゲーション状態管理はUiStoreで行う
-const switchNavSection = (section: 'files' | 'generate' | 'settings') => {
-  uiStore.setSidebarSection(section)
-}
 
 const downloadSelectedFile = () => {
   if (!hasSelectedFile.value) return
@@ -132,13 +124,10 @@ const cycleFormat = (direction: number) => {
 
 
 const toggleDarkMode = () => {
-  settingsStore.toggleDarkMode(!settingsStore.enableDarkMode)
+  settingsStore.enableDarkMode = !settingsStore.enableDarkMode
   debouncedGeneratePreview()
 }
 
-const switchTab = (tab: 'select' | 'preview') => {
-  uiStore.setActiveTab(tab)
-}
 
 // ハイライト切り替え（矢印ナビ用）
 const cycleHighlight = (direction: number) => {
@@ -179,7 +168,7 @@ watch(() => settingsStore.outputFormat, () => {
 const handleHashChange = () => {
   const newTab = getInitialTabFromHash()
   if (newTab !== uiStore.activeTab) {
-    uiStore.setActiveTab(newTab)
+    uiStore.activeTab = newTab
   }
 }
 
@@ -234,7 +223,7 @@ onUnmounted(() => {
       <div class="workspace-content">
         <div v-if="uiStore.error" class="error-toast">
           {{ uiStore.error }}
-          <button @click="uiStore.setError(null)" class="error-close">&times;</button>
+          <button @click="uiStore.error = null" class="error-close">&times;</button>
         </div>
         
         <!-- ワークスペース上部のコントロール -->
@@ -244,14 +233,14 @@ onUnmounted(() => {
             <button 
               class="workspace-tab-btn" 
               :class="{ active: uiStore.activeTab === 'select' }"
-              @click="uiStore.setActiveTab('select')"
+              @click="uiStore.activeTab = 'select'"
             >
               Select
             </button>
             <button 
               class="workspace-tab-btn" 
               :class="{ active: uiStore.activeTab === 'preview' }"
-              @click="uiStore.setActiveTab('preview')"
+              @click="uiStore.activeTab = 'preview'"
             >
               Preview
             </button>
