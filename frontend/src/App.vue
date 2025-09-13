@@ -69,10 +69,6 @@ const debouncedGeneratePreview = () => {
 
 
 
-// Tab navigation - direct UI store access
-const canSelectOutputTab = (tab: string) => {
-  return !(tab === 'output' && !uiStore.isGenerated)
-}
 
 
 // Preview generation (delegated to ImagesStore)
@@ -91,55 +87,7 @@ const hasSelectedFile = computed(() => {
 
 
 
-const downloadSelectedFile = () => {
-  if (!hasSelectedFile.value) return
-  vialStore.downloadConfig() // Store経由で自動判断
-}
 
-const deleteSelectedFile = () => {
-  if (!hasSelectedFile.value) return
-  
-  if (confirm('Are you sure you want to delete this file?')) {
-    vialStore.removeVialData(vialStore.selectedVialId!)
-    vialStore.selectVial('sample')
-  }
-}
-
-// Generate セクション関数
-
-const getFormatName = () => {
-  const format = settingsStore.outputFormat
-  switch (format) {
-    case 'separated': return 'Separated'
-    case 'vertical': return 'Vertical'
-    case 'rectangular': return 'Rectangular'
-    default: return 'Separated'
-  }
-}
-
-const cycleFormat = (direction: number) => {
-  settingsStore.cycleOutputFormat(direction)
-  debouncedGeneratePreview()
-}
-
-
-const toggleDarkMode = () => {
-  settingsStore.enableDarkMode = !settingsStore.enableDarkMode
-  debouncedGeneratePreview()
-}
-
-
-// ハイライト切り替え（矢印ナビ用）
-const cycleHighlight = (direction: number) => {
-  settingsStore.toggleHighlight()
-  debouncedGeneratePreview()
-}
-
-// カラーモード切り替え（矢印ナビ用）
-const cycleDarkMode = (direction: number) => {
-  settingsStore.toggleDarkMode(!settingsStore.enableDarkMode)
-  debouncedGeneratePreview()
-}
 
 
 
@@ -250,7 +198,7 @@ onUnmounted(() => {
           <div class="workspace-generate">
             <button 
               class="workspace-generate-btn"
-              :disabled="selectedFile === 'sample'"
+              :disabled="vialStore.selectedVialId === 'sample'"
               @click="imagesStore.generateFinalOutputImages"
             >
               Generate
