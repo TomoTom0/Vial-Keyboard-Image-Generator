@@ -214,11 +214,6 @@ export class VialDataProcessor {
    */
   static createPhysicalButton(rawKeycode: string): PhysicalButton {
     const config = this.currentConfig;
-    if (!config) {
-      console.warn('VialDataProcessor: config is not set. Call setConfig() first.');
-      // フォールバック: 基本的な仮想ボタンを作成
-      return new PhysicalButton(rawKeycode, this.createVirtualButton(rawKeycode));
-    }
     // Tap Dance処理
     if (rawKeycode.startsWith('TD(')) {
       const match = rawKeycode.match(/TD\((\d+)\)/);

@@ -52,10 +52,8 @@ export function getCurrentStructure(): KeyboardStructure {
   return keyboardStructures.find(structure => structure.id === 'corne_v4') || keyboardStructures[0];
 }
 
-// 設定に基づいてキーマッピングを取得
-export function getKeyMapping(languageId: string = 'japanese'): { [key: string]: string } {
-  return getGeneratedKeyMapping(languageId);
-}
+// 設定に基づいてキーマッピングを取得（generated関数を直接エクスポート）
+export { getKeyMapping } from './keyboardConfig.generated';
 
 // getSpecialKeys関数は廃止 - keyMappingに統一
 

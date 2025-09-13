@@ -512,16 +512,10 @@ export const useImagesStore = defineStore('images', () => {
     )
     
     const headerImage = images.value.find(img => 
-      img.type === 'header' && (
-        img.id.includes(`header-${displayColumns}x`) || 
-        img.id.includes(`browser-header-${displayColumns}x`)
-      )
+      img.type === 'header' && img.id.includes(`header-${displayColumns}x`)
     )
     const fallback = images.value.find(img => 
-      img.type === 'header' && (
-        img.id.includes('header-1x') || 
-        img.id.includes('browser-header-1x')
-      )
+      img.type === 'header' && img.id.includes('header-1x')
     )
     const result = headerImage || fallback
     
@@ -545,14 +539,12 @@ export const useImagesStore = defineStore('images', () => {
     const comboImage = images.value.find(img => 
       img.type === 'combo' && (
         img.id.includes(`combo-${displayColumns}x`) || 
-        img.id.includes(`browser-combo-${displayColumns}x`) ||
         img.id.includes(`parsed-combo-${displayColumns}x`)  // 新しいParsedVial形式
       )
     )
     const fallback = images.value.find(img => 
       img.type === 'combo' && (
         img.id.includes('combo-1x') || 
-        img.id.includes('browser-combo-1x') ||
         img.id.includes('parsed-combo-1x')  // 新しいParsedVial形式
       )
     )
