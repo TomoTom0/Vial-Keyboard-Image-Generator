@@ -10,7 +10,6 @@ import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
 import { useImagesStore } from './stores/images'
 import type { ReplaceRule } from './utils/types'
-import { getCurrentKeyboardLanguage, setCurrentKeyboardLanguage } from './utils/keyboardConfig'
 
 // URLハッシュから初期タブを取得（hashモード形式: /#/tab）
 function getInitialTabFromHash(): 'select' | 'preview' | 'output' {
@@ -35,6 +34,19 @@ const vialStore = useVialStore()
 const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
 const imagesStore = useImagesStore()
+
+// 現在の言語表示を取得
+const getCurrentLanguageDisplay = (): string => {
+  const language = settingsStore.keyboardLanguage
+  switch (language) {
+    case 'japanese':
+      return 'Japanese'
+    case 'english':
+      return 'English'
+    default:
+      return 'Japanese'
+  }
+}
 
 // Debounced preview generation
 let generateTimeout: NodeJS.Timeout | null = null
@@ -114,7 +126,6 @@ const deleteSelectedFile = () => {
 }
 
 // Generate セクション関数
-const selectedFile = computed(() => vialStore.selectedVialId)
 
 const getFormatName = () => {
   const format = settingsStore.outputFormat
@@ -213,7 +224,10 @@ onUnmounted(() => {
   <div class="app">
     <!-- ページヘッダー -->
     <header class="page-header" :class="{ 'sample-mode': !vialStore.selectedVialId || vialStore.selectedVialId === 'sample' }">
-      <div class="header-filename">{{ vialStore.selectedFileName || 'sample' }}</div>
+      <div class="header-filename">
+        <div class="filename-text">{{ vialStore.selectedFileName || 'sample' }}</div>
+        <div class="language-text">{{ getCurrentLanguageDisplay() }}</div>
+      </div>
       <h1 class="page-title">YTomo Vial Keyboard Image Generator</h1>
       <div class="header-spacer"></div>
     </header>
@@ -337,6 +351,20 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.2);
   min-width: 60px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.filename-text {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.language-text {
+  font-weight: 400;
+  font-size: 11px;
+  opacity: 0.8;
 }
 
 .page-title {

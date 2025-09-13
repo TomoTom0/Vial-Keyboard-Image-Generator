@@ -2,7 +2,7 @@
   <div class="preview-tab">
     <div class="preview-container">
       <!-- Header image -->
-      <img v-if="showHeader && outputFormat !== 'separated' && imagesStore.getHeaderImageUrl()"
+      <img v-if="settingsStore.showHeader && settingsStore.outputFormat !== 'separated' && imagesStore.getHeaderImageUrl()"
         :src="imagesStore.getHeaderImageUrl()"
         alt="Layout header"
         class="preview-header-image"
@@ -13,7 +13,7 @@
         <div 
           v-for="layer in getOrderedLayers()"
           :key="layer"
-          v-show="layerSelection[layer]"
+          v-show="settingsStore.layerSelection[layer]"
           class="layer-item"
         >
           <img 
@@ -27,7 +27,7 @@
       </div>
       
       <!-- Combo section -->
-      <img v-if="showCombos && outputFormat !== 'separated' && imagesStore.getComboImageUrl()"
+      <img v-if="settingsStore.showCombos && settingsStore.outputFormat !== 'separated' && imagesStore.getComboImageUrl()"
         :src="imagesStore.getComboImageUrl()"
         alt="Combo information"
         class="preview-combo-image"
@@ -52,12 +52,7 @@ const vialStore = useVialStore()
 const settingsStore = useSettingsStore()
 const imagesStore = useImagesStore()
 
-// Store から取得するcomputed値
-const selectedFile = computed(() => vialStore.selectedVialId)
-const outputFormat = computed(() => settingsStore.outputFormat)
-const layerSelection = computed(() => settingsStore.layerSelection)
-const showHeader = computed(() => settingsStore.showHeader)
-const showCombos = computed(() => settingsStore.showCombos)
+// Store から取得するcomputed値（計算が必要なもののみ）
 const generatedImages = computed(() => imagesStore.images)
 
 // 画面幅を監視してレイアウト変更をトリガー
@@ -81,17 +76,17 @@ const getOrderedLayers = () => {
 
 
 const getLayersLayoutClass = (): string => {
-  const format = outputFormat.value || 'separated'
+  const format = settingsStore.outputFormat || 'separated'
   
   if (format === 'vertical') {
     return 'layers-vertical'
   } else if (format === 'rectangular') {
     // レイヤー数に応じてグリッド列数を決定
-    const selectedCount = Object.values(layerSelection.value).filter(Boolean).length
+    const selectedCount = Object.values(settingsStore.layerSelection).filter(Boolean).length
     return selectedCount <= 4 ? 'layers-rectangular-2col' : 'layers-rectangular-3col'
   } else if (format === 'separated') {
     // separatedの場合は有効なレイヤー数と画面幅に応じて列数を決定
-    const selectedCount = Object.values(layerSelection.value).filter(Boolean).length
+    const selectedCount = Object.values(settingsStore.layerSelection).filter(Boolean).length
     if (selectedCount <= 1 || screenWidth.value < 600) {
       return 'layers-separated-1col'
     } else if (selectedCount <= 4 || screenWidth.value < 900) {
@@ -108,14 +103,6 @@ const handleImageError = (event: Event) => {
   console.warn('Failed to load layer image')
 }
 
-const handleGenerate = async () => {
-  try {
-    // ImagesStoreの最終出力生成メソッドを呼び出し
-    await imagesStore.generateFinalOutputImages()
-  } catch (error) {
-    console.error('❌ Generate failed:', error)
-  }
-}
 </script>
 
 <style scoped lang="scss">
@@ -142,7 +129,7 @@ $transition-duration: 0.2s;
   padding: 15px;
   margin: 5px auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: calc(100vw - 60px);
+  max-width: calc(100vw - 290px); // サイドバー250px + 余白40px
   width: 100%;
   transition: all 0.3s ease-in-out;
   box-sizing: border-box;
@@ -154,6 +141,16 @@ $transition-duration: 0.2s;
   
   // ウィンドウサイズ基準の共通画像倍率（余裕がある場合はより大きく）
   --image-scale: clamp(1.0, 3.5vw, 2.5);
+  
+  // 大きな画面でより大きく表示
+  @media (min-width: 1400px) {
+    --image-scale: clamp(2.0, 4.5vw, 3.5);
+  }
+  
+  // 超大型画面でさらに大きく表示
+  @media (min-width: 1800px) {
+    --image-scale: clamp(2.5, 5.0vw, 4.0);
+  }
 }
 
 // Common image styles
@@ -194,25 +191,64 @@ $transition-duration: 0.2s;
 .layers-separated {
   @include layout.layers-grid-3x2-separated;
   padding: 0;
-  margin: 10px;
+  margin: 10px auto;
+  display: grid;
+  justify-self: center;
+  
+  // 大きな画面でより大きな間隔
+  @media (min-width: 1400px) {
+    margin: 15px;
+    gap: 15px;
+  }
+  
+  @media (min-width: 1800px) {
+    margin: 20px;
+    gap: 20px;
+  }
 }
 
 .layers-separated-1col {
   @include layout.layers-grid-1col-separated;
   padding: 0;
-  margin: 10px;
+  margin: 10px auto;
+  display: grid;
+  justify-self: center;
 }
 
 .layers-separated-2col {
   @include layout.layers-grid-2col-separated;
   padding: 0;
-  margin: 10px;
+  margin: 10px auto;
+  display: grid;
+  justify-self: center;
+  
+  @media (min-width: 1400px) {
+    margin: 15px;
+    gap: 15px;
+  }
+  
+  @media (min-width: 1800px) {
+    margin: 20px;
+    gap: 20px;
+  }
 }
 
 .layers-separated-3col {
   @include layout.layers-grid-3x2-separated;
   padding: 0;
-  margin: 10px;
+  margin: 10px auto;
+  display: grid;
+  justify-self: center;
+  
+  @media (min-width: 1400px) {
+    margin: 15px;
+    gap: 15px;
+  }
+  
+  @media (min-width: 1800px) {
+    margin: 20px;
+    gap: 20px;
+  }
 }
 
 .layers-vertical {
@@ -221,10 +257,16 @@ $transition-duration: 0.2s;
 
 .layers-rectangular-2col {
   @include layout.layers-grid-2col;
+  margin: 0 auto;
+  display: grid;
+  justify-self: center;
 }
 
 .layers-rectangular-3col {
   @include layout.layers-grid-3x2;
+  margin: 0 auto;
+  display: grid;
+  justify-self: center;
 }
 
 .layer-item {
@@ -261,7 +303,7 @@ $transition-duration: 0.2s;
   }
   
   .preview-container {
-    max-width: calc(100vw - 60px);
+    max-width: calc(100vw - 80px); // 折りたたみサイドバー40px + 余白40px
     align-items: center;
     
     // 小画面では画像スケールを調整

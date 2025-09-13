@@ -55,20 +55,21 @@ const japaneseKeyMapping = {
   'KC_MHEN': '無変換', 'KC_HENK': '変換', 'KC_KANA': 'カナ',
   'KC_ZKHK': '半角/全角', 'KC_HANJ': '半角/全角',
   'KC_JYEN': '¥',              // 円記号キー
-  // 透過キー
-  'KC_TRNS': '▽'
+  // 特殊キー
+  'KC_NO': '',                 // 空きボタン
+  'KC_TRNS': '▽'               // 透過キー
 };
 
-// 日本語配列のShiftキー組み合わせマッピング
+// 日本語配列のShiftキー組み合わせマッピング（一貫性のためKC_プレフィックス付き）
 const japaneseShiftMapping = {
   // 数字キー - JIS配列での実際の出力
-  '1': '!', '2': '"', '3': '#', '4': '$', '5': '%',
-  '6': '&', '7': "'", '8': '(', '9': ')', '0': '0',
+  'KC_1': '!', 'KC_2': '"', 'KC_3': '#', 'KC_4': '$', 'KC_5': '%',
+  'KC_6': '&', 'KC_7': "'", 'KC_8': '(', 'KC_9': ')', 'KC_0': '0',
   // 記号キー
-  'MINUS': '=', 'EQUAL': '~', 'LBRACKET': '`', 'RBRACKET': '{',
-  'BSLASH': '|', 'SCOLON': '+', 'QUOTE': '*', 'COMMA': '<',
-  'DOT': '>', 'SLASH': '?', 'GRAVE': '~', 'NONUS_HASH': '}',
-  'RO': '_', 'JYEN': '|'
+  'KC_MINUS': '=', 'KC_EQUAL': '~', 'KC_LBRACKET': '`', 'KC_RBRACKET': '{',
+  'KC_BSLASH': '|', 'KC_SCOLON': '+', 'KC_QUOTE': '*', 'KC_COMMA': '<',
+  'KC_DOT': '>', 'KC_SLASH': '?', 'KC_GRAVE': '~', 'KC_NONUS_HASH': '}',
+  'KC_RO': '_', 'KC_JYEN': '|'
 };
 
 // 英字配列のキーマッピング（すべてKC_付き）
@@ -110,20 +111,21 @@ const englishKeyMapping = {
   'KC_KP_PLUS': '+', 'KC_KP_EQUAL': '=', 'KC_KP_ENTER': 'Enter', 'KC_KP_COMMA': ',',
   // 日本語キー（英字配列では使用されない）
   'KC_MHEN': 'MHEN', 'KC_HENK': 'HENK', 'KC_KANA': 'KANA',
-  // 透過キー
-  'KC_TRNS': '▽'
+  // 特殊キー
+  'KC_NO': '',                 // 空きボタン
+  'KC_TRNS': '▽'               // 透過キー
 };
 
-// 英字配列のShiftキー組み合わせマッピング
+// 英字配列のShiftキー組み合わせマッピング（一貫性のためKC_プレフィックス付き）
 const englishShiftMapping = {
   // 数字キー - US配列での実際の出力
-  '1': '!', '2': '@', '3': '#', '4': '$', '5': '%',
-  '6': '^', '7': '&', '8': '*', '9': '(', '0': ')',
+  'KC_1': '!', 'KC_2': '@', 'KC_3': '#', 'KC_4': '$', 'KC_5': '%',
+  'KC_6': '^', 'KC_7': '&', 'KC_8': '*', 'KC_9': '(', 'KC_0': ')',
   // 記号キー
-  'MINUS': '_', 'EQUAL': '+', 'LBRACKET': '{', 'RBRACKET': '}',
-  'BSLASH': '|', 'SCOLON': ':', 'QUOTE': '"', 'COMMA': '<',
-  'DOT': '>', 'SLASH': '?', 'GRAVE': '~', 'NONUS_HASH': '~',
-  'RO': '_'
+  'KC_MINUS': '_', 'KC_EQUAL': '+', 'KC_LBRACKET': '{', 'KC_RBRACKET': '}',
+  'KC_BSLASH': '|', 'KC_SCOLON': ':', 'KC_QUOTE': '"', 'KC_COMMA': '<',
+  'KC_DOT': '>', 'KC_SLASH': '?', 'KC_GRAVE': '~', 'KC_NONUS_HASH': '~',
+  'KC_RO': '_'
 };
 
 // specialKeysは廃止 - すべてkeyMappingに統一
@@ -195,7 +197,6 @@ export function getCharacterFromKeycode(keycode: string, languageId: string): st
   if (keycode.startsWith('LSFT(KC_')) {
     const match = keycode.match(/LSFT\(KC_(.+)\)/);
     if (match) {
-      const baseKey = `KC_${match[1]}`;
       return language.shiftMapping[match[1]] || null;
     }
   }

@@ -245,6 +245,8 @@ const onImageError = (image: GeneratedImage) => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .state {
@@ -353,6 +355,8 @@ const onImageError = (image: GeneratedImage) => {
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 1rem;
   flex: 1;
+  // 画像倍率設定
+  --image-scale: clamp(0.8, 2.0vw, 1.2);
 }
 
 .image-item {
@@ -372,6 +376,11 @@ const onImageError = (image: GeneratedImage) => {
   height: auto;
   cursor: pointer;
   display: block;
+  object-fit: contain;
+  transition: transform 0.2s;
+  // 適応的スケール適用
+  transform: scale(var(--image-scale, 1));
+  transform-origin: center;
 }
 
 .info {

@@ -16,7 +16,7 @@
       <input
         ref="fileInput"
         type="file"
-        accept=".vil,.ytvil.png,.png"
+        accept=".vil,_ytvil.png,.ytvil.png,.png"
         @change="handleFileSelect"
         hidden
       />
@@ -118,30 +118,34 @@ const handleFile = async (file: File) => {
   
   const fileName = file.name.toLowerCase()
   const isVilFile = fileName.endsWith('.vil')
-  const isYtvilPng = fileName.endsWith('.ytvil.png')
+  const isYtvilPng = fileName.endsWith('_ytvil.png') || fileName.endsWith('.ytvil.png')
+  const isPng = fileName.endsWith('.png')
   
   // ファイル形式チェック
-  if (!isVilFile && !isYtvilPng) {
-    error.value = '.vilまたは.ytvil.pngファイルのみアップロード可能です'
+  if (!isVilFile && !isPng) {
+    error.value = '.vilまたは.pngファイルのみアップロード可能です'
+    uploadedFile.value = null // エラー時にファイル表示をクリア
     return
   }
   
   // ファイルサイズチェック（10MB）
   if (file.size > 10 * 1024 * 1024) {
     error.value = 'ファイルサイズは10MB以下にしてください'
+    uploadedFile.value = null // エラー時にファイル表示をクリア
     return
   }
   
   uploadedFile.value = file
   
-  // .ytvil.pngファイルの場合はメタデータを読み込み
-  if (isYtvilPng) {
+  // PNGファイルの場合は、まずメタデータの有無を確認
+  if (isPng) {
     try {
-      await handleYtvilPngFile(file)
+      await handlePngFile(file)
     } catch (err) {
-      console.error('Failed to process ytvil.png file:', err)
-      error.value = 'メタデータの読み込みに失敗しました'
-      return
+      console.error('Failed to process PNG file:', err)
+      // メタデータがない場合は通常のPNGとして処理を続行
+      console.log('⚠️ 通常のPNG画像がアップロードされました:', file.name)
+      addToRecentFiles(file)
     }
   }
   
@@ -157,11 +161,33 @@ const handleFile = async (file: File) => {
     }
   }, 50)
   
+  // 処理完了後、少し遅延させてアップロード表示をクリア
+  setTimeout(() => {
+    uploadedFile.value = null
+  }, 2000) // 2秒後にクリア
+  
   // 通常のVILファイルの場合のみパース処理
   if (isVilFile) {
     parseAndSaveVilFile(file)
     // 最近使用したファイルに追加（レガシー）
     addToRecentFiles(file)
+  }
+}
+
+// PNGファイルの処理（メタデータの有無を確認）
+const handlePngFile = async (file: File) => {
+  // PNGファイルをDataURLとして読み込み
+  const dataUrl = await readFileAsDataURL(file)
+  
+  // メタデータを抽出を試行
+  const metadata = extractMetadataFromPng(dataUrl)
+  
+  if (metadata && metadata.vilConfig) {
+    // メタデータが存在する場合はytvil.pngファイルとして処理
+    await handleYtvilPngFile(file)
+  } else {
+    // メタデータが存在しない場合は通常のPNG画像
+    throw new Error('No VIL metadata found in PNG file')
   }
 }
 
@@ -180,15 +206,16 @@ const handleYtvilPngFile = async (file: File) => {
   // VIL設定を復元
   const vilConfig = JSON.parse(metadata.vilConfig)
   
-  // ファイル名から.ytvil.pngを除去し、ytomo-vial-kb-プレフィックスがあれば除去して.vilに変更
-  let originalName = file.name.replace(/\.ytvil\.png$/, '')
+  // ファイル名から拡張子を除去し、ytomo-vial-kb-プレフィックスがあれば除去して.vilに変更
+  let originalName = file.name.replace(/(_ytvil\.png$|\.ytvil\.png$|\.png$)/, '')
   
   // ytomo-vial-kb-{ファイル名}-{日時}形式の場合、プレフィックスと日時部分を除去
   if (originalName.startsWith('ytomo-vial-kb-')) {
     // ytomo-vial-kb-を除去
     originalName = originalName.replace(/^ytomo-vial-kb-/, '')
-    // 末尾のタイムスタンプ部分（-YYYYMMDDHHMMSS）があれば除去
-    originalName = originalName.replace(/-\d{14}$/, '')
+    // 末尾のタイムスタンプ部分（-YYYYMMDDHHMMSS または -圧縮タイムスタンプ）があれば除去
+    originalName = originalName.replace(/-\d{14}$/, '') // 旧形式
+    originalName = originalName.replace(/-[A-Z0-9]+$/, '') // 新形式（36進数圧縮）
   }
   
   // .vil拡張子を追加
@@ -206,7 +233,7 @@ const handleYtvilPngFile = async (file: File) => {
       
       // 設定を復元
       settingsStore.outputFormat = savedSettings.outputFormat || 'vertical'
-      settingsStore.toggleDarkMode(savedSettings.theme === 'dark')
+      settingsStore.enableDarkMode = savedSettings.theme === 'dark'
       settingsStore.showHeader = savedSettings.showHeader ?? true
       settingsStore.showCombos = savedSettings.showCombos ?? true
       settingsStore.highlightEnabled = savedSettings.highlightEnabled ?? true
@@ -225,6 +252,11 @@ const handleYtvilPngFile = async (file: File) => {
     } catch (err) {
       console.warn('Failed to restore settings from metadata:', err)
     }
+    
+    // ファイル処理完了後、少し遅延させてアップロード表示をクリア
+    setTimeout(() => {
+      uploadedFile.value = null
+    }, 2000) // 2秒後にクリア
   }
   
   // ファイルを選択状態にする
@@ -384,8 +416,9 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 500;
   color: #374151;
-  flex: 1;
-  min-width: 0;
+  width: 80px; /* 小さなボタンサイズ */
+  min-width: 80px; /* 最小幅も設定 */
+  flex-shrink: 0; /* 縮小を防ぐ */
 }
 
 .upload-zone:hover {
@@ -464,7 +497,8 @@ onMounted(() => {
 .file-details {
   flex: 1;
   text-align: left;
-  min-width: 0;
+  min-width: 0; /* テキストのオーバーフロー対応 */
+  overflow: hidden;
 }
 
 .file-name {

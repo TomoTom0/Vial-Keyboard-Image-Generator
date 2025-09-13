@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import { convertVialConfig } from '../utils/vilConverter'
-import type { VialConfig } from '../utils/types'
+import type { VialConfig, ParsedVial } from '../utils/types'
 
 export interface VialData {
   id: string
@@ -10,6 +10,7 @@ export interface VialData {
   config: VialConfig
   content: string
   timestamp: number
+  parsedVial?: ParsedVial  // 新しいParsedVial構造体
 }
 
 export const useVialStore = defineStore('vial', () => {
@@ -28,6 +29,8 @@ export const useVialStore = defineStore('vial', () => {
       return true
     })
     
+    // ParsedVialは画像作成時に必要に応じて計算する（事前計算はしない）
+    
     if (selectedVialId.value && !vialFiles.value.find(v => v.id === selectedVialId.value)) {
       console.log('🔄 Resetting invalid selectedVialId')
       selectedVialId.value = ''
@@ -37,6 +40,11 @@ export const useVialStore = defineStore('vial', () => {
   // 現在選択されているVILデータ
   const currentVial = computed(() => {
     return vialFiles.value.find(v => v.id === selectedVialId.value)
+  })
+
+  // 現在のParsedVial
+  const currentParsedVial = computed(() => {
+    return currentVial.value?.parsedVial
   })
 
   // 選択されているファイル名
@@ -62,12 +70,15 @@ export const useVialStore = defineStore('vial', () => {
     const id = uuidv4()
     console.log('📁 addVialData: Generated UUID:', id)
     console.log('📁 addVialData: content length:', content.length)
+    
+    // アップロード時はVialConfigのみ保存（ParsedVialは必要時に生成）
     const vialData: VialData = {
       id,
       name,
       config,
       content,
-      timestamp: Date.now() // unixtime (number)
+      timestamp: Date.now(), // unixtime (number)
+      // parsedVial: undefined  // 必要時に生成
     }
     console.log('📁 addVialData: Created vialData with content:', !!vialData.content)
     console.log('📁 addVialData: Full vialData:', vialData)
@@ -102,6 +113,7 @@ export const useVialStore = defineStore('vial', () => {
     console.log('🎯 VialStore: selectVial called with:', id)
     selectedVialId.value = id
     console.log('✅ VialStore: selectedVialId updated to:', selectedVialId.value)
+    // ParsedVialは画像作成時に必要に応じて計算する
   }
 
   // 言語変換を実行
@@ -122,7 +134,7 @@ export const useVialStore = defineStore('vial', () => {
     const newFileName = `${baseName}_${toLanguage}.vil`
     
     // recent filesに追加
-    const newId = addVialData(newFileName, convertedConfig, jsonContent)
+    addVialData(newFileName, convertedConfig, jsonContent)
     
     // レイアウト言語を変換後の言語に変更
     const { useSettingsStore } = await import('./settings')
@@ -142,6 +154,7 @@ export const useVialStore = defineStore('vial', () => {
     vialFiles,
     selectedVialId,
     currentVial,
+    currentParsedVial,
     selectedFileName,
     addVialData,
     removeVialData,
@@ -152,10 +165,6 @@ export const useVialStore = defineStore('vial', () => {
 }, {
   persist: {
     key: 'vial-store',
-    storage: localStorage,
-    afterRestore: (ctx) => {
-      console.log('✅ VialStore: Data restored, running migration')
-      ctx.store.migrateData()
-    }
+    storage: localStorage
   }
 })

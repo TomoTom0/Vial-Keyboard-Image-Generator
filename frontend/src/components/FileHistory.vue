@@ -96,6 +96,7 @@ const deleteFile = (file: VialData) => {
   position: relative;
   z-index: 1;
   outline: none;
+  margin-bottom: 4px;
 }
 
 .file-item:focus {

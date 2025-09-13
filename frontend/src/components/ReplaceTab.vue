@@ -54,23 +54,59 @@
             placeholder="Replace with"
             @input="handleRuleChange(index)"
           />
+          <div class="validation-indicator">
+            <span 
+              v-if="getValidationStatus(index) === 'valid'" 
+              class="validation-icon valid"
+              title="有効なルール"
+            >
+              ✓
+            </span>
+            <span 
+              v-else-if="getValidationStatus(index) === 'invalid'" 
+              class="validation-icon invalid"
+              :title="getValidationReason(index) || '無効なルール'"
+            >
+              ?
+            </span>
+          </div>
         </div>
+      </div>
+    </div>
+    
+    <!-- Download with Replaced ツール -->
+    <div class="download-replaced-tool">
+      <div class="download-replaced-title">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+        </svg>
+        <span>Download with Replaced</span>
+      </div>
+      
+      <div class="download-replaced-checkbox">
+        <input 
+          type="checkbox"
+          id="download-replaced"
+          class="checkbox-input"
+          v-model="enableDownloadReplaced"
+        />
+        <label for="download-replaced" class="checkbox-label">
+          Enable replaced VIL download
+        </label>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
+import { useSettingsStore } from '../stores/settings'
 import type { ReplaceRule } from '../utils/types'
 
-const props = defineProps<{
-  replaceRules: ReplaceRule[]
-}>()
+const settingsStore = useSettingsStore()
 
-const emit = defineEmits<{
-  rulesChanged: [rules: ReplaceRule[]]
-}>()
+// Download with Replaced設定
+const enableDownloadReplaced = ref(false)
 
 // ローカルな作業用ルールリスト（未保存の変更を含む）
 const localRules = ref<ReplaceRule[]>([])
@@ -79,8 +115,9 @@ const savedRules = ref<ReplaceRule[]>([])
 
 // ローカルルールを初期化
 const initializeRules = () => {
-  localRules.value = [...props.replaceRules]
-  savedRules.value = [...props.replaceRules]
+  // 深いコピーで初期化
+  localRules.value = settingsStore.replaceRules.map(rule => ({ ...rule }))
+  savedRules.value = settingsStore.replaceRules.map(rule => ({ ...rule }))
   
   // 最後が空のルールでない場合、空のルールを追加
   addEmptyRuleIfNeeded()
@@ -107,6 +144,8 @@ const generateId = (): string => {
 
 // ルールに変更があったときの処理
 const handleRuleChange = async (index: number) => {
+  // reactivityを確実にトリガーするため、配列を再参照
+  localRules.value = [...localRules.value]
   await nextTick()
   addEmptyRuleIfNeeded()
 }
@@ -127,19 +166,25 @@ const handleEnabledChange = async (index: number) => {
 // 未保存の変更があるかチェック
 const hasUnsavedChanges = (index: number): boolean => {
   const localRule = localRules.value[index]
+  if (!localRule) return false
+  
   const savedRule = savedRules.value.find(r => r.id === localRule.id)
   
   if (!savedRule) {
     // 新しいルールで内容がある場合（両方に値が入っている場合のみ）
-    return localRule.from.trim() !== '' && localRule.to.trim() !== ''
+    const hasChanges = localRule.from.trim() !== '' && localRule.to.trim() !== ''
+    console.log(`[Debug] New rule ${index}: from="${localRule.from}", to="${localRule.to}", hasChanges=${hasChanges}`)
+    return hasChanges
   }
   
   // 既存ルールの変更をチェック
-  return (
+  const hasChanges = (
     localRule.enabled !== savedRule.enabled ||
     localRule.from !== savedRule.from ||
     localRule.to !== savedRule.to
   )
+  console.log(`[Debug] Existing rule ${index}: hasChanges=${hasChanges}, enabled=${localRule.enabled}/${savedRule.enabled}, from="${localRule.from}"/"${savedRule.from}", to="${localRule.to}"/"${savedRule.to}"`)
+  return hasChanges
 }
 
 // 最後の空のルールかどうかチェック
@@ -168,9 +213,12 @@ const saveRule = (index: number) => {
     savedRules.value.push({ ...rule })
   }
   
-  // 親コンポーネントに変更を通知
+  // settingsStoreに変更を保存
   const validRules = savedRules.value.filter(r => r.from.trim() !== '' && r.to.trim() !== '')
-  emit('rulesChanged', validRules)
+  settingsStore.setReplaceRules(validRules)
+  
+  // バリデーション状態を更新
+  settingsStore.updateReplaceRulesValidation()
 }
 
 // ルールを削除
@@ -185,17 +233,57 @@ const deleteRule = (index: number) => {
   if (savedIndex >= 0) {
     savedRules.value.splice(savedIndex, 1)
     
-    // 親コンポーネントに変更を通知
+    // settingsStoreに変更を保存
     const validRules = savedRules.value.filter(r => r.from !== '' || r.to !== '')
-    emit('rulesChanged', validRules)
+    settingsStore.setReplaceRules(validRules)
+    
+    // バリデーション状態を更新
+    settingsStore.updateReplaceRulesValidation()
   }
   
   // 空のルールを追加
   addEmptyRuleIfNeeded()
 }
 
-// propsの変更を監視
-watch(() => props.replaceRules, () => {
+// ルールのバリデーション状況を取得
+const getValidationStatus = (index: number): 'valid' | 'invalid' | 'none' => {
+  const rule = localRules.value[index]
+  
+  // 編集中（未保存の変更がある）場合はバリデーションを表示しない
+  if (hasUnsavedChanges(index)) {
+    return 'none'
+  }
+  
+  // 保存済みルールの場合、リアルタイムでバリデーション実行
+  const savedRule = savedRules.value.find(r => r.id === rule.id)
+  if (savedRule) {
+    return settingsStore.validateReplaceRule(rule)
+  }
+  
+  return 'none'
+}
+
+// ルールのバリデーション理由を取得
+const getValidationReason = (index: number): string => {
+  const rule = localRules.value[index]
+  
+  // 編集中や未保存の場合は理由なし
+  if (hasUnsavedChanges(index)) {
+    return ''
+  }
+  
+  // 保存済みルールの場合、詳細なバリデーション実行
+  const savedRule = savedRules.value.find(r => r.id === rule.id)
+  if (savedRule) {
+    const result = settingsStore.validateReplaceRuleWithReason(rule)
+    return result.reason || ''
+  }
+  
+  return ''
+}
+
+// settingsStoreのreplaceRulesの変更を監視
+watch(() => settingsStore.replaceRules, () => {
   initializeRules()
 }, { immediate: true })
 </script>
@@ -266,6 +354,38 @@ watch(() => props.replaceRules, () => {
     }
   }
   
+  .validation-indicator {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    .validation-icon {
+      font-size: 10px;
+      font-weight: bold;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      &.valid {
+        color: #28a745;
+        background: rgba(40, 167, 69, 0.1);
+        border: 1px solid rgba(40, 167, 69, 0.3);
+      }
+      
+      &.invalid {
+        color: #dc3545;
+        background: rgba(220, 53, 69, 0.1);
+        border: 1px solid rgba(220, 53, 69, 0.3);
+      }
+    }
+  }
+  
   .rule-checkbox {
     flex-shrink: 0;
     
@@ -328,6 +448,58 @@ watch(() => props.replaceRules, () => {
       }
     }
   }
+}
+
+/* Download with Replaced tool */
+.download-replaced-tool {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px;
+  background: #fafbfc;
+  box-sizing: border-box;
+  max-width: 170px;
+  position: relative;
+  margin-top: 15px;
+}
+
+.download-replaced-title {
+  position: absolute;
+  top: -8px;
+  left: 12px;
+  background: #fafbfc;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 600;
+  color: #495057;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  
+  svg {
+    color: #6c757d;
+  }
+}
+
+.download-replaced-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.checkbox-input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.checkbox-label {
+  font-size: 10px;
+  color: #495057;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.2;
 }
 
 /* レスポンシブ対応を削除 - 常に一行表示を維持 */

@@ -1,5 +1,6 @@
 // 新しいパーサーモジュール（構造体ベース）
-import type { VialConfig, KeyLabel, ComboInfo, VirtualButton, PhysicalButton, TapDance, Combo } from './types';
+import type { VialConfig, KeyLabel, ComboInfo, TapDance, Combo } from './types';
+import { PhysicalButton } from './types';
 import { VialDataProcessor } from './vialDataProcessor';
 
 export class ParserNew {
@@ -39,11 +40,10 @@ export class ParserNew {
         
         // -1 や数値、空の場合は空キーとして処理
         if (keycodeStr === -1 || keycodeStr === '' || keycodeStr === 'KC_NO') {
-            return {
-                rawKeyCode: 'KC_NO',
-                main: { keyCode: 'KC_NO', keyText: '', isSpecial: false },
-                sub: undefined
-            };
+            return new PhysicalButton(
+                'KC_NO',
+                { keyCode: 'KC_NO', keyText: '', isSpecial: false }
+            );
         }
         
         return VialDataProcessor.createPhysicalButton(keyStr, config);
@@ -88,7 +88,7 @@ export class ParserNew {
     }
 
     // レイヤーの物理ボタンマップを取得
-    static getPhysicalButtonLayers(config: VialConfig): PhysicalButton[][] {
+    static getPhysicalButtonLayers(config: VialConfig): PhysicalButton[][][] {
         return VialDataProcessor.getPhysicalButtons(config);
     }
 

@@ -1,4 +1,5 @@
 // 型定義モジュール
+import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
 
 // === ボタン構造体 ===
 
@@ -10,15 +11,177 @@ export interface VirtualButton {
 }
 
 // 物理ボタン：実際のハードウェアキーの表現
-export interface PhysicalButton {
-  rawKeyCode: string;           // "KC_A", "TD(0)", "LT1(KC_SPACE)" など元のキーコード
-  main: VirtualButton;          // メイン表示用の仮想ボタン
-  sub?: {                       // サブテキスト用の仮想ボタン辞書
-    tap?: VirtualButton;
-    hold?: VirtualButton;
-    double?: VirtualButton;
-    taphold?: VirtualButton;
-  };
+export class PhysicalButton {
+  constructor(
+    public rawKeyCode: string,           // "KC_A", "TD(0)", "LT1(KC_SPACE)" など元のキーコード
+    public main: VirtualButton,          // メイン表示用の仮想ボタン
+    public sub?: {                       // サブテキスト用の仮想ボタン辞書
+      tap?: VirtualButton;
+      hold?: VirtualButton;
+      double?: VirtualButton;
+      taphold?: VirtualButton;
+    }
+  ) {}
+  
+  // ハイライト判定メソッド
+  hasSubTexts(): boolean {
+    return this.sub !== undefined;
+  }
+  
+  isComboInputKey(combos?: Combo[]): boolean {
+    return combos ? combos.some(combo => combo.rawKeys.includes(this.rawKeyCode)) : false;
+  }
+  
+  // 物理ボタンを指定座標に描画
+  draw(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, options: RenderOptions, combos?: any[], qualityScale: number = 1.0): void {
+    const colors = getThemeColors(options.theme);
+    
+    // 背景色を決定
+    let bgColor = colors.keyNormal;
+    let borderColor = colors.borderNormal;
+    
+    // 空きボタンの場合
+    if (this.rawKeyCode === 'KC_NO' || this.main.keyCode === 'KC_NO') {
+      if (options.changeKeyColors !== false) {
+        bgColor = colors.keyEmpty;
+        borderColor = colors.borderEmpty;
+      }
+    }
+    // サブテキスト付きまたはコンボ入力の場合
+    else {
+      const hasSubTexts = this.hasSubTexts();
+      const isComboKey = this.isComboInputKey(combos);
+      
+      if ((hasSubTexts || isComboKey) && options.changeKeyColors !== false) {
+        bgColor = colors.keySpecial;
+        borderColor = colors.borderSpecial;
+      }
+    }
+    
+    // キーの背景を描画
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(x, y, width, height);
+    
+    // 枠線を描画
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, width, height);
+    
+    // コンボマーカー（右上の赤い三角形）
+    const isComboKey = this.isComboInputKey(combos);
+    if (isComboKey && options.showComboMarkers !== false) {
+      const triangleSize = 12;
+      ctx.fillStyle = '#ff6b6b';
+      ctx.beginPath();
+      ctx.moveTo(x + width - triangleSize, y);
+      ctx.lineTo(x + width, y);
+      ctx.lineTo(x + width, y + triangleSize);
+      ctx.closePath();
+      ctx.fill();
+    }
+    
+    // テキストを描画
+    this.drawText(ctx, x, y, width, height, options, combos, colors, qualityScale);
+  }
+  
+  // テキスト描画
+  private drawText(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, options: RenderOptions, combos: any[] | undefined, colors: any, qualityScale: number = 1.0): void {
+    if (!this.main.keyText) return;
+    
+    // ハイライト判定
+    const hasSubTexts = this.hasSubTexts();
+    const isComboKey = this.isComboInputKey(combos);
+    const shouldHighlight = (hasSubTexts && options.highlightSubtextKeys !== false) || (isComboKey && options.highlightComboKeys !== false);
+    
+    // メインテキストのフォントサイズを段階的に決定（文字数が多いほど小さく）
+    let fontSize: number;
+    if (this.main.keyText.length > 8) {
+      fontSize = 12; // 非常に長いテキスト
+    } else if (this.main.keyText.length === 1) {
+      fontSize = 22; // 単一文字
+    } else {
+      fontSize = 20; // 2文字以上
+    }
+
+    ctx.font = `${fontSize}px Arial, sans-serif`;
+    ctx.fillStyle = (shouldHighlight && options.showTextColors !== false) ? colors.textSpecial : colors.textNormal;
+    ctx.textAlign = 'center';
+    
+    // メインテキストの位置計算（最新の実装に基づく）
+    const textX = x + width / 2;
+    const textY = y + height * 0.35; // 固定位置、サブテキストの有無は関係なし
+    
+    ctx.fillText(this.main.keyText, textX, textY);
+    
+    // サブテキストを描画（最新の実装に基づく）
+    if (this.sub) {
+      const subTexts: string[] = [];
+      if (this.sub.tap) subTexts.push(this.sub.tap.keyText);
+      if (this.sub.hold) subTexts.push(this.sub.hold.keyText);
+      if (this.sub.double) subTexts.push(this.sub.double.keyText);
+      if (this.sub.taphold) subTexts.push(this.sub.taphold.keyText);
+      
+      if (subTexts.length > 0) {
+        ctx.fillStyle = colors.textSub;
+        
+        if (subTexts.length === 1) {
+          // 単一サブテキストのフォントサイズを文字数に応じて決定（少し大きめ）
+          let subFontSize: number;
+          if (subTexts[0].length > 6) {
+            subFontSize = 12; // 長いサブテキスト
+          } else if (subTexts[0].length > 3) {
+            subFontSize = 14; // 中程度のサブテキスト
+          } else {
+            subFontSize = 16; // 短いサブテキスト
+          }
+          
+          ctx.font = `${subFontSize}px Arial, sans-serif`;
+          const subY = y + height * 0.75;
+          ctx.fillText(subTexts[0], x + width / 2, subY);
+        } else {
+          // 複数サブテキスト：長いテキストがある場合は一行一つずつ表示
+          const hasLongText = subTexts.some(text => text.length > 4);
+          
+          if (hasLongText) {
+            // 長いテキストがある場合：一行一つずつ表示
+            const startY = y + height * 0.65;
+            const lineHeight = 12;
+            
+            for (let i = 0; i < subTexts.length; i++) {
+              const subY = startY + (i * lineHeight);
+              let fontSize = subTexts[i].length > 5 ? 9 : 11;
+              
+              ctx.font = `${fontSize}px Arial, sans-serif`;
+              ctx.fillText(subTexts[i], x + width / 2, subY);
+            }
+          } else {
+            // 短いテキストのみ：従来の2列表示
+            const startY = y + height * 0.65;
+            const lineHeight = 13;
+            
+            for (let i = 0; i < subTexts.length; i += 2) {
+              const row = Math.floor(i / 2);
+              const subY = startY + (row * lineHeight);
+              
+              if (i + 1 < subTexts.length) {
+                const leftX = x + width * 0.25;
+                const rightX = x + width * 0.75;
+                
+                ctx.font = '13px Arial, sans-serif';
+                ctx.fillText(subTexts[i], leftX, subY);
+                
+                ctx.font = '11px Arial, sans-serif';
+                ctx.fillText(subTexts[i + 1], rightX, subY);
+              } else {
+                ctx.font = '11px Arial, sans-serif';
+                ctx.fillText(subTexts[i], x + width / 2, subY);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 // TapDance構造体
@@ -32,44 +195,339 @@ export interface TapDance {
 }
 
 // Combo構造体  
-export interface Combo {
-  index: number;                // 元のコンボインデックス
-  rawKeys: string[];            // 元のキー配列
-  keys: VirtualButton[];        // 組み合わせキーの仮想ボタン配列
-  action: VirtualButton;        // 実行アクションの仮想ボタン
-  description: string;          // 説明テキスト
+export class Combo {
+  constructor(
+    public index: number,                // 元のコンボインデックス
+    public rawKeys: string[],            // 元のキー配列
+    public keys: VirtualButton[],        // 組み合わせキーの仮想ボタン配列
+    public action: VirtualButton,        // 実行アクションの仮想ボタン
+    public description: string           // 説明テキスト
+  ) {}
+  
+  generateComboImage(options: RenderOptions, qualityScale: number): HTMLCanvasElement[] {
+    const baseWidth = 300;
+    const baseHeight = 60;
+    const canvases: HTMLCanvasElement[] = [];
+    
+    // 1x, 2x, 3x の3つの幅倍率で生成
+    for (let widthScale = 1; widthScale <= 3; widthScale++) {
+      const canvas = document.createElement('canvas');
+      const finalWidth = baseWidth * widthScale * qualityScale;
+      const finalHeight = baseHeight * qualityScale;
+      
+      canvas.width = finalWidth;
+      canvas.height = finalHeight;
+      const ctx = canvas.getContext('2d')!;
+      
+      // 品質スケールのみ適用（widthScaleは既にcanvasサイズに反映済み）
+      ctx.scale(qualityScale, qualityScale);
+      
+      this.draw(ctx, 0, 0, baseWidth * widthScale, baseHeight, options, 1.0);
+      canvases.push(canvas);
+    }
+    
+    return canvases;
+  }
+
+  draw(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, options: RenderOptions, qualityScale: number = 1.0): void {
+    const colors = getThemeColors(options.theme);
+    const buttonHeight = 60;  // 元実装と同じサイズ
+    const buttonWidth = 78;   // 元実装と同じサイズ
+    const spacing = 10;
+    
+    let currentX = x + spacing;
+    const buttonY = y + (height - buttonHeight) / 2;
+    
+    // インデックス番号を描画（より大きなフォント）
+    ctx.fillStyle = colors.textNormal;
+    ctx.font = `bold 20px Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText(`#${this.index + 1}`, currentX, buttonY + buttonHeight / 2 + 5);
+    currentX += 40;
+    
+    // アクションボタンを描画
+    const actionButton = new PhysicalButton(this.action.keyCode, this.action);
+    actionButton.draw(ctx, currentX, buttonY, buttonWidth, buttonHeight, options, [], qualityScale);
+    currentX += buttonWidth + spacing;
+    
+    // ダッシュを描画
+    ctx.fillStyle = colors.textSub;
+    ctx.font = `16px Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('—', currentX + 15, buttonY + buttonHeight / 2 + 5);
+    currentX += 40;
+    
+    // 組み合わせキーを描画
+    for (const keyButton of this.keys) {
+      const physicalKey = new PhysicalButton(keyButton.keyCode, keyButton);
+      physicalKey.draw(ctx, currentX, buttonY, buttonWidth, buttonHeight, options, [this], qualityScale); // comboとして自分を渡す
+      currentX += buttonWidth + spacing / 2;
+    }
+  }
 }
 
 // === ParsedVial構造体 ===
 
 // 配置・描画情報を含む物理ボタン
-export interface PositionedPhysicalButton {
-  button: PhysicalButton;           // 物理ボタン情報
-  layoutPosition: KeyPosition;      // 配置座標（論理位置）
-  drawPosition: KeyPosition;        // 描画座標（実際の描画位置）
-  rowIndex: number;                 // 行インデックス
-  colIndex: number;                 // 列インデックス
+export class PositionedPhysicalButton {
+  constructor(
+    public button: PhysicalButton,           // 物理ボタン情報
+    public layoutPosition: KeyPosition,      // 配置座標（論理位置）
+    public drawPosition: KeyPosition,        // 描画座標（実際の描画位置）
+    public rowIndex: number,                 // 行インデックス
+    public colIndex: number                  // 列インデックス
+  ) {}
+  
+  draw(ctx: CanvasRenderingContext2D, options: RenderOptions, combos?: any[], qualityScale: number = 1.0, customPosition?: KeyPosition): void {
+    const { x, y, width, height } = customPosition || this.drawPosition;
+    
+    // PhysicalButton.draw()メソッドを使用して描画処理を委譲
+    this.button.draw(ctx, x, y, width, height, options, combos, qualityScale);
+  }
 }
 
 // 解析済みレイヤー情報
-export interface ParsedLayer {
-  layerIndex: number;                      // レイヤー番号
-  buttons: PositionedPhysicalButton[];     // 配置済み物理ボタン配列
-  name?: string;                           // レイヤー名（オプション）
-  enabled?: boolean;                       // レイヤー有効状態（オプション）
+export class ParsedLayer {
+  constructor(
+    public layerIndex: number,                      // レイヤー番号
+    public buttons: PositionedPhysicalButton[],     // 配置済み物理ボタン配列
+    public name?: string,                           // レイヤー名（オプション）
+    public enabled?: boolean                        // レイヤー有効状態（オプション）
+  ) {}
+  
+  // レイヤー番号を描画（元実装準拠：キーボード中央の空きスペースに配置）
+  drawLayerNumber(ctx: CanvasRenderingContext2D, layerNumber: number, x: number, y: number, options: RenderOptions, qualityScale: number = 1.0): void {
+    const colors = getThemeColors(options.theme);
+    
+    // 三行目の中央の隙間（左右ボタンの中間）に表示する座標を計算
+    const { keyWidth, keyHeight, keyGap, margin } = KEYBOARD_CONSTANTS;
+    const unitX = KEYBOARD_CONSTANTS.unitX;
+    const unitY = KEYBOARD_CONSTANTS.unitY;
+    
+    // 三行目のY座標を計算
+    const thirdRowY = margin + unitY * 2 + keyHeight / 2;
+    
+    // 左側最後のキー（V: unitX * 5.0）と右側最初のキー（M: unitX * 8.0）の中間のX座標（少し右寄り）
+    const leftKeyEndX = margin + unitX * 5.0 + keyWidth;
+    const rightKeyStartX = margin + unitX * 8.0;
+    const centerX = (leftKeyEndX + rightKeyStartX) / 2 + 15; // 15px右にずらす
+    
+    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.fillStyle = colors.textSub;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`#${layerNumber}`, centerX, thirdRowY);
+  }
+  
+  draw(ctx: CanvasRenderingContext2D, options: RenderOptions, combos?: any[], qualityScale: number = 1.0): void {
+    // 背景色を設定
+    const colors = getThemeColors(options.theme);
+    const canvasSize = this.calculateCanvasSize();
+    
+    ctx.fillStyle = options.backgroundColor || colors.background;
+    ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+    
+    // 全ボタンを描画
+    for (const positionedButton of this.buttons) {
+      positionedButton.draw(ctx, options, combos, qualityScale);
+    }
+    
+    // レイヤー番号を描画（x, y パラメータは使用されない）
+    this.drawLayerNumber(ctx, this.layerIndex, 0, 0, options, qualityScale);
+  }
+  
+  calculateCanvasSize(): {width: number, height: number} {
+    // KEYBOARD_CONSTANTSを使用した統一計算式
+    const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
+    
+    // 実際のキー配置に合わせた計算式（最右端はunitX * 13.5）
+    const contentWidth = unitX * 13.5 + keyWidth;
+    const contentHeight = unitY * 3.0 + keyHeight;
+    const baseImgWidth = Math.ceil(contentWidth + margin * 2);
+    const baseImgHeight = Math.ceil(contentHeight + margin * 2);
+    
+    return {
+      width: baseImgWidth,
+      height: baseImgHeight
+    };
+  }
+  
 }
 
 // 解析済みVIAL構造体
-export interface ParsedVial {
-  original: VialConfig;             // 元のVIALデータ
-  tapDances: TapDance[];           // TapDance情報
-  combos: Combo[];                 // コンボ情報
-  layers: ParsedLayer[];           // 解析済みレイヤー情報（配置・描画座標付き）
-  keyboardName?: string;           // キーボード名（オプション）
-  metadata?: {                     // メタデータ（オプション）
-    generatedAt: Date;
-    version?: string;
-  };
+export class ParsedVial {
+  constructor(
+    public original: VialConfig,             // 元のVIALデータ
+    public tapDances: TapDance[],           // TapDance情報
+    public combos: Combo[],                 // コンボ情報
+    public layers: ParsedLayer[],           // 解析済みレイヤー情報（配置・描画座標付き）
+    public keyboardName?: string,           // キーボード名（オプション）
+    public metadata?: {                     // メタデータ（オプション）
+      generatedAt: Date;
+      version?: string;
+    }
+  ) {}
+  
+  generateLayerCanvas(layerIndex: number, options: RenderOptions, qualityScale: number): HTMLCanvasElement {
+    const layer = this.layers.find(l => l.layerIndex === layerIndex);
+    if (!layer) {
+      throw new Error(`Layer ${layerIndex} not found`);
+    }
+    
+    const canvasSize = layer.calculateCanvasSize();
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasSize.width * qualityScale;
+    canvas.height = canvasSize.height * qualityScale;
+    const ctx = canvas.getContext('2d')!;
+    
+    // 品質スケールを適用
+    ctx.scale(qualityScale, qualityScale);
+    
+    layer.draw(ctx, options, this.combos, qualityScale);
+    return canvas;
+  }
+  
+  generateAllLayersCanvases(options: RenderOptions, qualityScale: number): HTMLCanvasElement[] {
+    return this.layers.map(layer => this.generateLayerCanvas(layer.layerIndex, options, qualityScale));
+  }
+  
+  generateLayoutHeaderCanvas(options: RenderOptions, qualityScale: number, label?: string): HTMLCanvasElement[] {
+    const canvases: HTMLCanvasElement[] = [];
+    
+    // KEYBOARD_CONSTANTSを使用した統一計算式
+    const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
+    const baseContentWidth = unitX * 13.5 + keyWidth;
+    const baseImageWidth = Math.ceil(baseContentWidth + margin * 2);
+    
+    // 1x, 2x, 3x の3つの幅倍率で生成
+    for (let widthScale = 1; widthScale <= 3; widthScale++) {
+      const width = baseImageWidth * widthScale;
+      const height = 45; // 古い実装の高さに合わせる
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.floor(width * qualityScale);
+      canvas.height = Math.floor(height * qualityScale);
+      const ctx = canvas.getContext('2d')!;
+      
+      // 品質スケールを適用
+      ctx.scale(qualityScale, qualityScale);
+      
+      const colors = getThemeColors(options.theme);
+      
+      // 背景色を描画
+      ctx.fillStyle = colors.headerBackground;
+      ctx.fillRect(0, 0, width, 37);
+      
+      // ヘッダーテキストを描画（左側）
+      ctx.font = 'bold 32px Arial, sans-serif';
+      ctx.fillStyle = colors.headerText;
+      ctx.textAlign = 'left';
+      ctx.fillText('LAYOUTS', 15, 28);
+      
+      // ラベル（ファイル名など）を右側に描画
+      if (label || this.keyboardName) {
+        const displayLabel = label || this.keyboardName || '';
+        ctx.font = '28px Arial, sans-serif';
+        ctx.fillStyle = colors.textSub;
+        ctx.textAlign = 'right';
+        ctx.fillText(displayLabel, width - 15, 28);
+      }
+      
+      // 区切り線を描画
+      ctx.fillStyle = colors.borderNormal;
+      ctx.fillRect(0, 37, width, 1);
+      
+      canvases.push(canvas);
+    }
+    
+    return canvases;
+  }
+  
+  generateComboListCanvas(options: RenderOptions, qualityScale: number): HTMLCanvasElement[] {
+    const canvases: HTMLCanvasElement[] = [];
+    
+    // KEYBOARD_CONSTANTSを使用した統一計算式
+    const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
+    const baseContentWidth = unitX * 13.5 + keyWidth;
+    const baseImageWidth = Math.ceil(baseContentWidth + margin * 2);
+    
+    // 1x, 2x, 3x の3つの幅倍率で生成
+    for (let widthScale = 1; widthScale <= 3; widthScale++) {
+      const canvas = document.createElement('canvas');
+      
+      if (this.combos.length === 0) {
+        const width = baseImageWidth * widthScale;
+        const height = 50;
+        
+        canvas.width = width * qualityScale;
+        canvas.height = height * qualityScale;
+        const ctx = canvas.getContext('2d')!;
+        
+        ctx.scale(qualityScale, qualityScale);
+        
+        const colors = getThemeColors(options.theme);
+        
+        ctx.fillStyle = options.backgroundColor || colors.background;
+        ctx.fillRect(0, 0, width, height);
+        
+        ctx.fillStyle = colors.textNormal;
+        ctx.font = '16px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No combos defined', width / 2, 30);
+        
+        canvases.push(canvas);
+        continue;
+      }
+      
+      const width = baseImageWidth * widthScale;
+      // 古い実装に合わせた高さ計算
+      const headerHeight = 45;
+      const lineHeight = 70;
+      const columnsCount = widthScale >= 3 ? 6 : (widthScale >= 2 ? 4 : 3);
+      const rows = Math.ceil(this.combos.length / columnsCount);
+      const totalHeight = headerHeight + (rows * lineHeight) + margin;
+      
+      canvas.width = width * qualityScale;
+      canvas.height = totalHeight * qualityScale;
+      const ctx = canvas.getContext('2d')!;
+      
+      ctx.scale(qualityScale, qualityScale);
+      
+      const colors = getThemeColors(options.theme);
+      
+      // 背景
+      ctx.fillStyle = options.backgroundColor || colors.background;
+      ctx.fillRect(0, 0, width, totalHeight);
+      
+      // ヘッダー
+      ctx.fillStyle = colors.headerBackground;
+      ctx.fillRect(0, 0, width, headerHeight - 8);
+      
+      ctx.fillStyle = colors.headerText;
+      ctx.font = 'bold 32px Arial, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('COMBOS', 15, 28);
+      
+      // 区切り線
+      ctx.fillStyle = colors.borderNormal;
+      ctx.fillRect(0, headerHeight - 8, width, 1);
+      
+      // コンボリスト（グリッドレイアウト）
+      const columnWidth = (width - 30) / columnsCount;
+      this.combos.forEach((combo, index) => {
+        const row = Math.floor(index / columnsCount);
+        const col = index % columnsCount;
+        const x = 15 + col * columnWidth;
+        const y = headerHeight + 10 + row * lineHeight;
+        
+        combo.draw(ctx, x, y, columnWidth - 10, 60, options, qualityScale);
+      });
+      
+      canvases.push(canvas);
+    }
+    
+    return canvases;
+  }
 }
 
 // === 既存の型定義 ===
@@ -226,7 +684,21 @@ export const COLORS = {
 export const COLORS_LEGACY = COLORS.dark;
 
 // カラーパレットの型定義
-export type ThemeColors = typeof COLORS.dark;
+export type ThemeColors = {
+  readonly background: string;
+  readonly keyNormal: string;
+  readonly keySpecial: string;
+  readonly keyEmpty: string;
+  readonly borderNormal: string;
+  readonly borderSpecial: string;
+  readonly borderEmpty: string;
+  readonly textNormal: string;
+  readonly textSpecial: string;
+  readonly textSub: string;
+  readonly headerBackground: string;
+  readonly headerBorder: string;
+  readonly headerText: string;
+};
 
 // テーマに基づいて色を取得するヘルパー関数
 export function getThemeColors(theme: 'dark' | 'light' = 'dark'): ThemeColors {

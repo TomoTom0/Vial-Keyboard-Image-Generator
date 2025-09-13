@@ -18,19 +18,22 @@
         <div 
           v-for="layer in getOrderedLayers()"
           :key="layer"
-          :class="['layer-item', { 'layer-selected': layerSelection[layer] }]"
-          @click="toggleLayer(layer, !layerSelection[layer])"
+          :class="['layer-item', { 'layer-selected': settingsStore.layerSelection[layer] }]"
+          @click="toggleLayer(layer, !settingsStore.layerSelection[layer])"
         >
-          <img 
-            v-if="imagesStore.getLayerImageUrl(layer)"
-            :src="imagesStore.getLayerImageUrl(layer)"
-            :alt="`Layer ${layer}`"
-            class="layer-preview"
-            @error="handleImageError"
-          />
-          <div v-else class="layer-placeholder">
-            <div class="placeholder-text">Layer {{ layer }}</div>
-          </div>
+          <template v-if="imagesStore.getLayerImageUrl(layer)">
+            <img 
+              :src="imagesStore.getLayerImageUrl(layer)"
+              :alt="`Layer ${layer}`"
+              class="layer-preview"
+              @error="handleImageError"
+            />
+          </template>
+          <template v-else>
+            <div class="layer-placeholder">
+              <div class="placeholder-text">Layer {{ layer }}</div>
+            </div>
+          </template>
         </div>
       </div>
       
@@ -64,11 +67,8 @@ const vialStore = useVialStore()
 const settingsStore = useSettingsStore()
 const imagesStore = useImagesStore()
 
-// Store から取得するcomputed値
-const selectedFile = computed(() => vialStore.selectedVialId)
-const outputFormat = computed(() => settingsStore.outputFormat)
+// Store から取得するcomputed値（計算が必要なもののみ）
 const generatedImages = computed(() => imagesStore.images)
-const layerSelection = computed(() => settingsStore.layerSelection)
 
 // Available layers
 const availableLayers = LAYERS.AVAILABLE
@@ -90,7 +90,7 @@ onUnmounted(() => {
 
 const toggleLayer = (layer: number, selected: boolean) => {
   settingsStore.layerSelection = {
-    ...layerSelection.value,
+    ...settingsStore.layerSelection,
     [layer]: selected
   }
 }
@@ -159,6 +159,12 @@ const handleHeaderImageError = (event: Event) => {
 
 // Variables
 $primary-color: #007bff;
+$border-color: #dee2e6;
+$background-light: #f5f5f5;
+$transition-duration: 0.2s;
+
+// Variables
+$primary-color: #007bff;
 $primary-hover: #0056b3;
 $border-color: #dee2e6;
 $transition-duration: 0.2s;
@@ -178,7 +184,7 @@ $background-light: #f5f5f5;
   padding: 15px;
   margin: 5px auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  max-width: calc(100vw - 60px);
+  max-width: calc(100vw - 290px); // サイドバー250px + 余白40px
   width: 100%;
   transition: all 0.3s ease-in-out;
   box-sizing: border-box;
@@ -190,6 +196,16 @@ $background-light: #f5f5f5;
   
   // ウィンドウサイズ基準の共通画像倍率（余裕がある場合はより大きく）
   --image-scale: clamp(0.6, 2.5vw, 1.5);
+  
+  // 大きな画面でより大きく表示
+  @media (min-width: 1400px) {
+    --image-scale: clamp(1.2, 3.5vw, 2.2);
+  }
+  
+  // 超大型画面でさらに大きく表示
+  @media (min-width: 1800px) {
+    --image-scale: clamp(1.5, 4.0vw, 2.8);
+  }
   
   // 内部コンテンツの最小幅を確保（画像がスケールされた状態での適切な表示のため）
   > * {
@@ -233,25 +249,53 @@ $background-light: #f5f5f5;
 .layers-separated {
   @include layout.layers-grid-3x2-separated;
   padding: 0;
-  margin: 10px;
+  margin: 10px auto;
+  display: grid;
+  justify-self: center;
 }
 
 .layers-separated-1col {
   @include layout.layers-grid-1col-separated;
   padding: 0;
-  margin: 10px;
+  margin: 10px auto;
+  display: grid;
+  justify-self: center;
 }
 
 .layers-separated-2col {
   @include layout.layers-grid-2col-separated;
   padding: 0;
-  margin: 10px;
+  margin: 10px auto;
+  display: grid;
+  justify-self: center;
+  
+  @media (min-width: 1400px) {
+    margin: 15px;
+    gap: 15px;
+  }
+  
+  @media (min-width: 1800px) {
+    margin: 20px;
+    gap: 20px;
+  }
 }
 
 .layers-separated-3col {
   @include layout.layers-grid-3x2-separated;
   padding: 0;
-  margin: 10px;
+  margin: 10px auto;
+  display: grid;
+  justify-self: center;
+  
+  @media (min-width: 1400px) {
+    margin: 15px;
+    gap: 15px;
+  }
+  
+  @media (min-width: 1800px) {
+    margin: 20px;
+    gap: 20px;
+  }
 }
 
 .layers-vertical {
@@ -260,10 +304,16 @@ $background-light: #f5f5f5;
 
 .layers-rectangular-2col {
   @include layout.layers-grid-2col;
+  margin: 0 auto;
+  display: grid;
+  justify-self: center;
 }
 
 .layers-rectangular-3col {
   @include layout.layers-grid-3x2;
+  margin: 0 auto;
+  display: grid;
+  justify-self: center;
 }
 
 
@@ -344,7 +394,8 @@ $background-light: #f5f5f5;
 .header-image-section,
 .combos-image-section {
   @include interactive-element;
-  width: 100%;
+  width: fit-content;
+  margin: 0 auto;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -364,6 +415,10 @@ $background-light: #f5f5f5;
 @media (max-width: 768px) {
   .select-tab {
     padding: 10px;
+  }
+  
+  .image-container {
+    max-width: calc(100vw - 80px); // 折りたたみサイドバー40px + 余白40px
   }
   
   .layers-display {

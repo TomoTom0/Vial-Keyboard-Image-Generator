@@ -58,7 +58,6 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { getCurrentKeyboardLanguage } from '../utils/keyboardConfig'
 import { useVialStore } from '../stores/vial'
 import { useSettingsStore } from '../stores/settings'
 import { useImagesStore } from '../stores/images'
@@ -77,9 +76,8 @@ const targetLanguage = computed(() => settingsStore.keyboardLanguage === 'japane
 
 
 const canConvert = computed(() => {
-  const currentLanguage = getCurrentKeyboardLanguage()
   return vialStore.currentVial && 
-         currentLanguage.id !== targetLanguage.value && 
+         settingsStore.keyboardLanguage !== targetLanguage.value && 
          !isConverting.value
 })
 
@@ -146,8 +144,7 @@ const handleConvert = async () => {
   convertStatus.value = null
   
   try {
-    const currentLanguage = getCurrentKeyboardLanguage()
-    const message = await vialStore.convertLanguage(currentLanguage.id, targetLanguage.value)
+    const message = await vialStore.convertLanguage(settingsStore.keyboardLanguage, targetLanguage.value)
     convertStatus.value = { type: 'success', message }
     
   } catch (error) {

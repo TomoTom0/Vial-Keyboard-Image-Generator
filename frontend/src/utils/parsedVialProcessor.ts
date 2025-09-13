@@ -1,5 +1,6 @@
 // ParsedVial統一処理モジュール
-import type { VialConfig, ParsedVial, ParsedLayer, PositionedPhysicalButton, KeyPosition } from './types';
+import type { VialConfig, KeyPosition, KeymapLayer } from './types';
+import { ParsedVial, ParsedLayer, PositionedPhysicalButton } from './types';
 import { VialDataProcessor } from './vialDataProcessor';
 import { Utils } from './utils';
 
@@ -12,82 +13,107 @@ export class ParsedVialProcessor {
    * VIALConfigからParsedVialを生成
    */
   static parseVialConfig(config: VialConfig, keyboardName?: string): ParsedVial {
+    console.log('🚨 ParsedVialProcessor: parseVialConfig called for:', keyboardName, '- Call stack:', new Error().stack?.split('\n').slice(1, 4).join(' | '));
+    console.log('🔧 config object keys:', Object.keys(config));
+    
     // TapDanceとCombo情報を事前取得
     const tapDances = VialDataProcessor.getTapDances(config);
     const combos = VialDataProcessor.getCombos(config);
+    console.log('🔧 Generated tapDances:', tapDances.length);
+    console.log('🔧 Generated combos:', combos.length);
     
     // レイヤー情報を解析
     const layers = ParsedVialProcessor.parseLayers(config);
+    console.log('🔧 Generated layers:', layers.length);
     
-    return {
-      original: config,
-      tapDances: tapDances,
-      combos: combos,
-      layers: layers,
-      keyboardName: keyboardName,
-      metadata: {
+    return new ParsedVial(
+      config,
+      tapDances,
+      combos,
+      layers,
+      keyboardName,
+      {
         generatedAt: new Date(),
         version: '1.0.0'
       }
-    };
+    );
   }
   
   /**
    * レイヤー情報を解析して配置・描画座標を計算
    */
   private static parseLayers(config: VialConfig): ParsedLayer[] {
-    if (!config.layers) return [];
+    console.log('🔧 ParsedVialProcessor: parseLayers called')
+    console.log('🔧 config.layout exists:', !!config.layout)
+    console.log('🔧 config.layout length:', config.layout?.length)
+    console.log('🔧 config.layout type:', typeof config.layout)
+    console.log('🔧 config.layout isArray:', Array.isArray(config.layout))
     
-    return config.layers.map((layer, layerIndex) => {
-      const buttons = ParsedVialProcessor.parseLayerButtons(layer, layerIndex, config);
+    if (!config.layout) return [];
+    
+    const result = config.layout.map((layer, layerIndex) => {
+      console.log(`🔧 Processing layer ${layerIndex}, layer type:`, typeof layer, 'isArray:', Array.isArray(layer))
+      const buttons = ParsedVialProcessor.parseLayerButtons(layer, config);
+      console.log(`🔧 Layer ${layerIndex} generated ${buttons.length} buttons`)
       
-      return {
-        layerIndex: layerIndex,
-        buttons: buttons,
-        name: `Layer ${layerIndex}`,
-        enabled: true
-      };
+      return new ParsedLayer(
+        layerIndex,
+        buttons,
+        `Layer ${layerIndex}`,
+        true
+      );
     });
+    
+    console.log('🔧 ParsedVialProcessor: parseLayers returning', result.length, 'layers')
+    return result;
   }
   
   /**
    * レイヤー内のボタンを解析して位置情報付きボタンを生成
    */
   private static parseLayerButtons(
-    layer: string[][], 
-    layerIndex: number, 
+    layer: KeymapLayer, 
     config: VialConfig
   ): PositionedPhysicalButton[] {
     const buttons: PositionedPhysicalButton[] = [];
     
-    // キーボードレイアウトの位置情報を取得
-    const keyPositions = ParsedVialProcessor.getKeyboardLayout();
+    // キーボードレイアウトの位置情報を取得（元実装と同じサイズ）
+    const keyPositions = Utils.getKeyPositions(78, 60, 4, 20);
     
-    for (let rowIndex = 0; rowIndex < layer.length; rowIndex++) {
-      const row = layer[rowIndex];
-      if (!row) continue;
+    // 実際のVialデータはKeymapLayerインデックス付きオブジェクトとして来る
+    for (const [rowIndexStr, row] of Object.entries(layer)) {
+      const rowIndex = parseInt(rowIndexStr);
+      if (!row || !Array.isArray(row)) continue;
       
       for (let colIndex = 0; colIndex < row.length; colIndex++) {
         const keycode = row[colIndex];
-        if (!keycode || keycode === 'KC_NO' || keycode === -1) continue;
         
         // 配置位置の取得
         const layoutPosition = keyPositions[rowIndex]?.[colIndex];
-        if (!layoutPosition) continue;
+        if (!layoutPosition) {
+          console.log(`🔧 No layout position for row ${rowIndex}, col ${colIndex}`);
+          continue;
+        }
         
-        // 物理ボタンの生成
-        const physicalButton = VialDataProcessor.createPhysicalButton(keycode, config);
+        // 空きボタン（KC_NO、-1、null、undefined）の正規化
+        const normalizedKeycode = (!keycode || keycode === -1) ? 'KC_NO' : keycode;
+        // if (normalizedKeycode === 'KC_NO') {
+        //   console.log(`🔧 Empty button at [${rowIndex}, ${colIndex}]: "${keycode}" → "${normalizedKeycode}"`);
+        // }
+        
+        // 物理ボタンの生成（空きボタンも含める）
+        const physicalButton = VialDataProcessor.createPhysicalButton(normalizedKeycode, config);
         
         // 描画位置の計算（配置位置から実際の描画座標を計算）
         const drawPosition = ParsedVialProcessor.calculateDrawPosition(layoutPosition);
         
-        buttons.push({
-          button: physicalButton,
-          layoutPosition: layoutPosition,
-          drawPosition: drawPosition,
-          rowIndex: rowIndex,
-          colIndex: colIndex
-        });
+        buttons.push(new PositionedPhysicalButton(
+          physicalButton,
+          layoutPosition,
+          drawPosition,
+          rowIndex,
+          colIndex
+        ));
       }
     }
     
@@ -98,6 +124,7 @@ export class ParsedVialProcessor {
    * キーボードレイアウトの位置情報を取得
    * 注意: これは仮実装です。実際のキーボードレイアウトに応じて調整が必要
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static getKeyboardLayout(): (KeyPosition | null)[][] {
     // 標準的な60%キーボードのレイアウト例
     // 実際の実装では、キーボード種別に応じて動的に生成する必要がある
@@ -115,7 +142,8 @@ export class ParsedVialProcessor {
         x: i * unitWidth,
         y: 0,
         width: keyWidth,
-        height: keyHeight
+        height: keyHeight,
+        rotation: 0
       })),
       
       // Row 1: QWERTY row
@@ -123,7 +151,8 @@ export class ParsedVialProcessor {
         x: i * unitWidth,
         y: unitHeight,
         width: keyWidth,
-        height: keyHeight
+        height: keyHeight,
+        rotation: 0
       })),
       
       // Row 2: ASDF row
@@ -131,7 +160,8 @@ export class ParsedVialProcessor {
         x: i * unitWidth,
         y: unitHeight * 2,
         width: keyWidth,
-        height: keyHeight
+        height: keyHeight,
+        rotation: 0
       })),
       
       // Row 3: ZXCV row
@@ -139,7 +169,8 @@ export class ParsedVialProcessor {
         x: i * unitWidth,
         y: unitHeight * 3,
         width: keyWidth,
-        height: keyHeight
+        height: keyHeight,
+        rotation: 0
       })),
       
       // Row 4: Bottom row (space, etc.)
@@ -147,7 +178,8 @@ export class ParsedVialProcessor {
         x: i * unitWidth,
         y: unitHeight * 4,
         width: keyWidth,
-        height: keyHeight
+        height: keyHeight,
+        rotation: 0
       }))
     ];
     
@@ -155,17 +187,16 @@ export class ParsedVialProcessor {
   }
   
   /**
-   * 配置座標から描画座標を計算
+   * 配置座標から描画座標を計算（Utils.getKeyPositionsで既にマージンが含まれているのでそのまま使用）
    */
   private static calculateDrawPosition(layoutPosition: KeyPosition): KeyPosition {
-    // マージンを考慮した描画座標を計算
-    const margin = 20;
-    
+    // Utils.getKeyPositions()で既にマージンが含まれているため、そのまま返す
     return {
-      x: layoutPosition.x + margin,
-      y: layoutPosition.y + margin,
+      x: layoutPosition.x,
+      y: layoutPosition.y,
       width: layoutPosition.width,
-      height: layoutPosition.height
+      height: layoutPosition.height,
+      rotation: layoutPosition.rotation || 0
     };
   }
   

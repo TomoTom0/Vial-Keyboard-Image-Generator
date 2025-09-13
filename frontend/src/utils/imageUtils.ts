@@ -26,7 +26,8 @@ export function getCanvasImageUrl(
   generatedImages: GeneratedImage[],
   outputFormat: 'separated' | 'vertical' | 'rectangular',
   useAllLayers: boolean,
-  selectedLayers?: { [layerId: number]: boolean }
+  selectedLayers?: { [layerId: number]: boolean },
+  displayColumns?: number  // 新しいパラメータを追加
 ): string {
   if (!generatedImages || generatedImages.length === 0) {
     console.log(`🔍 getCanvasImageUrl: No images available for type ${type}`)
@@ -35,21 +36,22 @@ export function getCanvasImageUrl(
   
   console.log(`🔍 getCanvasImageUrl: Looking for ${type} images from`, generatedImages.map(img => ({id: img.id, type: img.type})))
 
-  // 表示列数を計算
-  let displayColumns: number
-  
-  if (useAllLayers) {
-    // SelectTab: 全レイヤー数（6層）ベースでフォーマットに応じて計算
-    const allLayerCount = 6
-    displayColumns = outputFormat === 'vertical' ? 1 : 
-                     outputFormat === 'rectangular' ? Math.min(3, Math.max(1, Math.ceil(allLayerCount / 2))) :
-                     Math.min(3, Math.max(1, Math.ceil(allLayerCount / 2)))
-  } else {
-    // PreviewTab: 有効レイヤー数ベース
-    const selectedCount = selectedLayers ? Object.values(selectedLayers).filter(Boolean).length : 0
-    displayColumns = outputFormat === 'vertical' ? 1 : 
-                     outputFormat === 'rectangular' ? Math.min(2, Math.max(1, Math.ceil(selectedCount / 2))) :
-                     Math.min(3, Math.max(1, Math.ceil(selectedCount / 2)))
+  // displayColumnsが指定されていない場合のフォールバック計算
+  if (displayColumns === undefined) {
+    if (useAllLayers) {
+      // SelectTab: 全レイヤー数（6層）ベースでフォーマットに応じて計算
+      const allLayerCount = 6
+      displayColumns = outputFormat === 'vertical' ? 1 : 
+                       outputFormat === 'rectangular' ? 3 :
+                       3
+    } else {
+      // PreviewTab: 有効レイヤー数ベース
+      const selectedCount = selectedLayers ? Object.values(selectedLayers).filter(Boolean).length : 0
+      displayColumns = outputFormat === 'vertical' ? 1 : 
+                       selectedCount >= 5 ? 3 :
+                       selectedCount >= 2 ? 2 :
+                       1
+    }
   }
 
   // 生成された画像から適切な幅の画像を探す

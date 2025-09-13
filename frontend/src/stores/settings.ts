@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { getCurrentKeyboardLanguage, setCurrentKeyboardLanguage } from '../utils/keyboardConfig'
+import { ref, computed } from 'vue'
+import { getCurrentKeyboardLanguage, setCurrentKeyboardLanguage, getKeycodeForCharacter } from '../utils/keyboardConfig'
 import type { ReplaceRule } from '../utils/types'
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -35,6 +35,9 @@ export const useSettingsStore = defineStore('settings', () => {
     keyboardLanguage.value = languageId
     setCurrentKeyboardLanguage(languageId)
     console.log('✅ Keyboard language set, localStorage:', localStorage.getItem('vial-keyboard-language'))
+    
+    // 言語変更時にバリデーション状態を更新
+    updateReplaceRulesValidation()
   }
   
   // 置換ルールを設定（全体更新）
@@ -111,6 +114,97 @@ export const useSettingsStore = defineStore('settings', () => {
     highlightEnabled.value = !highlightEnabled.value
   }
   
+  // 置換ルールのバリデーション（現在の言語で文字からキーコードを取得できるかチェック）
+  const validateReplaceRule = (rule: ReplaceRule): 'valid' | 'invalid' | 'unknown' => {
+    // 空のルールはunknown
+    if (!rule.from.trim() || !rule.to.trim()) {
+      return 'unknown'
+    }
+    
+    // 現在の言語で文字からキーコードを取得できるかチェック
+    const fromKeycode = getKeycodeForCharacter(rule.from.trim(), keyboardLanguage.value)
+    const toKeycode = getKeycodeForCharacter(rule.to.trim(), keyboardLanguage.value)
+    
+    // 両方のキーコードが取得でき、ルールが有効な場合
+    if (fromKeycode && toKeycode && rule.enabled) {
+      return 'valid'
+    }
+    
+    // その他は無効
+    return 'invalid'
+  }
+  
+  // 置換ルールのバリデーション詳細（無効な理由を含む）
+  const validateReplaceRuleWithReason = (rule: ReplaceRule): { status: 'valid' | 'invalid' | 'unknown', reason?: string } => {
+    // 空のルールはunknown
+    if (!rule.from.trim() || !rule.to.trim()) {
+      return { status: 'unknown' }
+    }
+    
+    // ルールが無効になっている場合
+    if (!rule.enabled) {
+      return { status: 'invalid', reason: 'ルールが無効になっています' }
+    }
+    
+    // 現在の言語で文字からキーコードを取得できるかチェック
+    const fromKeycode = getKeycodeForCharacter(rule.from.trim(), keyboardLanguage.value)
+    const toKeycode = getKeycodeForCharacter(rule.to.trim(), keyboardLanguage.value)
+    
+    // From文字が無効
+    if (!fromKeycode && !toKeycode) {
+      return { status: 'invalid', reason: `"${rule.from}" と "${rule.to}" が現在の言語 (${getLanguageName(keyboardLanguage.value)}) で認識されません` }
+    } else if (!fromKeycode) {
+      return { status: 'invalid', reason: `"${rule.from}" が現在の言語 (${getLanguageName(keyboardLanguage.value)}) で認識されません` }
+    } else if (!toKeycode) {
+      return { status: 'invalid', reason: `"${rule.to}" が現在の言語 (${getLanguageName(keyboardLanguage.value)}) で認識されません` }
+    }
+    
+    // 両方のキーコードが取得できる場合
+    return { status: 'valid' }
+  }
+  
+  // 言語名を取得
+  const getLanguageName = (languageId: string): string => {
+    switch (languageId) {
+      case 'japanese': return 'Japanese'
+      case 'english': return 'English'
+      default: return languageId
+    }
+  }
+  
+  // 全ての置換ルールのバリデーション状態を更新
+  const updateReplaceRulesValidation = () => {
+    replaceRules.value = replaceRules.value.map(rule => ({
+      ...rule,
+      validationStatus: validateReplaceRule(rule)
+    }))
+  }
+  
+  // Display columns計算（Select用：全レイヤー数ベース）
+  const selectDisplayColumns = computed(() => {
+    if (outputFormat.value === 'vertical') {
+      return 1
+    } else if (outputFormat.value === 'rectangular') {
+      return 3  // 6レイヤーを3列表示 (L0,L1,L2 / L3,L4,L5)
+    } else { // separated
+      return 3  // 6レイヤーを3列表示
+    }
+  })
+
+  // Display columns計算（Preview用：選択レイヤー数ベース）
+  const previewDisplayColumns = computed(() => {
+    const selectedCount = Object.values(layerSelection.value).filter(Boolean).length
+    
+    if (outputFormat.value === 'vertical') {
+      return 1
+    } else if (selectedCount >= 5) {
+      return 3  // 5-6レイヤー
+    } else if (selectedCount >= 2) {
+      return 2  // 2-4レイヤー
+    } else {
+      return 1  // 1レイヤー
+    }
+  })
   
   return {
     keyboardLanguage,
@@ -138,7 +232,12 @@ export const useSettingsStore = defineStore('settings', () => {
     toggleHighlight,
     setKeySize,
     setFontSize,
-    setSpacing
+    setSpacing,
+    validateReplaceRule,
+    validateReplaceRuleWithReason,
+    updateReplaceRulesValidation,
+    selectDisplayColumns,
+    previewDisplayColumns
   }
 }, {
   persist: true

@@ -1,5 +1,6 @@
 // VIALデータ統一処理モジュール
-import type { VialConfig, VirtualButton, PhysicalButton, TapDance, Combo, TapDanceInfo } from './types';
+import type { VialConfig, VirtualButton, TapDance } from './types';
+import { PhysicalButton, Combo } from './types';
 import { getCurrentKeyboardLanguage, getKeyMapping } from './keyboardConfig';
 
 /**
@@ -23,8 +24,12 @@ export class VialDataProcessor {
     if (isSpecial) {
       keyText = this.getSpecialKeyText(keycode);
     } else {
-      // 通常のキーは言語設定から取得
-      keyText = keyMapping[keycode] || keycode;
+      // 通常のキーは言語設定から取得（空文字列も有効な値として扱う）
+      if (keycode in keyMapping) {
+        keyText = keyMapping[keycode];
+      } else {
+        keyText = this.parseKeyCodeText(keycode, keyMapping);
+      }
     }
     
     return {
@@ -35,36 +40,24 @@ export class VialDataProcessor {
   }
   
   /**
-   * 特殊キーかどうかを判定
+   * 特殊キーかどうかを判定（レイヤー操作系のみ）
    */
   private static isSpecialKey(keycode: string): boolean {
-    // LT, MO, OSM, TD, Modifier組み合わせなど
-    return keycode.startsWith('LT') || 
+    // TO, MO, LT, OSM のみ（レイヤー操作機能）
+    return keycode.startsWith('TO(') ||
            keycode.startsWith('MO(') ||
-           keycode.startsWith('OSM(') ||
-           keycode.startsWith('TD(') ||
-           keycode.includes('_T(') ||  // LCTL_T, LSFTなど
-           keycode.startsWith('TO(') ||
-           keycode.startsWith('LSFT(') ||
-           keycode.startsWith('LCTL(') ||
-           keycode.startsWith('LALT(') ||
-           keycode.startsWith('LGUI(');
+           keycode.match(/^LT\d+\(/) ||  // LT1(XXX) 形式
+           keycode.startsWith('OSM(');
   }
   
   /**
-   * 特殊キーの表示テキストを生成
+   * 非特殊キーコードのテキスト解析（TD, Modifier組み合わせなど）
    */
-  private static getSpecialKeyText(keycode: string): string {
+  private static parseKeyCodeText(keycode: string, keyMapping: { [key: string]: string }): string {
     // Tap Dance
     if (keycode.startsWith('TD(')) {
       const match = keycode.match(/TD\((\d+)\)/);
       return match ? `TD(${match[1]})` : keycode;
-    }
-    
-    // Layer Tap
-    if (keycode.match(/^LT\d+\(/)) {
-      const match = keycode.match(/^LT(\d+)\(/);
-      return match ? `LT${match[1]}` : keycode;
     }
     
     // Modifier Tap (LSFT, LCTL等)
@@ -73,18 +66,102 @@ export class VialDataProcessor {
       return modMatch ? modMatch[1] : keycode;
     }
     
-    // Shift組み合わせ
+    // Shift組み合わせ (実際のshift文字を表示)
     if (keycode.startsWith('LSFT(')) {
-      const match = keycode.match(/LSFT\(KC_(.+)\)/);
+      const match = keycode.match(/LSFT\((.+)\)/);
       if (match) {
-        const baseKey = match[1];
-        const keyMapping = getKeyMapping(getCurrentKeyboardLanguage().id);
-        const baseText = keyMapping[`KC_${baseKey}`] || baseKey;
-        return `S+${baseText}`;
+        const baseKeycode = match[1];
+        const language = getCurrentKeyboardLanguage();
+        const shiftChar = language.shiftMapping[baseKeycode];
+        
+        if (shiftChar) {
+          return shiftChar;
+        } else {
+          const baseText = keyMapping[baseKeycode] || baseKeycode;
+          return `S+${baseText}`;
+        }
+      }
+    }
+    
+    // 他のModifier組み合わせ
+    const modifierMap: { [key: string]: string } = {
+      'LCTL(': 'C+',
+      'LALT(': 'A+',
+      'LGUI(': 'G+'
+    };
+    
+    for (const [prefix, displayPrefix] of Object.entries(modifierMap)) {
+      if (keycode.startsWith(prefix)) {
+        const match = keycode.match(new RegExp(`${prefix.replace('(', '\\(')}(.+)\\)`));
+        if (match) {
+          const baseKeycode = match[1];
+          const baseText = keyMapping[baseKeycode] || baseKeycode.replace('KC_', '');
+          return `${displayPrefix}${baseText}`;
+        }
       }
     }
     
     // その他のケース
+    return keycode;
+  }
+
+  /**
+   * 特殊キーの表示テキストを生成（TO/MO/LT/OSM専用）
+   */
+  private static getSpecialKeyText(keycode: string): string {
+    // TO - Layer Toggle
+    if (keycode.startsWith('TO(')) {
+      const match = keycode.match(/TO\((\d+)\)/);
+      return match ? `TO(${match[1]})` : keycode;
+    }
+    
+    // MO - Momentary Layer
+    if (keycode.startsWith('MO(')) {
+      const match = keycode.match(/MO\((\d+)\)/);
+      return match ? `MO(${match[1]})` : keycode;
+    }
+    
+    // LT - Layer Tap (LT1(XXX) 形式)
+    if (keycode.match(/^LT\d+\(/)) {
+      const match = keycode.match(/^LT(\d+)\(/);
+      return match ? `LT${match[1]}` : keycode;
+    }
+    
+    // OSM - One Shot Modifier
+    if (keycode.startsWith('OSM(')) {
+      const match = keycode.match(/OSM\((.+)\)/);
+      if (match) {
+        const modifiers = match[1];
+        
+        // 左側と右側のモディファイアを分けて処理（元の実装に基づく）
+        const leftMods = [];
+        const rightMods = [];
+        
+        if (modifiers.includes('MOD_LCTL')) leftMods.push('C');
+        if (modifiers.includes('MOD_LSFT')) leftMods.push('S');
+        if (modifiers.includes('MOD_LALT')) leftMods.push('A');
+        if (modifiers.includes('MOD_LGUI')) leftMods.push('G');
+        
+        if (modifiers.includes('MOD_RCTL')) rightMods.push('RC');
+        if (modifiers.includes('MOD_RSFT')) rightMods.push('RS');
+        if (modifiers.includes('MOD_RALT')) rightMods.push('RA');
+        if (modifiers.includes('MOD_RGUI')) rightMods.push('RG');
+        
+        // 左側のモディファイアがある場合は L プレフィックス付き
+        let result = '';
+        if (leftMods.length > 0) {
+          result += 'L' + leftMods.join('');
+        }
+        if (rightMods.length > 0) {
+          result += rightMods.join('');
+        }
+        
+        return result ? `OSM(${result})` : `OSM(${modifiers})`;
+      }
+      return keycode;
+    }
+    
+    // 予期しないケース（この関数はSpecialキーのみで呼ばれるはず）
     return keycode;
   }
   
@@ -99,15 +176,15 @@ export class VialDataProcessor {
         const tdIndex = parseInt(match[1]);
         const tapDance = this.getTapDanceByIndex(tdIndex, config);
         if (tapDance) {
-          return {
-            rawKeyCode: rawKeycode,
-            main: tapDance.tap,
-            sub: {
+          return new PhysicalButton(
+            rawKeycode,
+            tapDance.tap,
+            {
               ...(tapDance.hold && { hold: tapDance.hold }),
               ...(tapDance.double && { double: tapDance.double }),
               ...(tapDance.taphold && { taphold: tapDance.taphold })
             }
-          };
+          );
         }
       }
     }
@@ -119,13 +196,13 @@ export class VialDataProcessor {
         const layerNum = match[1];
         const baseKey = `KC_${match[2]}`;
         
-        return {
-          rawKeyCode: rawKeycode,
-          main: this.createVirtualButton(baseKey),
-          sub: {
+        return new PhysicalButton(
+          rawKeycode,
+          this.createVirtualButton(baseKey),
+          {
             hold: this.createVirtualButton(`LT${layerNum}`)
           }
-        };
+        );
       }
     }
     
@@ -136,22 +213,21 @@ export class VialDataProcessor {
         const modifier = match[1];
         const baseKey = `KC_${match[2]}`;
         
-        return {
-          rawKeyCode: rawKeycode,
-          main: this.createVirtualButton(baseKey),
-          sub: {
+        return new PhysicalButton(
+          rawKeycode,
+          this.createVirtualButton(baseKey),
+          {
             hold: this.createVirtualButton(modifier)
           }
-        };
+        );
       }
     }
     
     // 単純なキー (KC_A, LSFT(KC_A) など)
-    return {
-      rawKeyCode: rawKeycode,
-      main: this.createVirtualButton(rawKeycode),
-      sub: undefined
-    };
+    return new PhysicalButton(
+      rawKeycode,
+      this.createVirtualButton(rawKeycode)
+    );
   }
   
   /**
@@ -224,13 +300,13 @@ export class VialDataProcessor {
       const keys = validKeys.map(key => this.createVirtualButton(key));
       const actionButton = this.createVirtualButton(action);
       
-      combos.push({
-        index: i,
-        rawKeys: validKeys,
-        keys: keys,
-        action: actionButton,
-        description: `${keys.map(k => k.keyText).join(' + ')} → ${actionButton.keyText}`
-      });
+      combos.push(new Combo(
+        i,
+        validKeys,
+        keys,
+        actionButton,
+        `${keys.map(k => k.keyText).join(' + ')} → ${actionButton.keyText}`
+      ));
     }
     
     return combos;
@@ -239,11 +315,17 @@ export class VialDataProcessor {
   /**
    * レイヤーの物理ボタンマップを取得
    */
-  static getPhysicalButtons(config: VialConfig): PhysicalButton[][] {
-    if (!config.layers) return [];
+  static getPhysicalButtons(config: VialConfig): PhysicalButton[][][] {
+    if (!config.layout) return [];
     
-    return config.layers.map(layer => 
-      layer.map(keycode => this.createPhysicalButton(keycode, config))
-    );
+    return config.layout.map(layer => {
+      const layerButtons: PhysicalButton[][] = [];
+      for (const [rowIndex, row] of Object.entries(layer)) {
+        if (Array.isArray(row)) {
+          layerButtons[parseInt(rowIndex)] = row.map((keycode: any) => this.createPhysicalButton(keycode, config));
+        }
+      }
+      return layerButtons;
+    });
   }
 }

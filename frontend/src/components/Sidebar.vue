@@ -161,7 +161,7 @@
             <button 
               class="generate-btn-full"
               :disabled="selectedFile === 'sample'"
-              @click="handleGenerate"
+              @click="imagesStore.generateFinalOutputImages"
             >
               Generate
             </button>
@@ -184,10 +184,7 @@
             <!-- Replace設定 -->
             <div class="settings-group">
               <h4 class="settings-group-title">Replace Rules</h4>
-              <ReplaceTab 
-                :replace-rules="settingsStore.replaceRules"
-                @rules-changed="handleReplaceRulesChanged"
-              />
+              <ReplaceTab />
             </div>
           </div>
         </div>
@@ -197,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import FileUpload from './FileUpload.vue'
 import FileHistory from './FileHistory.vue'
 import KeyboardTab from './KeyboardTab.vue'
@@ -282,13 +279,7 @@ const cycleDarkMode = (direction: number) => {
   debouncedGeneratePreview()
 }
 
-const handleGenerate = async () => {
-  await imagesStore.generateFinalOutputImages()
-}
 
-const handleReplaceRulesChanged = (rules: ReplaceRule[]) => {
-  settingsStore.setReplaceRules(rules)
-}
 
 const downloadSelectedFile = async () => {
   if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {

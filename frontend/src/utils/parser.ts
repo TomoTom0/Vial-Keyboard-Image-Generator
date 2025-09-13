@@ -1,5 +1,6 @@
 // パーサーモジュール（ブラウザ対応版）
-import type { VialConfig, KeyLabel, ComboInfo, VirtualButton, PhysicalButton } from './types';
+import type { VialConfig, KeyLabel, ComboInfo } from './types';
+import { PhysicalButton } from './types';
 import { getCurrentKeyboardLanguage, getKeyMapping } from './keyboardConfig';
 import { VialDataProcessor } from './vialDataProcessor';
 
@@ -45,23 +46,27 @@ export class Parser {
             return null;
         }
 
+        // VialDataProcessorを使用して構造体から直接取得
+        const tapDance = VialDataProcessor.getTapDances(config)[index];
+        if (!tapDance) return null;
+
         const result: { tap: string; hold?: string; doubleTap?: string; tapHold?: string } = {
-            tap: Parser.keycodeToLabel(td[0], config).mainText
+            tap: tapDance.tap.keyText
         };
 
-        // hold動作（2番目の要素）
-        if (td.length > 1 && td[1] && td[1] !== 'KC_NO') {
-            result.hold = Parser.keycodeToLabel(td[1], config).mainText;
+        // hold動作
+        if (tapDance.hold) {
+            result.hold = tapDance.hold.keyText;
         }
 
-        // double tap動作（3番目の要素）
-        if (td.length > 2 && td[2] && td[2] !== 'KC_NO') {
-            result.doubleTap = Parser.keycodeToLabel(td[2], config).mainText;
+        // double tap動作
+        if (tapDance.double) {
+            result.doubleTap = tapDance.double.keyText;
         }
 
-        // tap+hold動作（4番目の要素）
-        if (td.length > 3 && td[3] && td[3] !== 'KC_NO') {
-            result.tapHold = Parser.keycodeToLabel(td[3], config).mainText;
+        // tap+hold動作
+        if (tapDance.taphold) {
+            result.tapHold = tapDance.taphold.keyText;
         }
 
         return result;
@@ -73,11 +78,10 @@ export class Parser {
         
         // -1 や数値、空の場合は空キーとして処理
         if (keycodeStr === -1 || keycodeStr === '' || keycodeStr === 'KC_NO') {
-            return {
-                rawKeyCode: 'KC_NO',
-                main: { keyCode: 'KC_NO', keyText: '', isSpecial: false },
-                sub: undefined
-            };
+            return new PhysicalButton(
+                'KC_NO',
+                { keyCode: 'KC_NO', keyText: '', isSpecial: false }
+            );
         }
         
         return VialDataProcessor.createPhysicalButton(keyStr, config);
@@ -284,56 +288,19 @@ export class Parser {
         }
     }
 
-    // Combo情報を解析
+    // Combo情報を解析（VialDataProcessorを使用）
     static parseComboInfo(config: VialConfig): ComboInfo[] {
-        if (!config.combo) return [];
-
-        const combos: ComboInfo[] = [];
+        // VialDataProcessorから構造体を取得し、ComboInfoに変換
+        const combos = VialDataProcessor.getCombos(config);
         
-        for (let i = 0; i < config.combo.length; i++) {
-            const combo = config.combo[i];
-            if (combo.length < 5) continue;
-
-            // KC_NOでない有効なキーを抽出
-            const validKeys = combo.slice(0, 4).filter(key => key !== 'KC_NO' && key !== '');
-            if (validKeys.length === 0) continue;
-
-            const action = combo[4];
-            if (!action || action === 'KC_NO') continue;
-
-            // キー名を読みやすい形式に変換＆サブテキストも取得
-            const keyLabels: string[] = [];
-            const keySubTexts: (string[] | undefined)[] = [];
-            
-            validKeys.forEach(key => {
-                const label = Parser.keycodeToLabel(key, config);
-                keyLabels.push(label.mainText || key);
-                keySubTexts.push(label.subTexts);
-            });
-
-            // キーコードを文字列として保持（複合キーコードも処理）
-            const validKeycodes = validKeys.map(key => {
-                if (typeof key === 'string') {
-                    return key; // 文字列のキーコードをそのまま使用
-                }
-                return String(key);
-            });
-
-            // アクション名を読みやすい形式に変換
-            const actionLabel = Parser.keycodeToLabel(action, config);
-
-            
-            combos.push({
-                keys: keyLabels,
-                keycodes: validKeycodes,
-                keySubTexts: keySubTexts, // 各キーのサブテキスト
-                action: actionLabel.mainText || action,
-                description: `${keyLabels.join(' + ')} → ${actionLabel.mainText || action}`,
-                actionSubTexts: actionLabel.subTexts, // アクションのサブテキストも保存
-                index: i // 元のインデックス番号を保存
-            });
-        }
-
-        return combos;
+        return combos.map(combo => ({
+            keys: combo.keys.map(k => k.keyText),
+            keycodes: combo.rawKeys,
+            keySubTexts: combo.keys.map(k => k.isSpecial ? [k.keyText] : undefined),
+            action: combo.action.keyText,
+            description: combo.description,
+            actionSubTexts: combo.action.isSpecial ? [combo.action.keyText] : undefined,
+            index: combo.index
+        }));
     }
 }
