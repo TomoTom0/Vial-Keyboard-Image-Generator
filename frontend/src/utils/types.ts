@@ -446,7 +446,7 @@ export class ParsedVial {
     return canvases;
   }
   
-  generateComboListCanvas(options: RenderOptions, qualityScale: number): HTMLCanvasElement[] {
+  async generateComboListCanvas(options: RenderOptions, qualityScale: number): Promise<HTMLCanvasElement[]> {
     const canvases: HTMLCanvasElement[] = [];
     
     // KEYBOARD_CONSTANTSを使用した統一計算式
@@ -517,14 +517,15 @@ export class ParsedVial {
       
       // コンボリスト（グリッドレイアウト）
       const columnWidth = (width - 30) / columnsCount;
-      this.combos.forEach((combo, index) => {
+      for (let index = 0; index < this.combos.length; index++) {
+        const combo = this.combos[index];
         const row = Math.floor(index / columnsCount);
         const col = index % columnsCount;
         const x = 15 + col * columnWidth;
         const y = headerHeight + 10 + row * lineHeight;
         
-        combo.draw(ctx, x, y, columnWidth - 10, KEYBOARD_CONSTANTS.keyHeight, options, qualityScale);
-      });
+        await combo.draw(ctx, x, y, columnWidth - 10, KEYBOARD_CONSTANTS.keyHeight, options, qualityScale);
+      }
       
       canvases.push(canvas);
     }

@@ -72,6 +72,7 @@ const imagesStore = useImagesStore()
 
 // Store から取得するcomputed値（計算が必要なもののみ）
 const generatedImages = computed(() => imagesStore.images)
+const outputFormat = computed(() => settingsStore.outputFormat)
 
 // Available layers
 const availableLayers = LAYERS.AVAILABLE

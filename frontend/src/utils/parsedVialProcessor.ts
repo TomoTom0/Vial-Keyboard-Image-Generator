@@ -13,8 +13,6 @@ export class ParsedVialProcessor {
    * VIALConfigからParsedVialを生成
    */
   static parseVialConfig(config: VialConfig, keyboardName?: string): ParsedVial {
-    console.log('🚨 ParsedVialProcessor: parseVialConfig called for:', keyboardName, '- Call stack:', new Error().stack?.split('\n').slice(1, 4).join(' | '));
-    console.log('🔧 config object keys:', Object.keys(config));
     
     // VialDataProcessorにconfigを設定
     VialDataProcessor.setConfig(config);
@@ -22,12 +20,9 @@ export class ParsedVialProcessor {
     // TapDanceとCombo情報を事前取得
     const tapDances = VialDataProcessor.getTapDances(config);
     const combos = VialDataProcessor.getCombos(config);
-    console.log('🔧 Generated tapDances:', tapDances.length);
-    console.log('🔧 Generated combos:', combos.length);
     
     // レイヤー情報を解析
     const layers = ParsedVialProcessor.parseLayers(config);
-    console.log('🔧 Generated layers:', layers.length);
     
     return new ParsedVial(
       config,
@@ -46,18 +41,11 @@ export class ParsedVialProcessor {
    * レイヤー情報を解析して配置・描画座標を計算
    */
   private static parseLayers(config: VialConfig): ParsedLayer[] {
-    console.log('🔧 ParsedVialProcessor: parseLayers called')
-    console.log('🔧 config.layout exists:', !!config.layout)
-    console.log('🔧 config.layout length:', config.layout?.length)
-    console.log('🔧 config.layout type:', typeof config.layout)
-    console.log('🔧 config.layout isArray:', Array.isArray(config.layout))
     
     if (!config.layout) return [];
     
     const result = config.layout.map((layer, layerIndex) => {
-      console.log(`🔧 Processing layer ${layerIndex}, layer type:`, typeof layer, 'isArray:', Array.isArray(layer))
       const buttons = ParsedVialProcessor.parseLayerButtons(layer, config);
-      console.log(`🔧 Layer ${layerIndex} generated ${buttons.length} buttons`)
       
       return new ParsedLayer(
         layerIndex,
@@ -67,7 +55,6 @@ export class ParsedVialProcessor {
       );
     });
     
-    console.log('🔧 ParsedVialProcessor: parseLayers returning', result.length, 'layers')
     return result;
   }
   
@@ -94,7 +81,6 @@ export class ParsedVialProcessor {
         // 配置位置の取得
         const layoutPosition = keyPositions[rowIndex]?.[colIndex];
         if (!layoutPosition) {
-          console.log(`🔧 No layout position for row ${rowIndex}, col ${colIndex}`);
           continue;
         }
         

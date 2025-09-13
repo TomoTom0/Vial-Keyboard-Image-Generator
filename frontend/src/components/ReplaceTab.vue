@@ -190,7 +190,6 @@ const hasUnsavedChanges = (index: number): boolean => {
   if (!savedRule) {
     // 新しいルールで内容がある場合（両方に値が入っている場合のみ）
     const hasChanges = localRule.from.trim() !== '' && localRule.to.trim() !== ''
-    console.log(`[Debug] New rule ${index}: from="${localRule.from}", to="${localRule.to}", hasChanges=${hasChanges}`)
     return hasChanges
   }
   
@@ -200,7 +199,6 @@ const hasUnsavedChanges = (index: number): boolean => {
     localRule.from !== savedRule.from ||
     localRule.to !== savedRule.to
   )
-  console.log(`[Debug] Existing rule ${index}: hasChanges=${hasChanges}, enabled=${localRule.enabled}/${savedRule.enabled}, from="${localRule.from}"/"${savedRule.from}", to="${localRule.to}"/"${savedRule.to}"`)
   return hasChanges
 }
 

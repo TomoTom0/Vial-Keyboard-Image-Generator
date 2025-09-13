@@ -34,10 +34,7 @@ export const useUiStore = defineStore('ui', () => {
       const imagesStore = useImagesStore()
       const vialStore = useVialStore()
       
-      await imagesStore.generatePreviewImages(
-        vialStore.selectedVialId || 'sample',
-        vialStore.currentVial
-      )
+      await imagesStore.generatePreviewImages()
     }, 100)
   }
   
@@ -145,6 +142,11 @@ export const useUiStore = defineStore('ui', () => {
     return addToast({ type: 'info', message, timeout })
   }
   
+  // アクティブタブを設定
+  const setActiveTab = (tab: 'select' | 'preview' | 'output') => {
+    activeTab.value = tab
+  }
+  
   return {
     isGenerating,
     isGenerated,
@@ -154,6 +156,7 @@ export const useUiStore = defineStore('ui', () => {
     sidebarCollapsed,
     toasts,
     error,
+    setActiveTab,
     toggleSidebarCollapsed,
     debouncedGeneratePreview,
     initializeHashSync,

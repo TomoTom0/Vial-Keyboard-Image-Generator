@@ -169,14 +169,8 @@ export const useImagesStore = defineStore('images', () => {
     const parsedVial = vialStore.currentParsedVial
     const fileId = vialStore.selectedVialId
     
-    console.log('🎯 generatePreviewImages called')
-    console.log('🔍 selectedVial:', selectedVial)
-    console.log('🔍 parsedVial:', parsedVial)
-    console.log('🔍 fileId:', fileId)
-    console.log('🔧 Replace Rules set:', settingsStore.replaceRules)
     
     if (!fileId) {
-      console.log('🚫 No file selected, skipping image generation')
       return
     }
     
@@ -186,11 +180,9 @@ export const useImagesStore = defineStore('images', () => {
       
       if (parsedVial) {
         // ParsedVialが利用可能な場合（新方式・常にこのパスを使用）
-        console.log('🚀 Using ParsedVial-based generation (high performance)')
         await generateVialImagesFromParsed(parsedVial, fileId)
       } else if (fileId === 'sample') {
         // サンプルファイルの場合のみ従来処理（ParsedVialを作成してから新方式を使用）
-        console.log('📁 Sample file: creating ParsedVial first, then using new generation')
         try {
           const response = await fetch('/data/yivu40-250907.vil')
           if (!response.ok) {
@@ -211,7 +203,6 @@ export const useImagesStore = defineStore('images', () => {
         }
       } else if (selectedVial) {
         // ParsedVialがない場合：その場で作成してから新方式を使用
-        console.log('🔄 No ParsedVial available - creating ParsedVial on-the-fly and using new generation')
         try {
           const fileContent = decodeVialContent(selectedVial.content)
           const vialConfig = JSON.parse(fileContent)
@@ -227,7 +218,6 @@ export const useImagesStore = defineStore('images', () => {
           throw error
         }
       } else {
-        console.log('❌ No VIL file data available')
         throw new Error('VILファイルデータが利用できません。')
       }
       
@@ -245,10 +235,10 @@ export const useImagesStore = defineStore('images', () => {
       const settingsStore = useSettingsStore()
       const uiStore = useUiStore()
       
-      console.log('🚀 ImagesStore: generateVialImagesFromParsed called for:', fileName)
-      console.log('📄 ParsedVial layers:', parsedVial.layers.length)
-      console.log('📄 ParsedVial combos:', parsedVial.combos.length)
-      console.log('📄 ParsedVial tapDances:', parsedVial.tapDances.length)
+      if (!parsedVial || !parsedVial.layers || parsedVial.layers.length === 0) {
+        return
+      }
+      
       
       // ParsedVialのメソッドを直接使用
       const renderOptions = {
@@ -279,7 +269,6 @@ export const useImagesStore = defineStore('images', () => {
       
       const result = { canvases, layerNumbers }
       
-      console.log('🎯 Generated components directly from ParsedVial:', result.canvases.length, 'canvases')
       
       // 二重バッファリング: 次世代配列をクリア
       if (quality === 'low') {
@@ -290,9 +279,11 @@ export const useImagesStore = defineStore('images', () => {
       }
       
       // レイヤー画像を次世代配列に追加
+      console.log(`Generated ${result.canvases.length} layer canvases, quality=${quality}`)
       result.canvases.forEach((canvas, index) => {
         const layerIndex = result.layerNumbers[index]
         const dataURL = canvas.toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
+        console.log(`Adding layer ${layerIndex} image: ${dataURL.substring(0, 50)}...`)
         if (quality === 'low') {
           addImageToNext({
             id: `parsed-layer-${layerIndex}-${quality}`,
@@ -322,21 +313,10 @@ export const useImagesStore = defineStore('images', () => {
         // ヘッダー画像を生成（1x, 2x, 3x） - ファイル名をラベルとして渡す
         const vialStore = useVialStore();
         const label = settingsStore.outputLabel || vialStore.selectedFileName || '';
-        console.log('🏷️ Header label info:', {
-          outputLabel: settingsStore.outputLabel,
-          selectedFileName: vialStore.selectedFileName,
-          finalLabel: label
-        });
         const headerCanvases = parsedVial.generateLayoutHeaderCanvas(renderOptions, qualityScale, label)
         
         // コンボリスト画像を生成（1x, 2x, 3x）
-        console.log('🎯 Combo debug info:', {
-          combosCount: parsedVial.combos.length,
-          combos: parsedVial.combos,
-          showCombos: settingsStore.showCombos
-        });
-        const comboCanvases = parsedVial.generateComboListCanvas(renderOptions, qualityScale)
-        console.log('🎯 Generated combo canvases:', comboCanvases.length)
+        const comboCanvases = await parsedVial.generateComboListCanvas(renderOptions, qualityScale)
         
         // 個別コンボ画像を生成（1x, 2x, 3x）
         const comboImages: HTMLCanvasElement[][] = []
@@ -350,11 +330,6 @@ export const useImagesStore = defineStore('images', () => {
           comboListImages: comboCanvases,
           comboImages: comboImages.flat()
         }
-        console.log('🎯 Additional components:', {
-          headerImagesCount: headerCanvases.length,
-          comboListImagesCount: comboCanvases.length,
-          comboImagesCount: comboImages.flat().length
-        })
         
         // ヘッダー画像を追加（1x, 2x, 3x幅）
         if (settingsStore.showHeader) {
@@ -380,11 +355,6 @@ export const useImagesStore = defineStore('images', () => {
         }
         
         // コンボリスト画像を追加（1x, 2x, 3x幅）
-        console.log('🎯 Combo list check:', {
-          showCombos: settingsStore.showCombos,
-          hasComboListImages: !!additionalComponents.comboListImages[0],
-          comboListImagesLength: additionalComponents.comboListImages.length
-        });
         if (settingsStore.showCombos) {
           additionalComponents.comboListImages.forEach((comboCanvas, index) => {
             const width = index + 1
@@ -406,37 +376,18 @@ export const useImagesStore = defineStore('images', () => {
             }
           })
           
-          // 個別コンボ画像を追加（各コンボの1x, 2x, 3x）
-          additionalComponents.comboImages.forEach((comboCanvas, index) => {
-            const comboIndex = Math.floor(index / 3)
-            const width = (index % 3) + 1
-            const comboURL = comboCanvas.toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
-            if (quality === 'low') {
-              addImageToNext({
-                id: `parsed-combo-${comboIndex}-${width}x-${quality}`,
-                layer: -2,
-                url: comboURL,
-                type: 'combo'
-              })
-            } else {
-              addImage({
-                id: `parsed-combo-${comboIndex}-${width}x-${quality}`,
-                layer: -2,
-                url: comboURL,
-                type: 'combo'
-              })
-            }
-          })
+          // 個別コンボ画像は不要（コンボリスト画像のみで十分）
         }
       }
       
       // 低品質画像（プレビュー）の場合、一括切り替え
       if (quality === 'low') {
+        console.log(`Swapping to next images, previewImages before: ${previewImages.value.length}`)
+        console.log(`nextPreviewImages before swap:`, nextPreviewImages.value.map(img => ({ id: img.id, layer: img.layer, type: img.type })))
         swapToNextImages()
-        console.log('✅ Double-buffered image swap completed, total images:', previewImages.value.length)
+        console.log(`Swapping completed, previewImages after: ${previewImages.value.length}`)
       }
       
-      console.log('✅ ParsedVial image generation completed, total images:', images.value.length)
       
     } catch (error) {
       console.error('ParsedVial image generation failed:', error)
@@ -491,9 +442,12 @@ export const useImagesStore = defineStore('images', () => {
   
   // 画像URL取得メソッド
   const getLayerImageUrl = (layer: number): string => {
-    const layerImage = images.value.find(img => 
+    const layerImage = previewImages.value.find(img => 
       img.layer === layer && img.type === 'layer'
     )
+    if (!layerImage) {
+      console.log(`Layer ${layer} not found. previewImages:`, previewImages.value.map(img => ({ id: img.id, layer: img.layer, type: img.type })))
+    }
     return layerImage ? (layerImage.dataUrl || layerImage.url || '') : ''
   }
   
@@ -505,21 +459,15 @@ export const useImagesStore = defineStore('images', () => {
       ? settingsStore.selectDisplayColumns
       : settingsStore.previewDisplayColumns
     
-    console.log('🔍 Header image selection:')
-    console.log('   Display columns:', displayColumns)
-    console.log('   Available header images:', 
-      images.value.filter(img => img.type === 'header').map(img => img.id)
-    )
     
-    const headerImage = images.value.find(img => 
+    const headerImage = previewImages.value.find(img => 
       img.type === 'header' && img.id.includes(`header-${displayColumns}x`)
     )
-    const fallback = images.value.find(img => 
+    const fallback = previewImages.value.find(img => 
       img.type === 'header' && img.id.includes('header-1x')
     )
     const result = headerImage || fallback
     
-    console.log('   Selected header:', result?.id || 'none')
     return result ? (result.dataUrl || result.url || '') : ''
   }
   
@@ -530,19 +478,14 @@ export const useImagesStore = defineStore('images', () => {
       ? settingsStore.selectDisplayColumns
       : settingsStore.previewDisplayColumns
     
-    console.log('🔍 Combo image selection:')
-    console.log('   Display columns:', displayColumns)
-    console.log('   Available combo images:', 
-      images.value.filter(img => img.type === 'combo').map(img => img.id)
-    )
     
-    const comboImage = images.value.find(img => 
+    const comboImage = previewImages.value.find(img => 
       img.type === 'combo' && (
         img.id.includes(`combo-${displayColumns}x`) || 
         img.id.includes(`parsed-combo-${displayColumns}x`)  // 新しいParsedVial形式
       )
     )
-    const fallback = images.value.find(img => 
+    const fallback = previewImages.value.find(img => 
       img.type === 'combo' && (
         img.id.includes('combo-1x') || 
         img.id.includes('parsed-combo-1x')  // 新しいParsedVial形式
@@ -550,7 +493,6 @@ export const useImagesStore = defineStore('images', () => {
     )
     const result = comboImage || fallback
     
-    console.log('   Selected combo:', result?.id || 'none')
     return result ? (result.dataUrl || result.url || '') : ''
   }
 
@@ -587,7 +529,6 @@ export const useImagesStore = defineStore('images', () => {
       
       // メタデータを埋め込み
       const embeddedDataUrl = embedMetadataToPng(originalDataUrl, metadata)
-      console.log('📋 Metadata embedded with VIL config length:', vilConfigData.length)
       return embeddedDataUrl
     } catch (error) {
       console.warn('Failed to embed metadata during generation:', error)
@@ -1046,11 +987,9 @@ export const useImagesStore = defineStore('images', () => {
       
       if (parsedVial) {
         // ParsedVialが利用可能な場合（新方式・高性能・常にこのパスを使用）
-        console.log('🚀 Using ParsedVial-based final generation (ultra high performance)')
         await generateFinalOutputFromParsed(parsedVial)
       } else if (vialStore.selectedVialId === 'sample') {
         // サンプルファイルの場合のみ、ParsedVialを作成してから新方式を使用
-        console.log('📁 Sample file: creating ParsedVial for final output generation')
         try {
           const response = await fetch('/data/yivu40-250907.vil')
           if (!response.ok) {
@@ -1071,7 +1010,6 @@ export const useImagesStore = defineStore('images', () => {
         }
       } else if (vialStore.currentVial) {
         // ParsedVialがない場合：その場で作成してから新方式を使用
-        console.log('🔄 No ParsedVial available for final output - creating ParsedVial on-the-fly')
         try {
           const fileContent = decodeVialContent(vialStore.currentVial.content)
           const vialConfig = JSON.parse(fileContent)
@@ -1087,7 +1025,6 @@ export const useImagesStore = defineStore('images', () => {
           throw error
         }
       } else {
-        console.log('❌ No VIL file data available for final output')
         throw new Error('VILファイルデータが利用できません。')
       }
       
@@ -1109,7 +1046,6 @@ export const useImagesStore = defineStore('images', () => {
     const vialStore = useVialStore()
     
     try {
-      console.log('🚀 generateFinalOutputFromParsed: Using ParsedVial with', parsedVial.layers.length, 'layers')
     
     // 選択されたレイヤーのみ処理
     const selectedLayerIndices = Object.entries(settingsStore.layerSelection)
@@ -1124,7 +1060,8 @@ export const useImagesStore = defineStore('images', () => {
       showComboMarkers: settingsStore.highlightEnabled,
       showTextColors: settingsStore.highlightEnabled,
       showComboInfo: settingsStore.showCombos,
-      changeKeyColors: settingsStore.highlightEnabled
+      changeKeyColors: settingsStore.highlightEnabled,
+      changeEmptyKeyColors: true  // 空白ボタンの背景色は常に変更
     }
     
     const qualityScale = 1.0 // 高品質固定
@@ -1143,7 +1080,6 @@ export const useImagesStore = defineStore('images', () => {
     
     const selectedCanvases = result.canvases
     
-    console.log('🎯 Generated', selectedCanvases.length, 'selected canvases from ParsedVial')
     
     const finalOutputImages: GeneratedImage[] = []
     
@@ -1181,13 +1117,16 @@ export const useImagesStore = defineStore('images', () => {
           const vialStore = useVialStore();
           const label = settingsStore.outputLabel || vialStore.selectedFileName || '';
           const headerCanvases = parsedVial.generateLayoutHeaderCanvas(renderOptions, qualityScale, label)
-          headerCanvas = headerCanvases[displayColumns - 1] || null // 1x, 2x, 3xのインデックス調整
+          // displayColumnsの値に基づいて適切なインデックスを選択、無効な場合は最初のキャンバスを使用
+          const headerIndex = Math.min(Math.max(displayColumns - 1, 0), headerCanvases.length - 1)
+          headerCanvas = headerCanvases[headerIndex] || headerCanvases[0] || null
         }
         
         if (settingsStore.showCombos) {
-          const comboCanvases = parsedVial.generateComboListCanvas(renderOptions, qualityScale)
-          // ヘッダー情報と同様に、displayColumnsをそのまま使用
-          comboCanvas = comboCanvases[displayColumns - 1] || null // 1x, 2x, 3xのインデックス調整
+          const comboCanvases = await parsedVial.generateComboListCanvas(renderOptions, qualityScale)
+          // displayColumnsの値に基づいて適切なインデックスを選択、無効な場合は最初のキャンバスを使用
+          const comboIndex = Math.min(Math.max(displayColumns - 1, 0), comboCanvases.length - 1)
+          comboCanvas = comboCanvases[comboIndex] || comboCanvases[0] || null
         }
       }
       

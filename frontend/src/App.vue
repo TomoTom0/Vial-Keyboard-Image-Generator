@@ -19,18 +19,6 @@ const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
 const imagesStore = useImagesStore()
 
-// 現在の言語表示を取得
-const getCurrentLanguageDisplay = (): string => {
-  const language = settingsStore.keyboardLanguage
-  switch (language) {
-    case 'japanese':
-      return 'Japanese'
-    case 'english':
-      return 'English'
-    default:
-      return 'Japanese'
-  }
-}
 
 
 
@@ -65,17 +53,16 @@ watch(() => vialStore.selectedVialId, (newId) => {
   }
 })
 
-// 高度な設定の変更をlocalStorageに保存し、画像を再生成
-watch(() => settingsStore.outputFormat, () => {
-  uiStore.debouncedGeneratePreview()
-})
 
 
 
 
-onMounted(() => {
+onMounted(async () => {
   // UI Store のhash同期を初期化
   uiStore.initializeHashSync()
+  
+  // 言語情報を読み込み
+  await settingsStore.loadLanguageInfos()
   
   // 設定ロード後に適切な画像を生成
   nextTick(() => {
@@ -95,8 +82,8 @@ onUnmounted(() => {
     <!-- ページヘッダー -->
     <header class="page-header" :class="{ 'sample-mode': !vialStore.selectedVialId || vialStore.selectedVialId === 'sample' }">
       <div class="header-filename">
-        <div class="filename-text">{{ vialStore.selectedFileName || 'sample' }}</div>
-        <div class="language-text">{{ getCurrentLanguageDisplay() }}</div>
+        <span class="language-abbreviation">{{ settingsStore.currentLanguageAbbreviation }}</span>
+        <span class="filename-text">{{ vialStore.selectedFileName || 'sample' }}</span>
       </div>
       <h1 class="page-title">YTomo Vial Keyboard Image Generator</h1>
       <div class="header-spacer"></div>
@@ -126,14 +113,14 @@ onUnmounted(() => {
             <button 
               class="workspace-tab-btn" 
               :class="{ active: uiStore.activeTab === 'select' }"
-              @click="uiStore.activeTab = 'select'"
+              @click="uiStore.setActiveTab('select')"
             >
               Select
             </button>
             <button 
               class="workspace-tab-btn" 
               :class="{ active: uiStore.activeTab === 'preview' }"
-              @click="uiStore.activeTab = 'preview'"
+              @click="uiStore.setActiveTab('preview')"
             >
               Preview
             </button>
@@ -220,21 +207,25 @@ onUnmounted(() => {
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   min-width: 60px;
-  text-align: center;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 8px;
+}
+
+.language-abbreviation {
+  font-weight: 700;
+  font-size: 14px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .filename-text {
   font-weight: 600;
   font-size: 16px;
-}
-
-.language-text {
-  font-weight: 400;
-  font-size: 11px;
-  opacity: 0.8;
+  flex: 1;
 }
 
 .page-title {

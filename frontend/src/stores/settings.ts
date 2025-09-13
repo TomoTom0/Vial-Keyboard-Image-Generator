@@ -1,11 +1,18 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { getCurrentKeyboardLanguage, setCurrentKeyboardLanguage, getKeycodeForCharacter } from '../utils/keyboardConfig'
 import type { ReplaceRule } from '../utils/types'
+
+interface LanguageInfo {
+  language: string
+  abbreviation: string
+  display_name: string
+}
 
 export const useSettingsStore = defineStore('settings', () => {
   const keyboardLanguage = ref(getCurrentKeyboardLanguage().id)
   const replaceRules = ref<ReplaceRule[]>([])
+  const languageInfos = ref<LanguageInfo[]>([])
   const outputFormat = ref<'separated' | 'vertical' | 'rectangular'>('separated')
   const showLabels = ref(true)
   const enableDarkMode = ref(false)
@@ -149,6 +156,41 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
   
+  // TSVファイルから言語情報を読み込み
+  const loadLanguageInfos = async () => {
+    try {
+      const response = await fetch('/data/languages.tsv')
+      if (!response.ok) {
+        throw new Error(`Failed to load languages.tsv: ${response.status}`)
+      }
+      const text = await response.text()
+      const lines = text.trim().split('\n')
+      const headers = lines[0].split('\t')
+      
+      languageInfos.value = lines.slice(1).map(line => {
+        const values = line.split('\t')
+        return {
+          language: values[0] || '',
+          abbreviation: values[1] || '',
+          display_name: values[2] || ''
+        }
+      })
+    } catch (error) {
+      console.error('Failed to load language infos:', error)
+      // フォールバック
+      languageInfos.value = [
+        { language: 'japanese', abbreviation: 'JA', display_name: 'Japanese' },
+        { language: 'english', abbreviation: 'EN', display_name: 'English' }
+      ]
+    }
+  }
+  
+  // 現在の言語の略称を取得
+  const currentLanguageAbbreviation = computed(() => {
+    const info = languageInfos.value.find(info => info.language === keyboardLanguage.value)
+    return info?.abbreviation || 'JA'
+  })
+  
   // 単一フィールドのバリデーション（FromまたはTo個別用）
   const validateSingleField = (text: string): 'valid' | 'invalid' | 'none' => {
     if (!text.trim()) {
@@ -195,6 +237,15 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   })
   
+  // outputFormat変更時に画像を再生成
+  watch(() => outputFormat.value, async (newFormat, oldFormat) => {
+    if (oldFormat !== undefined) { // 初期化時は実行しない
+      const { useImagesStore } = await import('./images')
+      const imagesStore = useImagesStore()
+      await imagesStore.generatePreviewImages()
+    }
+  })
+  
   return {
     keyboardLanguage,
     replaceRules,
@@ -210,6 +261,9 @@ export const useSettingsStore = defineStore('settings', () => {
     showHeader,
     enableReplacedVilDownload,
     layerSelection,
+    languageInfos,
+    currentLanguageAbbreviation,
+    loadLanguageInfos,
     setKeyboardLanguage,
     setReplaceRules,
     addReplaceRule,

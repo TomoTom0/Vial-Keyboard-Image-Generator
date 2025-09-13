@@ -257,8 +257,8 @@ const switchNavSection = (section: 'files' | 'generate' | 'settings') => {
     uiStore.toggleSidebarCollapsed()
   } else {
     // 違うセクションをクリックした場合は展開してそのセクションに切り替え
-    uiStore.setSidebarCollapsed(false)
-    uiStore.setSidebarSection(section)
+    uiStore.sidebarCollapsed = false
+    uiStore.sidebarSection = section
   }
 }
 
@@ -312,7 +312,7 @@ const isSmallScreen = computed(() => {
 // 小画面での初期状態設定
 onMounted(() => {
   if (isSmallScreen.value) {
-    uiStore.setSidebarCollapsed(true)
+    uiStore.sidebarCollapsed = true
   }
 })
 </script>
