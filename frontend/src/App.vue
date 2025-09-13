@@ -12,23 +12,6 @@ import { useImagesStore } from './stores/images'
 // VilConverterのimportは削除（VialStoreで処理）
 import type { ReplaceRule } from './utils/types'
 
-// URLハッシュから初期タブを取得（hashモード形式: /#/tab）
-function getInitialTabFromHash(): 'select' | 'preview' | 'output' {
-  const hash = window.location.hash
-  // /#/select, /#/preview, /#/output の形式をチェック
-  if (hash.startsWith('#/')) {
-    const path = hash.substring(2) // '#/'を除去
-    if (path === 'select' || path === 'preview' || path === 'output') {
-      return path
-    }
-  }
-  return 'preview' // デフォルト
-}
-
-// URLハッシュを更新（hashモード形式: /#/tab）
-function updateHash(tab: 'select' | 'preview' | 'output') {
-  window.location.hash = `#/${tab}`
-}
 
 // Store instances
 const vialStore = useVialStore()
@@ -49,18 +32,6 @@ const getCurrentLanguageDisplay = (): string => {
   }
 }
 
-// Debounced preview generation
-let generateTimeout: NodeJS.Timeout | null = null
-const debouncedGeneratePreview = () => {
-  console.log('🔄 Setting changed, regenerating in 100ms...')
-  if (generateTimeout) {
-    clearTimeout(generateTimeout)
-  }
-  generateTimeout = setTimeout(() => {
-    console.log('⏰ Timeout reached, starting generation')
-    generatePreviewImages()
-  }, 100) // 100ms delay
-}
 
 
 
@@ -71,13 +42,6 @@ const debouncedGeneratePreview = () => {
 
 
 
-// Preview generation (delegated to ImagesStore)
-const generatePreviewImages = async () => {
-  await imagesStore.generatePreviewImages(
-    vialStore.selectedVialId || 'sample', 
-    vialStore.currentVial
-  )
-}
 
 
 // ファイル操作関数
@@ -92,56 +56,37 @@ const hasSelectedFile = computed(() => {
 
 
 // Initialization
-// タブ変更時にハッシュを更新
-watch(() => uiStore.activeTab, (newTab) => {
-  updateHash(newTab)
-})
 
 
 // 選択されたVILファイルの変更時に画像を再生成
 watch(() => vialStore.selectedVialId, (newId) => {
   if (newId) {
-    generatePreviewImages()
+    uiStore.debouncedGeneratePreview()
   }
 })
 
 // 高度な設定の変更をlocalStorageに保存し、画像を再生成
 watch(() => settingsStore.outputFormat, () => {
-  generatePreviewImages()
+  uiStore.debouncedGeneratePreview()
 })
 
 
 
-// ハッシュ変更を監視してタブを同期
-const handleHashChange = () => {
-  const newTab = getInitialTabFromHash()
-  if (newTab !== uiStore.activeTab) {
-    uiStore.activeTab = newTab
-  }
-}
 
 onMounted(() => {
-  // Piniaのpersist pluginで自動ロードされるため、手動初期化は不要
-  
-  // Piniaのpersist機能により自動復元されるため、手動読み込み削除
-  
-  // ハッシュ変更イベントを監視
-  window.addEventListener('hashchange', handleHashChange)
+  // UI Store のhash同期を初期化
+  uiStore.initializeHashSync()
   
   // 設定ロード後に適切な画像を生成
   nextTick(() => {
-    generatePreviewImages()
+    uiStore.debouncedGeneratePreview()
   })
 })
 
 // Cleanup on unmount
 onUnmounted(() => {
-  if (generateTimeout) {
-    clearTimeout(generateTimeout)
-  }
-  
-  // ハッシュ変更イベントリスナーを削除
-  window.removeEventListener('hashchange', handleHashChange)
+  // UI Store のhash同期をクリーンアップ
+  uiStore.cleanupHashSync()
 })
 </script>
 

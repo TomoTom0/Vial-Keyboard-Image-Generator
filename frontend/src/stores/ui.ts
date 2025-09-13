@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 export interface ToastMessage {
   id: string
@@ -17,6 +17,78 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarCollapsed = ref(false)
   const toasts = ref<ToastMessage[]>([])
   const error = ref<string | null>(null)
+  
+  // Debounced処理用
+  let generateTimeout: NodeJS.Timeout | null = null
+  
+  // Debounced画像生成（imagesStoreとの連携）
+  const debouncedGeneratePreview = () => {
+    console.log('🔄 Setting changed, regenerating in 100ms...')
+    if (generateTimeout) {
+      clearTimeout(generateTimeout)
+    }
+    generateTimeout = setTimeout(async () => {
+      // imagesStoreを動的にインポート（循環依存回避）
+      const { useImagesStore } = await import('./images')
+      const { useVialStore } = await import('./vial')
+      const imagesStore = useImagesStore()
+      const vialStore = useVialStore()
+      
+      await imagesStore.generatePreviewImages(
+        vialStore.selectedVialId || 'sample',
+        vialStore.currentVial
+      )
+    }, 100)
+  }
+  
+  // URL hash関連の処理
+  const getInitialTabFromHash = (): 'select' | 'preview' | 'output' => {
+    if (typeof window === 'undefined') return 'preview'
+    const hash = window.location.hash
+    if (hash.startsWith('#/')) {
+      const path = hash.substring(2)
+      if (path === 'select' || path === 'preview' || path === 'output') {
+        return path
+      }
+    }
+    return 'preview'
+  }
+  
+  const updateHash = (tab: 'select' | 'preview' | 'output') => {
+    if (typeof window !== 'undefined') {
+      window.location.hash = `#/${tab}`
+    }
+  }
+  
+  const handleHashChange = () => {
+    if (typeof window === 'undefined') return
+    const newTab = getInitialTabFromHash()
+    if (newTab !== activeTab.value) {
+      activeTab.value = newTab
+    }
+  }
+  
+  const initializeHashSync = () => {
+    if (typeof window === 'undefined') return
+    
+    // 初期タブを設定
+    const initialTab = getInitialTabFromHash()
+    activeTab.value = initialTab
+    
+    // タブ変更時にハッシュを更新
+    watch(() => activeTab.value, (newTab) => {
+      updateHash(newTab)
+    })
+    
+    // ハッシュ変更を監視
+    window.addEventListener('hashchange', handleHashChange)
+  }
+  
+  const cleanupHashSync = () => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }
   
   // サイドバーの折りたたみ状態を切り替え
   const toggleSidebarCollapsed = () => {
@@ -83,6 +155,9 @@ export const useUiStore = defineStore('ui', () => {
     toasts,
     error,
     toggleSidebarCollapsed,
+    debouncedGeneratePreview,
+    initializeHashSync,
+    cleanupHashSync,
     addToast,
     removeToast,
     clearToasts,
