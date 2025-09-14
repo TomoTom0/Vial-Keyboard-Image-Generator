@@ -17,6 +17,46 @@
 - [x] ヘッダー統一とファイル名ラベル表示
 - [x] 拡張子表示対応
 
+## 画像倍率システム検討
+
+### 問題点の整理
+- 現在のCSS変数による固定倍率では画面サイズに対応しきれない
+- transform:scaleは視覚サイズのみ変更、レイアウトスペースは元のまま
+- 大きな画像（1276px）が小画面でははみ出す
+
+### 検討すべき実装方式
+
+#### 方式A: CSS Container Queriesによる適応的倍率
+- `@container`クエリでコンテナ幅に応じてCSS変数を動的変更
+- JavaScript不要、純CSS実装
+- 問題：transform:scaleのレイアウトスペース問題は残る
+
+#### 方式B: ResizeObserverによるJavaScript制御
+- ResizeObserverでコンテナサイズ監視
+- `max-width`や`width`でCSSサイズ直接制御（transformは使わない）
+- レイアウトスペースも正しく計算される
+
+#### 方式C: 画像生成時サイズ制御
+- Canvas生成時に目標サイズを指定
+- qualityScaleパラメータを利用
+- 根本的解決だが生成コストが高い
+
+#### 方式D: CSS Grid/Flexbox + object-fit制御
+- CSS GridまたはFlexboxでコンテナサイズ制限
+- `object-fit: contain`でアスペクト比維持しつつサイズフィット
+- シンプルで確実
+
+### 推奨実装順序
+1. **方式D（CSS制御）を試行** - 最もシンプル
+2. 不十分な場合は**方式B（ResizeObserver）**を追加
+3. パフォーマンス問題があれば**方式C（生成時制御）**を検討
+
+### 具体的実装タスク
+- [ ] CSS GridまたはFlexboxでコンテナサイズ制限実装
+- [ ] object-fit: containによる自動フィット確認
+- [ ] レスポンシブ対応（タブレット・スマホサイズ）
+- [ ] 必要に応じてResizeObserverによる高度制御追加
+
 ## 現在のタスク：Webフロントエンド開発
 
 ### Phase 1: プロジェクト基盤構築
