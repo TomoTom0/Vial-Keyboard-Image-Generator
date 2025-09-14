@@ -3,8 +3,9 @@ import { ref, watch } from 'vue'
 
 export interface ToastMessage {
   id: string
-  type: 'success' | 'error' | 'warning' | 'info'
+  type: 'success' | 'error' | 'info'
   message: string
+  title?: string
   timeout?: number
 }
 

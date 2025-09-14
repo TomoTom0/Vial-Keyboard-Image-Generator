@@ -59,7 +59,7 @@ export const STYLE_CONFIG: StyleConfig = {
   "headerFontFamily": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
   "fontSizes": {
     "main": {
-      "single": 26,
+      "single": 22,
       "normal": 20,
       "long": 12
     },

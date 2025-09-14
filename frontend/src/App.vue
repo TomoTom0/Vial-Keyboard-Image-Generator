@@ -10,7 +10,6 @@ import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
 import { useImagesStore } from './stores/images'
 // VilConverterのimportは削除（VialStoreで処理）
-import type { ReplaceRule } from './utils/types'
 
 
 // Store instances
@@ -33,9 +32,6 @@ const imagesStore = useImagesStore()
 
 
 // ファイル操作関数
-const hasSelectedFile = computed(() => {
-  return vialStore.selectedVialId && vialStore.selectedVialId !== 'sample'
-})
 
 
 
@@ -60,10 +56,13 @@ watch(() => vialStore.selectedVialId, (newId) => {
 onMounted(async () => {
   // UI Store のhash同期を初期化
   uiStore.initializeHashSync()
-  
+
+  // VialStoreのデータ移行処理を実行（初期状態でsample選択も含む）
+  vialStore.migrateData()
+
   // 言語情報を読み込み
   await settingsStore.loadLanguageInfos()
-  
+
   // 設定ロード後に適切な画像を生成
   nextTick(() => {
     uiStore.debouncedGeneratePreview()

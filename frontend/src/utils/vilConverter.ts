@@ -1,6 +1,6 @@
 // VILファイル変換ユーティリティ
 import { getCharacterFromKeycode, getKeycodeForCharacter } from './keyboardConfig'
-import type { VialConfig, ReplaceRule } from './types'
+import type { VialConfig, ReplaceRule, TapDanceInfo } from './types'
 
 export interface ComboInfo {
   keys: (string | number)[]
@@ -85,10 +85,10 @@ export function convertVialConfig(config: VialConfig, fromLanguage: string, toLa
   console.log(`✅ Total converted keys: ${totalConverted}`)
   
   // コンボの変換（存在する場合）
-  if (convertedConfig.combos) {
-    convertedConfig.combos = convertedConfig.combos.map((combo: ComboInfo) => {
+  if (convertedConfig.combo) {
+    convertedConfig.combo = convertedConfig.combo.map((combo: ComboInfo) => {
       if (combo.keycode) {
-        const converted = convertKeycode(combo.keycode, fromLanguage, toLanguage)
+        const converted = convertKeycode(combo.keycode as string, fromLanguage, toLanguage)
         if (converted !== combo.keycode) {
           console.log(`🔄 Combo keycode: ${combo.keycode} → ${converted}`)
         }
@@ -346,8 +346,8 @@ export function convertVialConfigWithReplaceRules(config: VialConfig, replaceRul
   })
   
   // コンボの変換（存在する場合）
-  if (convertedConfig.combos) {
-    convertedConfig.combos = convertedConfig.combos.map((combo: ComboInfo) => {
+  if (convertedConfig.combo) {
+    convertedConfig.combo = convertedConfig.combo.map((combo: ComboInfo) => {
       if (combo.keycode) {
         const converted = applyReplaceRulesToKeycode(combo.keycode, replaceRules, languageId)
         if (converted !== combo.keycode) {
@@ -465,9 +465,9 @@ function validateConvertedConfig(original: VialConfig, converted: VialConfig): {
     }
     
     // Combo構造の検証
-    if (original.combos && converted.combos) {
-      if (converted.combos.length !== original.combos.length) {
-        errors.push(`コンボ数が変化: ${original.combos.length} → ${converted.combos.length}`)
+    if (original.combo && converted.combo) {
+      if (converted.combo.length !== original.combo.length) {
+        errors.push(`コンボ数が変化: ${original.combo.length} → ${converted.combo.length}`)
       }
     }
     

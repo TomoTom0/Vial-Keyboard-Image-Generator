@@ -195,7 +195,7 @@ export const useImagesStore = defineStore('images', () => {
       } else if (fileId === 'sample') {
         // サンプルファイルの場合のみ従来処理（ParsedVialを作成してから新方式を使用）
         try {
-          const response = await fetch('/data/yivu40-250907.vil')
+          const response = await fetch('/data/sample.vil')
           if (!response.ok) {
             throw new Error(`Failed to load sample file: ${response.status}`)
           }
@@ -255,12 +255,12 @@ export const useImagesStore = defineStore('images', () => {
       const renderOptions = {
         theme: settingsStore.enableDarkMode ? 'dark' : 'light' as 'dark' | 'light',
         backgroundColor: undefined,
-        highlightComboKeys: settingsStore.highlightEnabled,
-        highlightSubtextKeys: settingsStore.highlightEnabled,
-        showComboMarkers: settingsStore.highlightEnabled,
-        showTextColors: settingsStore.highlightEnabled,
+        highlightComboKeys: settingsStore.highlightLevel > 10,
+        highlightSubtextKeys: settingsStore.highlightLevel > 10,
+        showComboMarkers: settingsStore.highlightLevel > 10,
+        showTextColors: settingsStore.highlightLevel > 10,
         showComboInfo: settingsStore.showCombos,
-        changeKeyColors: settingsStore.highlightEnabled,
+        changeKeyColors: settingsStore.highlightLevel > 10,
         changeEmptyKeyColors: true  // 空白ボタンの背景色は常に変更
       }
       
@@ -1004,7 +1004,7 @@ export const useImagesStore = defineStore('images', () => {
       } else if (vialStore.selectedVialId === 'sample') {
         // サンプルファイルの場合のみ、ParsedVialを作成してから新方式を使用
         try {
-          const response = await fetch('/data/yivu40-250907.vil')
+          const response = await fetch('/data/sample.vil')
           if (!response.ok) {
             throw new Error(`Failed to load sample file: ${response.status}`)
           }
@@ -1068,12 +1068,12 @@ export const useImagesStore = defineStore('images', () => {
     const renderOptions = {
       theme: settingsStore.enableDarkMode ? 'dark' : 'light' as 'dark' | 'light',
       backgroundColor: undefined,
-      highlightComboKeys: settingsStore.highlightEnabled,
-      highlightSubtextKeys: settingsStore.highlightEnabled,
-      showComboMarkers: settingsStore.highlightEnabled,
-      showTextColors: settingsStore.highlightEnabled,
+      highlightComboKeys: settingsStore.highlightLevel > 10,
+      highlightSubtextKeys: settingsStore.highlightLevel > 10,
+      showComboMarkers: settingsStore.highlightLevel > 10,
+      showTextColors: settingsStore.highlightLevel > 10,
       showComboInfo: settingsStore.showCombos,
-      changeKeyColors: settingsStore.highlightEnabled,
+      changeKeyColors: settingsStore.highlightLevel > 10,
       changeEmptyKeyColors: true  // 空白ボタンの背景色は常に変更
     }
     

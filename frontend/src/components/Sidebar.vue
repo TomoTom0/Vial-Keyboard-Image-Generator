@@ -243,7 +243,12 @@ const formatDisplayName = computed(() => {
 })
 
 const highlightDisplayName = computed(() => {
-  return settingsStore.highlightEnabled ? 'ON' : 'OFF'
+  const levels = {
+    10: 'OFF',
+    20: 'WEAK',
+    30: 'STRONG'
+  }
+  return levels[settingsStore.highlightLevel] || 'STRONG'
 })
 
 const darkModeDisplayName = computed(() => {
@@ -271,7 +276,10 @@ const cycleFormat = (direction: number) => {
 }
 
 const cycleHighlight = (direction: number) => {
-  settingsStore.highlightEnabled = !settingsStore.highlightEnabled
+  const levels = [10, 20, 30] as const
+  const currentIndex = levels.indexOf(settingsStore.highlightLevel)
+  const newIndex = (currentIndex + direction + levels.length) % levels.length
+  settingsStore.highlightLevel = levels[newIndex]
   debouncedGeneratePreview()
 }
 

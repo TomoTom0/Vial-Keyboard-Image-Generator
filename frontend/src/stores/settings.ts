@@ -13,16 +13,16 @@ export const useSettingsStore = defineStore('settings', () => {
   const keyboardLanguage = ref(getCurrentKeyboardLanguage().id)
   const replaceRules = ref<ReplaceRule[]>([])
   const languageInfos = ref<LanguageInfo[]>([])
-  const outputFormat = ref<'separated' | 'vertical' | 'rectangular'>('separated')
+  const outputFormat = ref<'separated' | 'vertical' | 'rectangular'>('vertical')
   const showLabels = ref(true)
-  const enableDarkMode = ref(false)
+  const enableDarkMode = ref(true)
   const keySize = ref(50)
   const fontSize = ref(12)
   const spacing = ref(5)
   const outputLabel = ref('')
   
   // Advanced settings
-  const highlightEnabled = ref(false)
+  const highlightLevel = ref<number>(30) // 10=off, 20=weak, 30=strong
   const showCombos = ref(true)
   const showHeader = ref(true)
   const enableReplacedVilDownload = ref(false)
@@ -245,7 +245,10 @@ export const useSettingsStore = defineStore('settings', () => {
       await imagesStore.generatePreviewImages()
     }
   })
-  
+
+  // 後方互換性のためのcomputed（highlightEnabledをhighlightLevelから導出）
+  const highlightEnabled = computed(() => highlightLevel.value > 10)
+
   return {
     keyboardLanguage,
     replaceRules,
@@ -256,6 +259,7 @@ export const useSettingsStore = defineStore('settings', () => {
     fontSize,
     spacing,
     outputLabel,
+    highlightLevel,
     highlightEnabled,
     showCombos,
     showHeader,

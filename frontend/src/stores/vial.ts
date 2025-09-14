@@ -36,6 +36,12 @@ export const useVialStore = defineStore('vial', () => {
       console.log('🔄 Resetting invalid selectedVialId')
       selectedVialId.value = ''
     }
+
+    // ファイルが何もなく、何も選択されていない場合はsampleを選択
+    if (vialFiles.value.length === 0 && !selectedVialId.value) {
+      console.log('🔄 No files and no selection, setting to sample')
+      selectedVialId.value = 'sample'
+    }
   }
   
   // 現在選択されているVILデータ

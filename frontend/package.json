@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run generate-mappings && npm run generate-styles && vue-tsc -b && vite build",
+    "build": "npm run generate-mappings && npm run generate-styles && vite build",
     "preview": "vite preview",
     "generate-mappings": "node scripts/generate-keyboard-mappings.cjs",
-    "generate-styles": "node scripts/generate-styles.cjs"
+    "generate-styles": "node scripts/generate-styles.cjs",
+    "deploy": "wrangler pages deploy dist",
+    "deploy:prod": "npm run build && wrangler pages deploy dist"
   },
   "dependencies": {
     "@pinia/nuxt": "^0.11.2",
