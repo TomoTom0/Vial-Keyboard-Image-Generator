@@ -16,6 +16,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const outputFormat = ref<'separated' | 'vertical' | 'rectangular'>('vertical')
   const showLabels = ref(true)
   const enableDarkMode = ref(true)
+  const imageFormat = ref<'png' | 'svg'>('png')
   const keySize = ref(50)
   const fontSize = ref(12)
   const spacing = ref(5)
@@ -90,6 +91,20 @@ export const useSettingsStore = defineStore('settings', () => {
     let newIndex = (currentIndex + direction) % formats.length
     if (newIndex < 0) newIndex = formats.length - 1
     outputFormat.value = formats[newIndex]
+  }
+
+  // イメージフォーマットを変更
+  const setImageFormat = (format: 'png' | 'svg') => {
+    imageFormat.value = format
+  }
+
+  // イメージフォーマットを循環切り替え
+  const cycleImageFormat = (direction: number = 1) => {
+    const formats: ('png' | 'svg')[] = ['png', 'svg']
+    const currentIndex = formats.indexOf(imageFormat.value)
+    let newIndex = (currentIndex + direction) % formats.length
+    if (newIndex < 0) newIndex = formats.length - 1
+    imageFormat.value = formats[newIndex]
   }
   
   
@@ -246,6 +261,15 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   })
 
+  // imageFormat変更時に画像を再生成
+  watch(() => imageFormat.value, async (newFormat, oldFormat) => {
+    if (oldFormat !== undefined) { // 初期化時は実行しない
+      const { useImagesStore } = await import('./images')
+      const imagesStore = useImagesStore()
+      await imagesStore.generatePreviewImages()
+    }
+  })
+
   // 後方互換性のためのcomputed（highlightEnabledをhighlightLevelから導出）
   const highlightEnabled = computed(() => highlightLevel.value > 10)
 
@@ -255,6 +279,7 @@ export const useSettingsStore = defineStore('settings', () => {
     outputFormat,
     showLabels,
     enableDarkMode,
+    imageFormat,
     keySize,
     fontSize,
     spacing,
@@ -275,6 +300,8 @@ export const useSettingsStore = defineStore('settings', () => {
     removeReplaceRule,
     setOutputFormat,
     cycleOutputFormat,
+    setImageFormat,
+    cycleImageFormat,
     toggleHighlight,
     validateReplaceRule,
     validateReplaceRuleWithReason,

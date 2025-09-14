@@ -127,6 +127,20 @@
             </div>
           </div>
 
+          <!-- イメージフォーマット設定 -->
+          <div class="format-selector">
+            <div class="format-group">
+              <label class="format-label">Image Format</label>
+              <div class="format-nav">
+                <button class="format-nav-btn" @click="cycleImageFormat(-1)">‹</button>
+                <div class="format-current">
+                  <span class="format-name">{{ imageFormatDisplayName }}</span>
+                </div>
+                <button class="format-nav-btn" @click="cycleImageFormat(1)">›</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Label入力欄 -->
           <div class="label-input-container">
             <label class="label-input-label">Label</label>
@@ -255,6 +269,10 @@ const darkModeDisplayName = computed(() => {
   return settingsStore.enableDarkMode ? 'Dark' : 'Light'
 })
 
+const imageFormatDisplayName = computed(() => {
+  return settingsStore.imageFormat.toUpperCase()
+})
+
 // Methods
 const switchNavSection = (section: 'files' | 'generate' | 'settings') => {
   // 現在開いているセクションと同じアイコンをクリックした場合は折りたたみを切り替え
@@ -285,6 +303,11 @@ const cycleHighlight = (direction: number) => {
 
 const cycleDarkMode = (direction: number) => {
   settingsStore.enableDarkMode = !settingsStore.enableDarkMode
+  debouncedGeneratePreview()
+}
+
+const cycleImageFormat = (direction: number) => {
+  settingsStore.cycleImageFormat(direction)
   debouncedGeneratePreview()
 }
 

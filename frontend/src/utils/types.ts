@@ -1,6 +1,7 @@
 // 型定義モジュール
 import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
 import { getFontConfig, getThemeColors } from './styleConfig.generated';
+import { SVGRenderer } from './svgRenderer';
 
 // サブテキストの種別に応じた色を取得
 function getSubTextColor(type: 'tap' | 'hold' | 'double' | 'taphold', theme: 'dark' | 'light'): string {
@@ -103,6 +104,58 @@ export class PhysicalButton {
     
     // テキストを描画
     this.drawText(ctx, x, y, width, height, options, combos, colors, qualityScale);
+  }
+
+  // SVG版の描画メソッド（Canvas版と同じ見た目）
+  drawSVG(renderer: SVGRenderer, x: number, y: number, width: number, height: number, options: RenderOptions, combos?: any[], qualityScale: number = 1.0): void {
+    const colors = getThemeColors(options.theme);
+
+    // 背景色を決定（Canvas版と同じロジック）
+    let bgColor = colors.keyNormal;
+    let borderColor = colors.borderNormal;
+
+    // 空きボタンの場合
+    if (this.rawKeyCode === 'KC_NO' || this.main.keyCode === 'KC_NO') {
+      if (options.changeEmptyKeyColors !== false) {
+        bgColor = colors.keyEmpty;
+        borderColor = colors.borderEmpty;
+      }
+    }
+    // サブテキスト付きまたはコンボ入力の場合
+    else {
+      const hasSubTexts = this.hasSubTexts();
+      const isComboKey = this.isComboInputKey(combos);
+
+      if ((hasSubTexts || isComboKey) && options.changeKeyColors !== false) {
+        bgColor = colors.keySpecial;
+        borderColor = colors.borderSpecial;
+      }
+    }
+
+    // キーの背景を描画（Canvas版と同じ）
+    renderer.fillStyle = bgColor;
+    renderer.fillRect(x, y, width, height);
+
+    // 枠線を描画（Canvas版と同じ）
+    renderer.strokeStyle = borderColor;
+    renderer.lineWidth = 1;
+    renderer.strokeRect(x, y, width, height);
+
+    // コンボマーカー（右上の赤い三角形）（Canvas版と同じ）
+    const isComboKey = this.isComboInputKey(combos);
+    if (isComboKey && options.showComboMarkers !== false) {
+      const triangleSize = 12;
+      renderer.fillStyle = '#ff6b6b';
+      renderer.beginPath();
+      renderer.moveTo(x + width - triangleSize, y);
+      renderer.lineTo(x + width, y);
+      renderer.lineTo(x + width, y + triangleSize);
+      renderer.closePath();
+      renderer.fill();
+    }
+
+    // テキストを描画（Canvas版と同じ）
+    this.drawTextSVG(renderer, x, y, width, height, options, combos, colors, qualityScale);
   }
   
   // テキスト描画
@@ -291,6 +344,193 @@ export class PhysicalButton {
       }
     }
   }
+
+  // SVG版のテキスト描画（Canvas版と完全に同じロジック）
+  private drawTextSVG(renderer: SVGRenderer, x: number, y: number, width: number, height: number, options: RenderOptions, combos: any[] | undefined, colors: any, qualityScale: number = 1.0): void {
+    if (!this.main.keyText) return;
+
+    // ハイライト判定
+    const hasSubTexts = this.hasSubTexts();
+    const isComboKey = this.isComboInputKey(combos);
+    const shouldHighlight = (hasSubTexts && options.highlightSubtextKeys !== false) || (isComboKey && options.highlightComboKeys !== false);
+
+    // フォント設定を取得
+    const styleConfig = getFontConfig();
+
+    // メインテキストのフォントサイズを段階的に決定（文字数が多いほど小さく）
+    let fontSize: number;
+
+    // 特定の1文字テキストは小さくする（マッピングファイルから取得した正確な文字）
+    const smallSingleChars = ['▽']; // KC_TRNS（透明キー）
+
+    if (this.main.keyText.length > 8) {
+      fontSize = styleConfig.fontSizes.main.long; // 非常に長いテキスト
+    } else if (this.main.keyText.length === 1) {
+      if (smallSingleChars.includes(this.main.keyText)) {
+        fontSize = styleConfig.fontSizes.main.normal; // 特定の1文字は通常サイズ
+      } else {
+        fontSize = styleConfig.fontSizes.main.single; // 通常の単一文字
+      }
+    } else {
+      fontSize = styleConfig.fontSizes.main.normal; // 2文字以上
+    }
+
+    renderer.font = `${fontSize}px ${getFontConfig().fontFamily}`;
+    renderer.fillStyle = (shouldHighlight && options.showTextColors !== false) ? colors.textSpecial : colors.textNormal;
+    renderer.textAlign = 'center';
+
+    // メインテキストの位置計算（最新の実装に基づく）
+    const textX = x + width / 2;
+    const textY = y + height * 0.35; // 固定位置、サブテキストの有無は関係なし
+
+    renderer.fillText(this.main.keyText, textX, textY);
+
+    // サブテキストを描画（種別情報も含めて）
+    if (this.sub) {
+      const subTexts: {text: string, type: 'tap' | 'hold' | 'double' | 'taphold'}[] = [];
+      if (this.sub.tap) subTexts.push({text: this.sub.tap.keyText, type: 'tap'});
+      if (this.sub.hold) subTexts.push({text: this.sub.hold.keyText, type: 'hold'});
+      if (this.sub.double) subTexts.push({text: this.sub.double.keyText, type: 'double'});
+      if (this.sub.taphold) subTexts.push({text: this.sub.taphold.keyText, type: 'taphold'});
+
+      if (subTexts.length > 0) {
+        // サブテキスト種別に応じた色を取得
+
+        // 等幅フォントの文字幅を計算（おおよその値）
+        const getCharWidth = (fontSize: number): number => fontSize * 0.6;
+
+        // テキスト幅に基づいて最適なフォントサイズを計算
+        const calculateOptimalFontSize = (text: string, maxWidth: number): number => {
+          const targetSizes = [styleConfig.fontSizes.sub.normal, styleConfig.fontSizes.sub.small, styleConfig.fontSizes.sub.mini];
+
+          for (const size of targetSizes) {
+            const estimatedWidth = text.length * getCharWidth(size);
+            if (estimatedWidth <= maxWidth) {
+              return size;
+            }
+          }
+          return styleConfig.fontSizes.sub.mini; // 最小サイズ
+        };
+
+        if (subTexts.length === 1) {
+          // 単一サブテキスト：幅に応じて動的にサイズ調整
+          const availableWidth = width * 0.9; // 少し余裕を持つ
+          const optimalFontSize = calculateOptimalFontSize(subTexts[0].text, availableWidth);
+
+          renderer.fillStyle = getSubTextColor(subTexts[0].type, options.theme);
+          renderer.font = `${optimalFontSize}px ${styleConfig.fontFamily}`;
+          const subY = y + height * 0.75;
+          renderer.fillText(subTexts[0].text, x + width / 2, subY);
+
+        } else if (subTexts.length === 2) {
+          // 2個の場合は積極的に2行レイアウトを使用
+          const availableWidth = width * 0.9;
+          const startY = y + height * 0.65;
+          const lineHeight = 16; // 行間を少し広げる
+
+          for (let i = 0; i < subTexts.length; i++) {
+            const optimalFontSize = calculateOptimalFontSize(subTexts[i].text, availableWidth);
+            renderer.fillStyle = getSubTextColor(subTexts[i].type, options.theme);
+            renderer.font = `${optimalFontSize}px ${styleConfig.fontFamily}`;
+            const subY = startY + (i * lineHeight);
+            renderer.fillText(subTexts[i].text, x + width / 2, subY);
+          }
+
+        } else if (subTexts.length === 3) {
+          // 3個の場合：文字数に基づいて最適な改行位置を決定
+          const displayTexts = subTexts.slice(0, 3);
+          const startY = y + height * 0.65;
+          const lineHeight = 16;
+          const leftAvailableWidth = width * 0.4;
+          const rightAvailableWidth = width * 0.4;
+          const centerAvailableWidth = width * 0.9;
+
+          // 各要素の文字数を取得
+          const lengths = displayTexts.map(item => item.text.length);
+
+          // パターン1: [2個][1個] と パターン2: [1個][2個] の総文字数を比較
+          const pattern1TotalChars = lengths[0] + lengths[1]; // 1行目2個
+          const pattern2TotalChars = lengths[1] + lengths[2]; // 2行目2個
+
+          // より文字数が少ない方を2個並べる行にする
+          const usePattern1 = pattern1TotalChars <= pattern2TotalChars;
+
+          if (usePattern1) {
+            // パターン1: [要素0, 要素1] / [要素2]
+            // 1行目：左右に2個
+            const leftFontSize = calculateOptimalFontSize(displayTexts[0].text, leftAvailableWidth);
+            renderer.fillStyle = getSubTextColor(displayTexts[0].type, options.theme);
+            renderer.font = `${leftFontSize}px ${styleConfig.fontFamily}`;
+            renderer.fillText(displayTexts[0].text, x + width * 0.25, startY);
+
+            const rightFontSize = calculateOptimalFontSize(displayTexts[1].text, rightAvailableWidth);
+            renderer.fillStyle = getSubTextColor(displayTexts[1].type, options.theme);
+            renderer.font = `${rightFontSize}px ${styleConfig.fontFamily}`;
+            renderer.fillText(displayTexts[1].text, x + width * 0.75, startY);
+
+            // 2行目：中央に1個
+            const centerFontSize = calculateOptimalFontSize(displayTexts[2].text, centerAvailableWidth);
+            renderer.fillStyle = getSubTextColor(displayTexts[2].type, options.theme);
+            renderer.font = `${centerFontSize}px ${styleConfig.fontFamily}`;
+            renderer.fillText(displayTexts[2].text, x + width / 2, startY + lineHeight);
+          } else {
+            // パターン2: [要素0] / [要素1, 要素2]
+            // 1行目：中央に1個
+            const topCenterFontSize = calculateOptimalFontSize(displayTexts[0].text, centerAvailableWidth);
+            renderer.fillStyle = getSubTextColor(displayTexts[0].type, options.theme);
+            renderer.font = `${topCenterFontSize}px ${styleConfig.fontFamily}`;
+            renderer.fillText(displayTexts[0].text, x + width / 2, startY);
+
+            // 2行目：左右に2個
+            const bottomLeftFontSize = calculateOptimalFontSize(displayTexts[1].text, leftAvailableWidth);
+            renderer.fillStyle = getSubTextColor(displayTexts[1].type, options.theme);
+            renderer.font = `${bottomLeftFontSize}px ${styleConfig.fontFamily}`;
+            renderer.fillText(displayTexts[1].text, x + width * 0.25, startY + lineHeight);
+
+            const bottomRightFontSize = calculateOptimalFontSize(displayTexts[2].text, rightAvailableWidth);
+            renderer.fillStyle = getSubTextColor(displayTexts[2].type, options.theme);
+            renderer.font = `${bottomRightFontSize}px ${styleConfig.fontFamily}`;
+            renderer.fillText(displayTexts[2].text, x + width * 0.75, startY + lineHeight);
+          }
+
+        } else if (subTexts.length > 3) {
+          // 4個以上の場合：最大4個を2行×2列に納める
+          const displayTexts = subTexts.slice(0, 4); // 最大4個まで
+          const startY = y + height * 0.65;
+          const lineHeight = 16;
+          const leftAvailableWidth = width * 0.4;
+          const rightAvailableWidth = width * 0.4;
+
+          for (let i = 0; i < displayTexts.length; i += 2) {
+            const row = Math.floor(i / 2);
+            const subY = startY + (row * lineHeight);
+
+            if (i + 1 < displayTexts.length) {
+              // 左側
+              const leftX = x + width * 0.25;
+              const leftFontSize = calculateOptimalFontSize(displayTexts[i].text, leftAvailableWidth);
+              renderer.fillStyle = getSubTextColor(displayTexts[i].type, options.theme);
+              renderer.font = `${leftFontSize}px ${styleConfig.fontFamily}`;
+              renderer.fillText(displayTexts[i].text, leftX, subY);
+
+              // 右側
+              const rightX = x + width * 0.75;
+              const rightFontSize = calculateOptimalFontSize(displayTexts[i + 1].text, rightAvailableWidth);
+              renderer.fillStyle = getSubTextColor(displayTexts[i + 1].type, options.theme);
+              renderer.font = `${rightFontSize}px ${styleConfig.fontFamily}`;
+              renderer.fillText(displayTexts[i + 1].text, rightX, subY);
+            } else {
+              // 中央（奇数の最後）- 通常は発生しない
+              const centerFontSize = calculateOptimalFontSize(displayTexts[i].text, width * 0.9);
+              renderer.fillStyle = getSubTextColor(displayTexts[i].type, options.theme);
+              renderer.font = `${centerFontSize}px ${styleConfig.fontFamily}`;
+              renderer.fillText(displayTexts[i].text, x + width / 2, subY);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 // TapDance構造体
@@ -377,6 +617,45 @@ export class Combo {
       currentX += buttonWidth + spacing / 2;
     }
   }
+
+  async drawSVG(renderer: SVGRenderer, x: number, y: number, width: number, height: number, options: RenderOptions, qualityScale: number = 1.0): Promise<void> {
+    const colors = getThemeColors(options.theme);
+    const { keyWidth, keyHeight } = KEYBOARD_CONSTANTS;
+    const styleConfig = getFontConfig();
+    const buttonHeight = keyHeight;
+    const buttonWidth = keyWidth;
+    const spacing = 10;
+
+    let currentX = x + spacing;
+    const buttonY = y + (height - buttonHeight) / 2;
+
+    // インデックス番号を描画（より大きなフォント）
+    renderer.fillStyle = colors.textNormal;
+    renderer.font = `bold ${styleConfig.fontSizes.combo.index}px ${styleConfig.headerFontFamily}`;
+    renderer.textAlign = 'left';
+    renderer.fillText(`#${this.index + 1}`, currentX, buttonY + buttonHeight / 2 + 5);
+    currentX += 40;
+
+    // アクションボタンを描画
+    const { VialDataProcessor } = await import('./vialDataProcessor');
+    const actionButton = VialDataProcessor.createPhysicalButton(this.action.keyCode);
+    actionButton.drawSVG(renderer, currentX, buttonY, buttonWidth, buttonHeight, options, [], qualityScale);
+    currentX += buttonWidth + spacing;
+
+    // ダッシュを描画
+    renderer.fillStyle = colors.textSub;
+    renderer.font = `${styleConfig.fontSizes.combo.content}px ${styleConfig.fontFamily}`;
+    renderer.textAlign = 'center';
+    renderer.fillText('—', currentX + 15, buttonY + buttonHeight / 2 + 5);
+    currentX += 40;
+
+    // 組み合わせキーを描画
+    for (const keyButton of this.keys) {
+      const physicalKey = VialDataProcessor.createPhysicalButton(keyButton.keyCode);
+      physicalKey.drawSVG(renderer, currentX, buttonY, buttonWidth, buttonHeight, options, [this], qualityScale); // comboとして自分を渡す
+      currentX += buttonWidth + spacing / 2;
+    }
+  }
 }
 
 // === ParsedVial構造体 ===
@@ -393,9 +672,16 @@ export class PositionedPhysicalButton {
   
   draw(ctx: CanvasRenderingContext2D, options: RenderOptions, combos?: any[], qualityScale: number = 1.0, customPosition?: KeyPosition): void {
     const { x, y, width, height } = customPosition || this.drawPosition;
-    
+
     // PhysicalButton.draw()メソッドを使用して描画処理を委譲
     this.button.draw(ctx, x, y, width, height, options, combos, qualityScale);
+  }
+
+  drawSVG(renderer: SVGRenderer, options: RenderOptions, combos?: any[], qualityScale: number = 1.0, customPosition?: KeyPosition): void {
+    const { x, y, width, height } = customPosition || this.drawPosition;
+
+    // PhysicalButton.drawSVG()メソッドを使用して描画処理を委譲
+    this.button.drawSVG(renderer, x, y, width, height, options, combos, qualityScale);
   }
 }
 
@@ -432,6 +718,30 @@ export class ParsedLayer {
     ctx.textBaseline = 'middle';
     ctx.fillText(`#${layerNumber}`, centerX, thirdRowY);
   }
+
+  drawLayerNumberSVG(renderer: SVGRenderer, layerNumber: number, x: number, y: number, options: RenderOptions, qualityScale: number = 1.0): void {
+    const colors = getThemeColors(options.theme);
+    const styleConfig = getFontConfig();
+
+    // 三行目の中央の隙間（左右ボタンの中間）に表示する座標を計算
+    const { keyWidth, keyHeight, keyGap, margin } = KEYBOARD_CONSTANTS;
+    const unitX = KEYBOARD_CONSTANTS.unitX;
+    const unitY = KEYBOARD_CONSTANTS.unitY;
+
+    // 三行目のY座標を計算
+    const thirdRowY = margin + unitY * 2 + keyHeight / 2;
+
+    // 左側最後のキー（V: unitX * 5.0）と右側最初のキー（M: unitX * 8.0）の中間のX座標（少し右寄り）
+    const leftKeyEndX = margin + unitX * 5.0 + keyWidth;
+    const rightKeyStartX = margin + unitX * 8.0;
+    const centerX = (leftKeyEndX + rightKeyStartX) / 2 + 15; // 15px右にずらす
+
+    renderer.font = `bold ${styleConfig.fontSizes.combo.title}px ${styleConfig.headerFontFamily}`;
+    renderer.fillStyle = colors.textSub;
+    renderer.textAlign = 'center';
+    renderer.textBaseline = 'middle';
+    renderer.fillText(`#${layerNumber}`, centerX, thirdRowY);
+  }
   
   draw(ctx: CanvasRenderingContext2D, options: RenderOptions, combos?: any[], qualityScale: number = 1.0): void {
     // 背景色を設定
@@ -451,6 +761,26 @@ export class ParsedLayer {
 
     // 色の説明ラベルを右下に追加
     this.drawColorLegend(ctx, canvasSize, options, qualityScale);
+  }
+
+  drawSVG(renderer: SVGRenderer, options: RenderOptions, combos?: any[], qualityScale: number = 1.0): void {
+    // 背景色を設定
+    const colors = getThemeColors(options.theme);
+    const canvasSize = this.calculateCanvasSize();
+
+    renderer.fillStyle = options.backgroundColor || colors.background;
+    renderer.fillRect(0, 0, canvasSize.width, canvasSize.height);
+
+    // 全ボタンを描画
+    for (const positionedButton of this.buttons) {
+      positionedButton.drawSVG(renderer, options, combos, qualityScale);
+    }
+
+    // レイヤー番号を描画
+    this.drawLayerNumberSVG(renderer, this.layerIndex, 0, 0, options, qualityScale);
+
+    // 色の説明ラベルを右下に追加
+    this.drawColorLegendSVG(renderer, canvasSize, options, qualityScale);
   }
   
   calculateCanvasSize(): {width: number, height: number} {
@@ -499,6 +829,35 @@ export class ParsedLayer {
     }
   }
 
+  drawColorLegendSVG(renderer: SVGRenderer, canvasSize: {width: number, height: number}, options: RenderOptions, qualityScale: number): void {
+    const styleConfig = getFontConfig();
+    const fontSize = styleConfig.fontSizes.sub.small;
+    const lineHeight = fontSize + 2;
+    const margin = 8;
+
+    // 説明する色の種類（tapは通常色なので除外）
+    const colorTypes: Array<{type: 'hold' | 'double' | 'taphold', label: string}> = [
+      {type: 'hold', label: 'HOLD'},
+      {type: 'double', label: 'DOUBLE'},
+      {type: 'taphold', label: 'TAP+HOLD'}
+    ];
+
+    // 開始位置（右下から逆算）
+    const startY = canvasSize.height - margin - (colorTypes.length * lineHeight);
+    const startX = canvasSize.width - margin - 80; // 80は推定幅
+
+    renderer.font = `${fontSize}px ${styleConfig.fontFamily}`;
+    renderer.textAlign = 'right';
+
+    for (let i = 0; i < colorTypes.length; i++) {
+      const {type, label} = colorTypes[i];
+      const y = startY + (i * lineHeight);
+
+      renderer.fillStyle = getSubTextColor(type, options.theme || 'dark');
+      renderer.fillText(label, startX, y);
+    }
+  }
+
 }
 
 // 解析済みVIAL構造体
@@ -520,18 +879,31 @@ export class ParsedVial {
     if (!layer) {
       throw new Error(`Layer ${layerIndex} not found`);
     }
-    
+
     const canvasSize = layer.calculateCanvasSize();
     const canvas = document.createElement('canvas');
     canvas.width = canvasSize.width * qualityScale;
     canvas.height = canvasSize.height * qualityScale;
     const ctx = canvas.getContext('2d')!;
-    
+
     // 品質スケールを適用
     ctx.scale(qualityScale, qualityScale);
-    
+
     layer.draw(ctx, options, this.combos, qualityScale);
     return canvas;
+  }
+
+  generateLayerSVG(layerIndex: number, options: RenderOptions, qualityScale: number): string {
+    const layer = this.layers.find(l => l.layerIndex === layerIndex);
+    if (!layer) {
+      throw new Error(`Layer ${layerIndex} not found`);
+    }
+
+    const canvasSize = layer.calculateCanvasSize();
+    const renderer = new SVGRenderer(canvasSize.width, canvasSize.height);
+
+    layer.drawSVG(renderer, options, this.combos, qualityScale);
+    return renderer.toSVG();
   }
   
   generateAllLayersCanvases(options: RenderOptions, qualityScale: number): HTMLCanvasElement[] {
@@ -587,10 +959,56 @@ export class ParsedVial {
       
       canvases.push(canvas);
     }
-    
+
     return canvases;
   }
-  
+
+  generateLayoutHeaderSVG(options: RenderOptions, qualityScale: number, label?: string): string[] {
+    const svgStrings: string[] = [];
+    const styleConfig = getFontConfig();
+
+    // KEYBOARD_CONSTANTSを使用した統一計算式
+    const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
+    const baseContentWidth = unitX * 13.5 + keyWidth;
+    const baseImageWidth = Math.ceil(baseContentWidth + margin * 2);
+
+    // 1x, 2x, 3x の3つの幅倍率で生成
+    for (let widthScale = 1; widthScale <= 3; widthScale++) {
+      const width = baseImageWidth * widthScale;
+      const height = 45; // 古い実装の高さに合わせる
+
+      const renderer = new SVGRenderer(width, height);
+      const colors = getThemeColors(options.theme);
+
+      // 背景色を描画
+      renderer.fillStyle = colors.headerBackground;
+      renderer.fillRect(0, 0, width, 37);
+
+      // ヘッダーテキストを描画（左側）
+      renderer.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
+      renderer.fillStyle = colors.headerText;
+      renderer.textAlign = 'left';
+      renderer.fillText('LAYOUTS', 15, 28);
+
+      // ラベル（ファイル名など）を右側に描画
+      if (label || this.keyboardName) {
+        const displayLabel = label || this.keyboardName || '';
+        renderer.font = `${styleConfig.fontSizes.header.subtitle}px ${styleConfig.headerFontFamily}`;
+        renderer.fillStyle = colors.textSub;
+        renderer.textAlign = 'right';
+        renderer.fillText(displayLabel, width - 15, 28);
+      }
+
+      // 区切り線を描画
+      renderer.fillStyle = colors.borderNormal;
+      renderer.fillRect(0, 37, width, 1);
+
+      svgStrings.push(renderer.toSVG());
+    }
+
+    return svgStrings;
+  }
+
   async generateComboListCanvas(options: RenderOptions, qualityScale: number): Promise<HTMLCanvasElement[]> {
     // コンボがない場合は空の配列を返す（画像を生成しない）
     if (this.combos.length === 0) {
@@ -658,6 +1076,68 @@ export class ParsedVial {
     }
     
     return canvases;
+  }
+
+  async generateComboListSVG(options: RenderOptions, qualityScale: number): Promise<string[]> {
+    // コンボがない場合は空の配列を返す（画像を生成しない）
+    if (this.combos.length === 0) {
+      return [];
+    }
+
+    const svgStrings: string[] = [];
+    const styleConfig = getFontConfig();
+
+    // KEYBOARD_CONSTANTSを使用した統一計算式
+    const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
+    const baseContentWidth = unitX * 13.5 + keyWidth;
+    const baseImageWidth = Math.ceil(baseContentWidth + margin * 2);
+
+    // 1x, 2x, 3x の3つの幅倍率で生成
+    for (let widthScale = 1; widthScale <= 3; widthScale++) {
+      const width = baseImageWidth * widthScale;
+      // 古い実装に合わせた高さ計算
+      const headerHeight = 45;
+      const lineHeight = 70;
+      const columnsCount = widthScale >= 3 ? 6 : (widthScale >= 2 ? 4 : 3);
+      const rows = Math.ceil(this.combos.length / columnsCount);
+      const totalHeight = headerHeight + (rows * lineHeight) + margin;
+
+      const renderer = new SVGRenderer(width, totalHeight);
+      const colors = getThemeColors(options.theme);
+
+      // 背景
+      renderer.fillStyle = options.backgroundColor || colors.background;
+      renderer.fillRect(0, 0, width, totalHeight);
+
+      // ヘッダー
+      renderer.fillStyle = colors.headerBackground;
+      renderer.fillRect(0, 0, width, headerHeight - 8);
+
+      renderer.fillStyle = colors.headerText;
+      renderer.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
+      renderer.textAlign = 'left';
+      renderer.fillText('COMBOS', 15, 28);
+
+      // 区切り線
+      renderer.fillStyle = colors.borderNormal;
+      renderer.fillRect(0, headerHeight - 8, width, 1);
+
+      // コンボリスト（グリッドレイアウト）
+      const columnWidth = (width - 30) / columnsCount;
+      for (let index = 0; index < this.combos.length; index++) {
+        const combo = this.combos[index];
+        const row = Math.floor(index / columnsCount);
+        const col = index % columnsCount;
+        const x = 15 + col * columnWidth;
+        const y = headerHeight + 10 + row * lineHeight;
+
+        await combo.drawSVG(renderer, x, y, columnWidth - 10, KEYBOARD_CONSTANTS.keyHeight, options, qualityScale);
+      }
+
+      svgStrings.push(renderer.toSVG());
+    }
+
+    return svgStrings;
   }
 }
 

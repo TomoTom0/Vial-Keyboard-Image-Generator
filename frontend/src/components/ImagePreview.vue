@@ -373,6 +373,7 @@ const onImageError = (image: GeneratedImage) => {
 
 .image {
   width: 100%;
+  max-width: 600px;  // 表示最大幅を制限
   height: auto;
   cursor: pointer;
   display: block;

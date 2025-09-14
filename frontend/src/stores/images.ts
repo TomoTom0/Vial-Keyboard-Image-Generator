@@ -266,19 +266,42 @@ export const useImagesStore = defineStore('images', () => {
       
       const qualityScale = quality === 'high' ? 1.0 : 0.5
       
-      // 指定レイヤー範囲のキャンバスを生成（全レイヤー）
+      // 指定レイヤー範囲の画像を生成（全レイヤー）
       const layerStart = 0
       const layerEnd = parsedVial.layers.length - 1
-      const canvases: HTMLCanvasElement[] = []
       const layerNumbers: number[] = []
-      
-      for (let layerIndex = layerStart; layerIndex <= layerEnd; layerIndex++) {
-        const canvas = parsedVial.generateLayerCanvas(layerIndex, renderOptions, qualityScale)
-        canvases.push(canvas)
-        layerNumbers.push(layerIndex)
+
+      // PNG/SVG分岐処理
+      let imageDataArray: { layerIndex: number, dataUrl?: string, url?: string }[] = []
+
+      if (settingsStore.imageFormat === 'svg') {
+        // SVG生成
+        for (let layerIndex = layerStart; layerIndex <= layerEnd; layerIndex++) {
+          const svgString = parsedVial.generateLayerSVG(layerIndex, renderOptions, qualityScale)
+
+          // Blob URLを生成
+          const blob = new Blob([svgString], { type: 'image/svg+xml' })
+          const blobUrl = URL.createObjectURL(blob)
+
+          imageDataArray.push({ layerIndex, url: blobUrl })
+          layerNumbers.push(layerIndex)
+        }
+      } else {
+        // PNG生成（既存のCanvas方式）
+        const canvases: HTMLCanvasElement[] = []
+
+        for (let layerIndex = layerStart; layerIndex <= layerEnd; layerIndex++) {
+          const canvas = parsedVial.generateLayerCanvas(layerIndex, renderOptions, qualityScale)
+          canvases.push(canvas)
+          layerNumbers.push(layerIndex)
+        }
+
+        // Canvas -> DataURL変換
+        imageDataArray = canvases.map((canvas, index) => ({
+          layerIndex: layerNumbers[index],
+          dataUrl: canvas.toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
+        }))
       }
-      
-      const result = { canvases, layerNumbers }
       
       
       // 二重バッファリング: 次世代配列をクリア
@@ -290,25 +313,24 @@ export const useImagesStore = defineStore('images', () => {
       }
       
       // レイヤー画像を次世代配列に追加
-      console.log(`Generated ${result.canvases.length} layer canvases, quality=${quality}`)
-      result.canvases.forEach((canvas, index) => {
-        const layerIndex = result.layerNumbers[index]
-        const dataURL = canvas.toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
-        console.log(`Adding layer ${layerIndex} image: ${dataURL.substring(0, 50)}...`)
+      console.log(`Generated ${imageDataArray.length} layer images (${settingsStore.imageFormat.toUpperCase()}), quality=${quality}`)
+      imageDataArray.forEach((imageData) => {
+        const { layerIndex, dataUrl, url } = imageData
+        const imageUrl = dataUrl || url
+        console.log(`Adding layer ${layerIndex} image: ${imageUrl?.substring(0, 50)}...`)
+
+        const imageObject = {
+          id: `parsed-layer-${layerIndex}-${quality}`,
+          layer: layerIndex,
+          ...(dataUrl && { dataUrl }),
+          ...(url && { url }),
+          type: 'layer' as const
+        }
+
         if (quality === 'low') {
-          addImageToNext({
-            id: `parsed-layer-${layerIndex}-${quality}`,
-            layer: layerIndex,
-            dataUrl: dataURL,
-            type: 'layer'
-          })
+          addImageToNext(imageObject)
         } else {
-          addImage({
-            id: `parsed-layer-${layerIndex}-${quality}`,
-            layer: layerIndex,
-            dataUrl: dataURL,
-            type: 'layer'
-          })
+          addImage(imageObject)
         }
       })
       
@@ -324,10 +346,30 @@ export const useImagesStore = defineStore('images', () => {
         // ヘッダー画像を生成（1x, 2x, 3x） - ファイル名をラベルとして渡す
         const vialStore = useVialStore();
         const label = settingsStore.outputLabel || vialStore.selectedFileName || '';
-        const headerCanvases = parsedVial.generateLayoutHeaderCanvas(renderOptions, qualityScale, label)
-        
-        // コンボリスト画像を生成（1x, 2x, 3x）
-        const comboCanvases = await parsedVial.generateComboListCanvas(renderOptions, qualityScale)
+
+        let headerImages: (HTMLCanvasElement | string)[] = [];
+        let comboCanvases: (HTMLCanvasElement | string)[] = [];
+
+        if (settingsStore.imageFormat === 'svg') {
+          // SVG生成
+          const headerSVGs = parsedVial.generateLayoutHeaderSVG(renderOptions, qualityScale, label);
+          const comboSVGs = await parsedVial.generateComboListSVG(renderOptions, qualityScale);
+
+          // SVGをBlobに変換してURLを生成
+          headerImages = headerSVGs.map(svgString => {
+            const blob = new Blob([svgString], { type: 'image/svg+xml' });
+            return URL.createObjectURL(blob);
+          });
+
+          comboCanvases = comboSVGs.map(svgString => {
+            const blob = new Blob([svgString], { type: 'image/svg+xml' });
+            return URL.createObjectURL(blob);
+          });
+        } else {
+          // PNG生成（既存）
+          headerImages = parsedVial.generateLayoutHeaderCanvas(renderOptions, qualityScale, label);
+          comboCanvases = await parsedVial.generateComboListCanvas(renderOptions, qualityScale);
+        }
         
         // 個別コンボ画像を生成（1x, 2x, 3x）
         const comboImages: HTMLCanvasElement[][] = []
@@ -337,16 +379,25 @@ export const useImagesStore = defineStore('images', () => {
         }
         
         const additionalComponents = {
-          headerImages: headerCanvases,
+          headerImages: headerImages,
           comboListImages: comboCanvases,
           comboImages: comboImages.flat()
         }
         
         // ヘッダー画像を追加（1x, 2x, 3x幅）
         if (settingsStore.showHeader) {
-          additionalComponents.headerImages.forEach((headerCanvas, index) => {
+          additionalComponents.headerImages.forEach((headerItem, index) => {
             const width = index + 1
-            const headerURL = headerCanvas.toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
+            let headerURL: string
+
+            if (settingsStore.imageFormat === 'svg') {
+              // SVGの場合はBlobURLを使用
+              headerURL = headerItem as string
+            } else {
+              // PNGの場合はCanvasから生成
+              headerURL = (headerItem as HTMLCanvasElement).toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
+            }
+
             if (quality === 'low') {
               addImageToNext({
                 id: `parsed-header-${width}x-${quality}`,
@@ -367,9 +418,18 @@ export const useImagesStore = defineStore('images', () => {
         
         // コンボリスト画像を追加（1x, 2x, 3x幅）
         if (settingsStore.showCombos) {
-          additionalComponents.comboListImages.forEach((comboCanvas, index) => {
+          additionalComponents.comboListImages.forEach((comboItem, index) => {
             const width = index + 1
-            const comboURL = comboCanvas.toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
+            let comboURL: string
+
+            if (settingsStore.imageFormat === 'svg') {
+              // SVGの場合はBlobURLを使用
+              comboURL = comboItem as string
+            } else {
+              // PNGの場合はCanvasから生成
+              comboURL = (comboItem as HTMLCanvasElement).toDataURL('image/png', quality === 'high' ? 1.0 : 0.7)
+            }
+
             if (quality === 'low') {
               addImageToNext({
                 id: `parsed-combo-${width}x-${quality}`,
@@ -386,7 +446,7 @@ export const useImagesStore = defineStore('images', () => {
               })
             }
           })
-          
+
           // 個別コンボ画像は不要（コンボリスト画像のみで十分）
         }
       }
@@ -1057,14 +1117,14 @@ export const useImagesStore = defineStore('images', () => {
     const settingsStore = useSettingsStore()
     const uiStore = useUiStore()
     const vialStore = useVialStore()
-    
+
     try {
-    
+
     // 選択されたレイヤーのみ処理
     const selectedLayerIndices = Object.entries(settingsStore.layerSelection)
       .filter(([_, selected]) => selected)
       .map(([layer, _]) => parseInt(layer))
-    
+
     const renderOptions = {
       theme: settingsStore.enableDarkMode ? 'dark' : 'light' as 'dark' | 'light',
       backgroundColor: undefined,
@@ -1076,26 +1136,74 @@ export const useImagesStore = defineStore('images', () => {
       changeKeyColors: settingsStore.highlightLevel > 10,
       changeEmptyKeyColors: true  // 空白ボタンの背景色は常に変更
     }
-    
+
     const qualityScale = 1.0 // 高品質固定
-    
-    // 選択されたレイヤーのキャンバスを生成
+
+    // PNG/SVG分岐処理
+    if (settingsStore.imageFormat === 'svg') {
+      // SVG生成
+      const svgResults: { layerIndex: number, svg: string }[] = []
+
+      for (const layerIndex of selectedLayerIndices) {
+        const svgString = parsedVial.generateLayerSVG(layerIndex, renderOptions, qualityScale)
+        svgResults.push({ layerIndex, svg: svgString })
+      }
+
+      const finalOutputImages: GeneratedImage[] = []
+
+      if (settingsStore.outputFormat === 'separated') {
+        // separated: 各レイヤーを個別出力
+        svgResults.forEach(({ layerIndex, svg }) => {
+          const blob = new Blob([svg], { type: 'image/svg+xml' })
+          const blobUrl = URL.createObjectURL(blob)
+          const filename = generateFileName('layer', layerIndex).replace('.png', '.svg')
+
+          finalOutputImages.push({
+            id: `final-parsed-layer-${layerIndex}`,
+            filename,
+            type: 'layer',
+            layer: layerIndex,
+            format: settingsStore.outputFormat,
+            url: blobUrl,
+            size: svg.length,
+            timestamp: new Date()
+          })
+        })
+      } else {
+        // vertical/rectangular: SVG結合生成は未実装のためCanvas結合を使用
+        const canvases: HTMLCanvasElement[] = []
+
+        for (const layerIndex of selectedLayerIndices) {
+          const canvas = parsedVial.generateLayerCanvas(layerIndex, renderOptions, qualityScale)
+          canvases.push(canvas)
+        }
+
+        await generateCombinedFinalOutput(canvases, parsedVial, renderOptions, qualityScale, finalOutputImages)
+      }
+
+      outputImages.value = finalOutputImages
+      uiStore.isGenerated = true
+      uiStore.setActiveTab('output')
+      return
+    }
+
+    // PNG生成（既存処理）
     const canvases: HTMLCanvasElement[] = []
     const layerNumbers: number[] = []
-    
+
     for (const layerIndex of selectedLayerIndices) {
       const canvas = parsedVial.generateLayerCanvas(layerIndex, renderOptions, qualityScale)
       canvases.push(canvas)
       layerNumbers.push(layerIndex)
     }
-    
+
     const result = { canvases, layerNumbers }
-    
+
     const selectedCanvases = result.canvases
     
     
     const finalOutputImages: GeneratedImage[] = []
-    
+
     if (settingsStore.outputFormat === 'separated') {
       // separated: 各レイヤーを個別出力
       selectedCanvases.forEach((canvas, index) => {
@@ -1115,58 +1223,9 @@ export const useImagesStore = defineStore('images', () => {
       })
     } else {
       // vertical/rectangular: 結合画像を生成
-      // ParsedVialからヘッダーとコンボも生成
-      let headerCanvas: HTMLCanvasElement | null = null
-      let comboCanvas: HTMLCanvasElement | null = null
-      
-      if (settingsStore.showHeader || settingsStore.showCombos) {
-        // SettingsStoreのpreviewDisplayColumnsを使用
-        const displayColumns = settingsStore.previewDisplayColumns
-
-        // ParsedVialのメソッドを使用してコンポーネントを生成
-        const qualityScale = 1.0 // high quality
-        
-        if (settingsStore.showHeader) {
-          const vialStore = useVialStore();
-          const label = settingsStore.outputLabel || vialStore.selectedFileName || '';
-          const headerCanvases = parsedVial.generateLayoutHeaderCanvas(renderOptions, qualityScale, label)
-          // displayColumnsの値に基づいて適切なインデックスを選択、無効な場合は最初のキャンバスを使用
-          const headerIndex = Math.min(Math.max(displayColumns - 1, 0), headerCanvases.length - 1)
-          headerCanvas = headerCanvases[headerIndex] || headerCanvases[0] || null
-        }
-        
-        if (settingsStore.showCombos) {
-          const comboCanvases = await parsedVial.generateComboListCanvas(renderOptions, qualityScale)
-          // displayColumnsの値に基づいて適切なインデックスを選択、無効な場合は最初のキャンバスを使用
-          const comboIndex = Math.min(Math.max(displayColumns - 1, 0), comboCanvases.length - 1)
-          comboCanvas = comboCanvases[comboIndex] || comboCanvases[0] || null
-        }
-      }
-      
-      const combinedCanvas = await generateAdvancedCombinedCanvas(
-        selectedCanvases,
-        headerCanvas,
-        comboCanvas,
-        settingsStore.outputFormat,
-        settingsStore.enableDarkMode
-      )
-      
-      const fileContent = vialStore.currentVial?.content ? decodeVialContent(vialStore.currentVial.content) : ''
-      const filename = generateFileName(`${settingsStore.outputFormat}-combined`)
-      
-      finalOutputImages.push({
-        id: 'final-parsed-combined',
-        filename,
-        type: 'combined',
-        layer: 0,
-        format: settingsStore.outputFormat,
-        url: await createMetadataEmbeddedDataUrl(combinedCanvas, fileContent),
-        size: combinedCanvas.width * combinedCanvas.height * 4,
-        timestamp: new Date(),
-        canvas: combinedCanvas
-      })
+      await generateCombinedFinalOutput(selectedCanvases, parsedVial, renderOptions, qualityScale, finalOutputImages)
     }
-    
+
     // outputImagesに結果を保存
     outputImages.value = finalOutputImages
     uiStore.isGenerated = true
@@ -1181,6 +1240,64 @@ export const useImagesStore = defineStore('images', () => {
     }
   }
 
+  // 結合画像生成の共通処理
+  const generateCombinedFinalOutput = async (
+    selectedCanvases: HTMLCanvasElement[],
+    parsedVial: ParsedVial,
+    renderOptions: any,
+    qualityScale: number,
+    finalOutputImages: GeneratedImage[]
+  ) => {
+    const settingsStore = useSettingsStore()
+    const vialStore = useVialStore()
+
+    // ParsedVialからヘッダーとコンボも生成
+    let headerCanvas: HTMLCanvasElement | null = null
+    let comboCanvas: HTMLCanvasElement | null = null
+
+    if (settingsStore.showHeader || settingsStore.showCombos) {
+      // SettingsStoreのpreviewDisplayColumnsを使用
+      const displayColumns = settingsStore.previewDisplayColumns
+
+      if (settingsStore.showHeader) {
+        const label = settingsStore.outputLabel || vialStore.selectedFileName || ''
+        const headerCanvases = parsedVial.generateLayoutHeaderCanvas(renderOptions, qualityScale, label)
+        // displayColumnsの値に基づいて適切なインデックスを選択、無効な場合は最初のキャンバスを使用
+        const headerIndex = Math.min(Math.max(displayColumns - 1, 0), headerCanvases.length - 1)
+        headerCanvas = headerCanvases[headerIndex] || headerCanvases[0] || null
+      }
+
+      if (settingsStore.showCombos) {
+        const comboCanvases = await parsedVial.generateComboListCanvas(renderOptions, qualityScale)
+        // displayColumnsの値に基づいて適切なインデックスを選択、無効な場合は最初のキャンバスを使用
+        const comboIndex = Math.min(Math.max(displayColumns - 1, 0), comboCanvases.length - 1)
+        comboCanvas = comboCanvases[comboIndex] || comboCanvases[0] || null
+      }
+    }
+
+    const combinedCanvas = await generateAdvancedCombinedCanvas(
+      selectedCanvases,
+      headerCanvas,
+      comboCanvas,
+      settingsStore.outputFormat,
+      settingsStore.enableDarkMode
+    )
+
+    const fileContent = vialStore.currentVial?.content ? decodeVialContent(vialStore.currentVial.content) : ''
+    const filename = generateFileName(`${settingsStore.outputFormat}-combined`)
+
+    finalOutputImages.push({
+      id: 'final-parsed-combined',
+      filename,
+      type: 'combined',
+      layer: 0,
+      format: settingsStore.outputFormat,
+      url: await createMetadataEmbeddedDataUrl(combinedCanvas, fileContent),
+      size: combinedCanvas.width * combinedCanvas.height * 4,
+      timestamp: new Date(),
+      canvas: combinedCanvas
+    })
+  }
 
   return {
     images,
