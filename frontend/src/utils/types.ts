@@ -2,6 +2,26 @@
 import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
 import { getFontConfig, getThemeColors } from './styleConfig.generated';
 
+// サブテキストの種別に応じた色を取得
+function getSubTextColor(type: 'tap' | 'hold' | 'double' | 'taphold', theme: 'dark' | 'light'): string {
+  if (theme === 'dark') {
+    switch (type) {
+      case 'tap': return '#f0f6fc'; // ほぼ白 - 通常
+      case 'hold': return '#58a6ff'; // ブルー - 青系
+      case 'double': return '#ff7b72'; // ライトレッド - 赤系
+      case 'taphold': return '#56d364'; // グリーン - 緑系
+    }
+  } else {
+    // ライトモード用
+    switch (type) {
+      case 'tap': return '#212529'; // ダークグレー - 通常
+      case 'hold': return '#0969da'; // ブルー - 青系
+      case 'double': return '#d1242f'; // レッド - 赤系
+      case 'taphold': return '#1a7f37'; // グリーン - 緑系
+    }
+  }
+}
+
 // === ボタン構造体 ===
 
 // 仮想ボタン：キーコードと表示テキストの純粋な対応
@@ -125,16 +145,16 @@ export class PhysicalButton {
     
     ctx.fillText(this.main.keyText, textX, textY);
     
-    // サブテキストを描画（最新の実装に基づく）
+    // サブテキストを描画（種別情報も含めて）
     if (this.sub) {
-      const subTexts: string[] = [];
-      if (this.sub.tap) subTexts.push(this.sub.tap.keyText);
-      if (this.sub.hold) subTexts.push(this.sub.hold.keyText);
-      if (this.sub.double) subTexts.push(this.sub.double.keyText);
-      if (this.sub.taphold) subTexts.push(this.sub.taphold.keyText);
-      
+      const subTexts: {text: string, type: 'tap' | 'hold' | 'double' | 'taphold'}[] = [];
+      if (this.sub.tap) subTexts.push({text: this.sub.tap.keyText, type: 'tap'});
+      if (this.sub.hold) subTexts.push({text: this.sub.hold.keyText, type: 'hold'});
+      if (this.sub.double) subTexts.push({text: this.sub.double.keyText, type: 'double'});
+      if (this.sub.taphold) subTexts.push({text: this.sub.taphold.keyText, type: 'taphold'});
+
       if (subTexts.length > 0) {
-        ctx.fillStyle = colors.textSub;
+        // サブテキスト種別に応じた色を取得
         
         // 等幅フォントの文字幅を計算（おおよその値）
         const getCharWidth = (fontSize: number): number => fontSize * 0.6;
@@ -142,7 +162,7 @@ export class PhysicalButton {
         // テキスト幅に基づいて最適なフォントサイズを計算
         const calculateOptimalFontSize = (text: string, maxWidth: number): number => {
           const targetSizes = [styleConfig.fontSizes.sub.normal, styleConfig.fontSizes.sub.small, styleConfig.fontSizes.sub.mini];
-          
+
           for (const size of targetSizes) {
             const estimatedWidth = text.length * getCharWidth(size);
             if (estimatedWidth <= maxWidth) {
@@ -155,11 +175,12 @@ export class PhysicalButton {
         if (subTexts.length === 1) {
           // 単一サブテキスト：幅に応じて動的にサイズ調整
           const availableWidth = width * 0.9; // 少し余裕を持つ
-          const optimalFontSize = calculateOptimalFontSize(subTexts[0], availableWidth);
-          
+          const optimalFontSize = calculateOptimalFontSize(subTexts[0].text, availableWidth);
+
+          ctx.fillStyle = getSubTextColor(subTexts[0].type, options.theme);
           ctx.font = `${optimalFontSize}px ${styleConfig.fontFamily}`;
           const subY = y + height * 0.75;
-          ctx.fillText(subTexts[0], x + width / 2, subY);
+          ctx.fillText(subTexts[0].text, x + width / 2, subY);
           
         } else if (subTexts.length === 2) {
           // 2個の場合は積極的に2行レイアウトを使用
@@ -168,10 +189,11 @@ export class PhysicalButton {
           const lineHeight = 16; // 行間を少し広げる
           
           for (let i = 0; i < subTexts.length; i++) {
-            const optimalFontSize = calculateOptimalFontSize(subTexts[i], availableWidth);
+            const optimalFontSize = calculateOptimalFontSize(subTexts[i].text, availableWidth);
+            ctx.fillStyle = getSubTextColor(subTexts[i].type, options.theme);
             ctx.font = `${optimalFontSize}px ${styleConfig.fontFamily}`;
             const subY = startY + (i * lineHeight);
-            ctx.fillText(subTexts[i], x + width / 2, subY);
+            ctx.fillText(subTexts[i].text, x + width / 2, subY);
           }
           
         } else if (subTexts.length === 3) {
@@ -184,7 +206,7 @@ export class PhysicalButton {
           const centerAvailableWidth = width * 0.9;
           
           // 各要素の文字数を取得
-          const lengths = displayTexts.map(text => text.length);
+          const lengths = displayTexts.map(item => item.text.length);
           
           // パターン1: [2個][1個] と パターン2: [1個][2個] の総文字数を比較
           const pattern1TotalChars = lengths[0] + lengths[1]; // 1行目2個
@@ -196,33 +218,39 @@ export class PhysicalButton {
           if (usePattern1) {
             // パターン1: [要素0, 要素1] / [要素2]
             // 1行目：左右に2個
-            const leftFontSize = calculateOptimalFontSize(displayTexts[0], leftAvailableWidth);
+            const leftFontSize = calculateOptimalFontSize(displayTexts[0].text, leftAvailableWidth);
+            ctx.fillStyle = getSubTextColor(displayTexts[0].type, options.theme);
             ctx.font = `${leftFontSize}px ${styleConfig.fontFamily}`;
-            ctx.fillText(displayTexts[0], x + width * 0.25, startY);
-            
-            const rightFontSize = calculateOptimalFontSize(displayTexts[1], rightAvailableWidth);
+            ctx.fillText(displayTexts[0].text, x + width * 0.25, startY);
+
+            const rightFontSize = calculateOptimalFontSize(displayTexts[1].text, rightAvailableWidth);
+            ctx.fillStyle = getSubTextColor(displayTexts[1].type, options.theme);
             ctx.font = `${rightFontSize}px ${styleConfig.fontFamily}`;
-            ctx.fillText(displayTexts[1], x + width * 0.75, startY);
-            
+            ctx.fillText(displayTexts[1].text, x + width * 0.75, startY);
+
             // 2行目：中央に1個
-            const centerFontSize = calculateOptimalFontSize(displayTexts[2], centerAvailableWidth);
+            const centerFontSize = calculateOptimalFontSize(displayTexts[2].text, centerAvailableWidth);
+            ctx.fillStyle = getSubTextColor(displayTexts[2].type, options.theme);
             ctx.font = `${centerFontSize}px ${styleConfig.fontFamily}`;
-            ctx.fillText(displayTexts[2], x + width / 2, startY + lineHeight);
+            ctx.fillText(displayTexts[2].text, x + width / 2, startY + lineHeight);
           } else {
             // パターン2: [要素0] / [要素1, 要素2]
             // 1行目：中央に1個
-            const topCenterFontSize = calculateOptimalFontSize(displayTexts[0], centerAvailableWidth);
+            const topCenterFontSize = calculateOptimalFontSize(displayTexts[0].text, centerAvailableWidth);
+            ctx.fillStyle = getSubTextColor(displayTexts[0].type, options.theme);
             ctx.font = `${topCenterFontSize}px ${styleConfig.fontFamily}`;
-            ctx.fillText(displayTexts[0], x + width / 2, startY);
-            
+            ctx.fillText(displayTexts[0].text, x + width / 2, startY);
+
             // 2行目：左右に2個
-            const bottomLeftFontSize = calculateOptimalFontSize(displayTexts[1], leftAvailableWidth);
+            const bottomLeftFontSize = calculateOptimalFontSize(displayTexts[1].text, leftAvailableWidth);
+            ctx.fillStyle = getSubTextColor(displayTexts[1].type, options.theme);
             ctx.font = `${bottomLeftFontSize}px ${styleConfig.fontFamily}`;
-            ctx.fillText(displayTexts[1], x + width * 0.25, startY + lineHeight);
-            
-            const bottomRightFontSize = calculateOptimalFontSize(displayTexts[2], rightAvailableWidth);
+            ctx.fillText(displayTexts[1].text, x + width * 0.25, startY + lineHeight);
+
+            const bottomRightFontSize = calculateOptimalFontSize(displayTexts[2].text, rightAvailableWidth);
+            ctx.fillStyle = getSubTextColor(displayTexts[2].type, options.theme);
             ctx.font = `${bottomRightFontSize}px ${styleConfig.fontFamily}`;
-            ctx.fillText(displayTexts[2], x + width * 0.75, startY + lineHeight);
+            ctx.fillText(displayTexts[2].text, x + width * 0.75, startY + lineHeight);
           }
           
         } else if (subTexts.length > 3) {
@@ -240,20 +268,23 @@ export class PhysicalButton {
             if (i + 1 < displayTexts.length) {
               // 左側
               const leftX = x + width * 0.25;
-              const leftFontSize = calculateOptimalFontSize(displayTexts[i], leftAvailableWidth);
+              const leftFontSize = calculateOptimalFontSize(displayTexts[i].text, leftAvailableWidth);
+              ctx.fillStyle = getSubTextColor(displayTexts[i].type, options.theme);
               ctx.font = `${leftFontSize}px ${styleConfig.fontFamily}`;
-              ctx.fillText(displayTexts[i], leftX, subY);
-              
+              ctx.fillText(displayTexts[i].text, leftX, subY);
+
               // 右側
               const rightX = x + width * 0.75;
-              const rightFontSize = calculateOptimalFontSize(displayTexts[i + 1], rightAvailableWidth);
+              const rightFontSize = calculateOptimalFontSize(displayTexts[i + 1].text, rightAvailableWidth);
+              ctx.fillStyle = getSubTextColor(displayTexts[i + 1].type, options.theme);
               ctx.font = `${rightFontSize}px ${styleConfig.fontFamily}`;
-              ctx.fillText(displayTexts[i + 1], rightX, subY);
+              ctx.fillText(displayTexts[i + 1].text, rightX, subY);
             } else {
               // 中央（奇数の最後）- 通常は発生しない
-              const centerFontSize = calculateOptimalFontSize(displayTexts[i], width * 0.9);
+              const centerFontSize = calculateOptimalFontSize(displayTexts[i].text, width * 0.9);
+              ctx.fillStyle = getSubTextColor(displayTexts[i].type, options.theme);
               ctx.font = `${centerFontSize}px ${styleConfig.fontFamily}`;
-              ctx.fillText(displayTexts[i], x + width / 2, subY);
+              ctx.fillText(displayTexts[i].text, x + width / 2, subY);
             }
           }
         }
@@ -417,24 +448,57 @@ export class ParsedLayer {
     
     // レイヤー番号を描画（x, y パラメータは使用されない）
     this.drawLayerNumber(ctx, this.layerIndex, 0, 0, options, qualityScale);
+
+    // 色の説明ラベルを右下に追加
+    this.drawColorLegend(ctx, canvasSize, options, qualityScale);
   }
   
   calculateCanvasSize(): {width: number, height: number} {
     // KEYBOARD_CONSTANTSを使用した統一計算式
     const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
-    
+
     // 実際のキー配置に合わせた計算式（最右端はunitX * 13.5）
     const contentWidth = unitX * 13.5 + keyWidth;
     const contentHeight = unitY * 3.0 + keyHeight;
     const baseImgWidth = Math.ceil(contentWidth + margin * 2);
     const baseImgHeight = Math.ceil(contentHeight + margin * 2);
-    
+
     return {
       width: baseImgWidth,
       height: baseImgHeight
     };
   }
-  
+
+  // 色の説明ラベルを右下に描画
+  drawColorLegend(ctx: CanvasRenderingContext2D, canvasSize: {width: number, height: number}, options: RenderOptions, qualityScale: number): void {
+    const styleConfig = getFontConfig();
+    const fontSize = styleConfig.fontSizes.sub.small;
+    const lineHeight = fontSize + 2;
+    const margin = 8;
+
+    // 説明する色の種類（tapは通常色なので除外）
+    const colorTypes: Array<{type: 'hold' | 'double' | 'taphold', label: string}> = [
+      {type: 'hold', label: 'HOLD'},
+      {type: 'double', label: 'DOUBLE'},
+      {type: 'taphold', label: 'TAP+HOLD'}
+    ];
+
+    // 開始位置（右下から逆算）
+    const startY = canvasSize.height - margin - (colorTypes.length * lineHeight);
+    const startX = canvasSize.width - margin - 80; // 80は推定幅
+
+    ctx.font = `${fontSize}px ${styleConfig.fontFamily}`;
+    ctx.textAlign = 'right';
+
+    for (let i = 0; i < colorTypes.length; i++) {
+      const {type, label} = colorTypes[i];
+      const y = startY + (i * lineHeight);
+
+      ctx.fillStyle = getSubTextColor(type, options.theme || 'dark');
+      ctx.fillText(label, startX, y);
+    }
+  }
+
 }
 
 // 解析済みVIAL構造体
