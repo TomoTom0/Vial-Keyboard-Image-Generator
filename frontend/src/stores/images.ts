@@ -615,10 +615,80 @@ export const useImagesStore = defineStore('images', () => {
     return unixTimestamp.toString(36).toUpperCase()
   }
 
+  // SVG結合関数
+  const generateVerticalCombinedSVG = (svgs: string[]): string => {
+    if (svgs.length === 0) return ''
+
+    // 各SVGから寸法を抽出
+    const svgData = svgs.map(svg => {
+      const widthMatch = svg.match(/width="(\d+)"/)
+      const heightMatch = svg.match(/height="(\d+)"/)
+      const width = widthMatch ? parseInt(widthMatch[1]) : 400
+      const height = heightMatch ? parseInt(heightMatch[1]) : 200
+
+      const content = svg.replace(/<\?xml[^>]*\?>/, '').replace(/<svg[^>]*>/, '').replace(/<\/svg>/, '')
+      return { width, height, content }
+    })
+
+    const maxWidth = Math.max(...svgData.map(d => d.width))
+    const totalHeight = svgData.reduce((sum, d) => sum + d.height, 0) // 間隔なし
+
+    let yOffset = 0
+    const combinedContent = svgData.map(data => {
+      const group = `<g transform="translate(${(maxWidth - data.width) / 2}, ${yOffset})">${data.content}</g>`
+      yOffset += data.height // 間隔なし
+      return group
+    }).join('\n')
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${maxWidth}" height="${totalHeight}" xmlns="http://www.w3.org/2000/svg">
+<rect width="${maxWidth}" height="${totalHeight}" fill="white"/>
+${combinedContent}
+</svg>`
+  }
+
+  const generateRectangularCombinedSVG = (svgs: string[]): string => {
+    if (svgs.length === 0) return ''
+
+    // 各SVGから寸法を抽出
+    const svgData = svgs.map(svg => {
+      const widthMatch = svg.match(/width="(\d+)"/)
+      const heightMatch = svg.match(/height="(\d+)"/)
+      const width = widthMatch ? parseInt(widthMatch[1]) : 400
+      const height = heightMatch ? parseInt(heightMatch[1]) : 200
+
+      const content = svg.replace(/<\?xml[^>]*\?>/, '').replace(/<svg[^>]*>/, '').replace(/<\/svg>/, '')
+      return { width, height, content }
+    })
+
+    const cols = Math.ceil(Math.sqrt(svgs.length))
+    const rows = Math.ceil(svgs.length / cols)
+    const cellWidth = Math.max(...svgData.map(d => d.width))
+    const cellHeight = Math.max(...svgData.map(d => d.height))
+
+    const totalWidth = cellWidth * cols // 間隔なし
+    const totalHeight = cellHeight * rows // 間隔なし
+
+    const combinedContent = svgData.map((data, index) => {
+      const col = index % cols
+      const row = Math.floor(index / cols)
+      const x = col * cellWidth + (cellWidth - data.width) / 2
+      const y = row * cellHeight + (cellHeight - data.height) / 2
+      return `<g transform="translate(${x}, ${y})">${data.content}</g>`
+    }).join('\n')
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${totalWidth}" height="${totalHeight}" xmlns="http://www.w3.org/2000/svg">
+<rect width="${totalWidth}" height="${totalHeight}" fill="white"/>
+${combinedContent}
+</svg>`
+  }
+
   // ファイル名生成
   const generateFileName = (type: string, layerIndex?: number): string => {
     const vialStore = useVialStore()
-    
+    const settingsStore = useSettingsStore()
+
     let originalName: string
     if (vialStore.selectedVialId === 'sample') {
       originalName = 'sample'
@@ -629,16 +699,17 @@ export const useImagesStore = defineStore('images', () => {
     } else {
       originalName = 'keyboard'
     }
-    
+
     const shortName = originalName.slice(0, 10) // 最大10文字
     const timestamp = generateCompactTimestamp() // 圧縮されたタイムスタンプ
-    
+    const extension = settingsStore.imageFormat === 'svg' ? '.svg' : '.png'
+
     if (layerIndex !== undefined) {
-      return `ytomo-vial-kb-${shortName}-L${layerIndex}-${timestamp}_ytvil.png`
+      return `ytomo-vial-kb-${shortName}-L${layerIndex}-${timestamp}_ytvil${extension}`
     } else if (type.includes('combined') || type.includes('vertical') || type.includes('rectangular')) {
-      return `ytomo-vial-kb-${shortName}-${timestamp}_ytvil.png`
+      return `ytomo-vial-kb-${shortName}-${timestamp}_ytvil${extension}`
     } else {
-      return `ytomo-vial-kb-${shortName}-${type}-${timestamp}_ytvil.png`
+      return `ytomo-vial-kb-${shortName}-${type}-${timestamp}_ytvil${extension}`
     }
   }
 
@@ -1142,6 +1213,7 @@ export const useImagesStore = defineStore('images', () => {
     // PNG/SVG分岐処理
     if (settingsStore.imageFormat === 'svg') {
       // SVG生成
+      console.log('🎨 SVG generation started, format:', settingsStore.outputFormat)
       const svgResults: { layerIndex: number, svg: string }[] = []
 
       for (const layerIndex of selectedLayerIndices) {
@@ -1152,11 +1224,12 @@ export const useImagesStore = defineStore('images', () => {
       const finalOutputImages: GeneratedImage[] = []
 
       if (settingsStore.outputFormat === 'separated') {
+        console.log('📋 Processing separated format');
         // separated: 各レイヤーを個別出力
         svgResults.forEach(({ layerIndex, svg }) => {
           const blob = new Blob([svg], { type: 'image/svg+xml' })
           const blobUrl = URL.createObjectURL(blob)
-          const filename = generateFileName('layer', layerIndex).replace('.png', '.svg')
+          const filename = generateFileName('layer', layerIndex)
 
           finalOutputImages.push({
             id: `final-parsed-layer-${layerIndex}`,
@@ -1170,17 +1243,59 @@ export const useImagesStore = defineStore('images', () => {
           })
         })
       } else {
-        // vertical/rectangular: SVG結合生成は未実装のためCanvas結合を使用
-        const canvases: HTMLCanvasElement[] = []
+        // vertical/rectangular: SVG結合生成を実装（ヘッダー・レイヤー・コンボを含む完全版）
+        console.log('🔗 Processing combined format:', settingsStore.outputFormat)
 
-        for (const layerIndex of selectedLayerIndices) {
-          const canvas = parsedVial.generateLayerCanvas(layerIndex, renderOptions, qualityScale)
-          canvases.push(canvas)
+        // ヘッダーSVG生成
+        let headerSvg = ''
+        if (settingsStore.showHeader) {
+          const label = settingsStore.outputLabel || vialStore.selectedFileName || ''
+          const headerSVGs = parsedVial.generateLayoutHeaderSVG(renderOptions, qualityScale, label)
+          headerSvg = headerSVGs[0] || '' // 最初の幅のヘッダーを使用
         }
 
-        await generateCombinedFinalOutput(canvases, parsedVial, renderOptions, qualityScale, finalOutputImages)
+        // コンボSVG生成
+        let comboSvg = ''
+        if (settingsStore.showCombos) {
+          const comboSVGs = await parsedVial.generateComboListSVG(renderOptions, qualityScale)
+          comboSvg = comboSVGs[0] || '' // 最初の幅のコンボを使用
+        }
+
+        // 全要素を結合
+        const allSvgs = []
+        if (headerSvg) allSvgs.push(headerSvg)
+        allSvgs.push(...svgResults.map(r => r.svg))
+        if (comboSvg) allSvgs.push(comboSvg)
+
+        let combinedSvg: string
+        if (settingsStore.outputFormat === 'vertical') {
+          console.log('📏 Generating vertical combined SVG with header/combo')
+          combinedSvg = generateVerticalCombinedSVG(allSvgs)
+        } else {
+          console.log('🔲 Generating rectangular combined SVG with header/combo')
+          combinedSvg = generateRectangularCombinedSVG(allSvgs)
+        }
+
+        const blob = new Blob([combinedSvg], { type: 'image/svg+xml' })
+        const blobUrl = URL.createObjectURL(blob)
+        const filename = generateFileName(`${settingsStore.outputFormat}-combined`)
+
+        finalOutputImages.push({
+          id: 'final-parsed-combined-svg',
+          filename,
+          type: 'combined',
+          layer: 0,
+          format: settingsStore.outputFormat,
+          url: blobUrl,
+          size: combinedSvg.length,
+          timestamp: new Date()
+        })
       }
 
+      console.log('📤 Setting outputImages for SVG:', finalOutputImages.length, 'images')
+      finalOutputImages.forEach((img, i) => {
+        console.log(`  ${i}: ${img.type} - ${img.filename} (${img.format})`)
+      })
       outputImages.value = finalOutputImages
       uiStore.isGenerated = true
       uiStore.setActiveTab('output')

@@ -17,12 +17,12 @@
                 class="output-image"
               />
               <div class="filename-overlay">{{ getDownloadFilename() }}</div>
-              <button 
+              <button
                 class="download-overlay-btn"
-                @click="downloadAllAsZip"
-                title="Download"
+                @click="downloadAll"
+                :title="`Download ${settingsStore.imageFormat.toUpperCase()}`"
               >
-                Download
+                ⬇️ {{ settingsStore.imageFormat.toUpperCase() }}
               </button>
             </div>
           </div>
@@ -42,12 +42,12 @@
                 class="output-image"
               />
               <div class="filename-overlay">{{ getDownloadFilename() }}</div>
-              <button 
+              <button
                 class="download-overlay-btn"
-                @click="downloadAllAsZip"
-                title="Download"
+                @click="downloadAll"
+                :title="`Download ${settingsStore.imageFormat.toUpperCase()}`"
               >
-                Download
+                ⬇️ {{ settingsStore.imageFormat.toUpperCase() }}
               </button>
             </div>
           </div>
@@ -72,6 +72,10 @@ import { useSettingsStore } from '../stores/settings'
 import { useVialStore } from '../stores/vial'
 import { useUiStore } from '../stores/ui'
 import { embedMetadataToPng } from '../utils/pngMetadata'
+import { useResponsiveScale } from '../composables/useResponsiveScale'
+
+// レスポンシブスケールシステムを使用
+const { responsiveScale } = useResponsiveScale()
 
 interface GeneratedImage {
   id: string
@@ -97,7 +101,14 @@ const vialStore = useVialStore()
 const uiStore = useUiStore()
 
 // Store から取得するcomputed値 - generateFinalOutputImagesが設定したoutputImagesを使用
-const outputImages = computed(() => imagesStore.outputImages)
+const outputImages = computed(() => {
+  const images = imagesStore.outputImages
+  console.log('🖼️ OutputTab received:', images.length, 'images')
+  images.forEach((img, i) => {
+    console.log(`  ${i}: ${img.type} - ${img.filename} (${img.format})`)
+  })
+  return images
+})
 
 const getImageUrl = (image: GeneratedImage): string => {
   return image.dataUrl || image.url || ''
@@ -115,12 +126,15 @@ const getImageFilename = (image: GeneratedImage): string => {
   if (image.filename) {
     return image.filename
   }
-  
+
+  // 拡張子を画像形式に合わせる
+  const extension = settingsStore.imageFormat === 'svg' ? '.svg' : '.png'
+
   // フォールバック（後方互換性のため）
-  if (image.type === 'header') return 'keyboard-header_ytvil.png'
-  if (image.type === 'combo') return 'keyboard-combo_ytvil.png'
-  if (image.type === 'layer') return `keyboard-layer-${image.layer}_ytvil.png`
-  return `keyboard-${image.id}_ytvil.png`
+  if (image.type === 'header') return `keyboard-header_ytvil${extension}`
+  if (image.type === 'combo') return `keyboard-combo_ytvil${extension}`
+  if (image.type === 'layer') return `keyboard-layer-${image.layer}_ytvil${extension}`
+  return `keyboard-${image.id}_ytvil${extension}`
 }
 
 // 圧縮タイムスタンプ生成（36進数）
@@ -201,26 +215,36 @@ const downloadSingle = (image: GeneratedImage) => {
   }
 }
 
-const downloadAllAsZip = async () => {
+const downloadAll = async () => {
   try {
     // 動的にJSZipをインポート
     const JSZip = (await import('jszip')).default
     const zip = new JSZip()
-    
+
     // 各画像をZIPに追加
     for (const image of outputImages.value) {
       try {
         const imageUrl = getImageUrl(image)
         const filename = getImageFilename(image)
-        const response = await fetch(imageUrl)
-        const blob = await response.blob()
-        zip.file(filename, blob)
+
+        if (settingsStore.imageFormat === 'svg' && imageUrl.startsWith('blob:')) {
+          // SVGのBlobURLから内容を取得
+          const response = await fetch(imageUrl)
+          const svgText = await response.text()
+
+
+          zip.file(filename, svgText)
+        } else {
+          const response = await fetch(imageUrl)
+          const blob = await response.blob()
+          zip.file(filename, blob)
+        }
       } catch (error) {
         const filename = getImageFilename(image)
         console.warn(`Failed to add ${filename} to ZIP:`, error)
       }
     }
-    
+
     // separatedフォーマットの場合、VILファイルも追加
     if (settingsStore.outputFormat === 'separated') {
       try {
@@ -233,7 +257,7 @@ const downloadAllAsZip = async () => {
         console.warn('Failed to add VIL file to ZIP:', error)
       }
     }
-    
+
     // ZIPファイルを生成してダウンロード
     const zipBlob = await zip.generateAsync({ type: 'blob' })
     const link = document.createElement('a')
@@ -243,10 +267,10 @@ const downloadAllAsZip = async () => {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(link.href)
-    
-    console.log('ZIP download completed')
+
+    console.log(`${settingsStore.imageFormat.toUpperCase()} ZIP download completed`)
   } catch (error) {
-    console.error('ZIP download failed:', error)
+    console.error(`${settingsStore.imageFormat.toUpperCase()} ZIP download failed:`, error)
   }
 }
 
@@ -269,12 +293,15 @@ const downloadAllAsZip = async () => {
   margin: 5px auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: relative;
-  // 画像倍率設定
-  --image-scale: clamp(0.7, 2.5vw, 1.3);
+  // OutputTabは倍率変更なし（現状維持）
+  // --responsive-scale: v-bind(responsiveScale);
+  // transform: scale(var(--responsive-scale));
+  // transform-origin: center;
+  // transition: transform 0.3s ease;
+
   min-height: 400px;
   max-width: calc(100vw - 290px); // サイドバー250px + 余白40px
   width: 100%;
-  transition: all 0.3s ease-in-out;
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: visible;
@@ -299,9 +326,9 @@ const downloadAllAsZip = async () => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   object-fit: contain;
   transition: transform 0.2s;
-  // 適応的スケール適用
-  transform: scale(var(--image-scale, 1));
-  transform-origin: center;
+  // レスポンシブスケールは.image-containerレベルで適用するため削除
+  // transform: scale(var(--responsive-scale, 1));
+  // transform-origin: center;
   // 横幅制限を削除してはみ出しを許可
   min-width: fit-content;
 }
@@ -391,7 +418,7 @@ const downloadAllAsZip = async () => {
   position: absolute;
   bottom: 8px;
   left: 8px;
-  background: rgba(40, 167, 69, 0.9);
+  background: rgba(40, 167, 69, 0.7);
   color: white;
   border: none;
   padding: 8px 16px;
@@ -401,10 +428,9 @@ const downloadAllAsZip = async () => {
   font-weight: 500;
   transition: all 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(2px);
-  
+
   &:hover {
-    background: rgba(33, 136, 56, 0.95);
+    background: rgba(33, 136, 56, 0.8);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
@@ -417,20 +443,24 @@ const downloadAllAsZip = async () => {
 .image-container {
   position: relative;
   display: inline-block;
+
+  // レスポンシブスケールは.preview-containerレベルで適用するため削除
+  // transform: scale(var(--responsive-scale, 1));
+  // transform-origin: center;
+  // transition: transform 0.3s ease;
 }
 
 .filename-overlay {
   position: absolute;
   bottom: 8px;
   right: 8px;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.5);
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
   pointer-events: none;
-  backdrop-filter: blur(2px);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   max-width: 200px;
   overflow: hidden;

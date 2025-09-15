@@ -75,6 +75,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useResponsiveScale } from '../composables/useResponsiveScale'
 
 interface GeneratedImage {
   id: string
@@ -104,6 +105,9 @@ const emit = defineEmits<{
 const expandedImage = ref<string | null>(null)
 const selectedImage = ref<GeneratedImage | null>(null)
 const showPreview = ref<boolean>(true)
+
+// レスポンシブスケールシステムを使用
+const { contentScale } = useResponsiveScale()
 
 // 画像タイプのテキスト表示
 const getImageTypeText = (image: GeneratedImage): string => {
@@ -247,6 +251,11 @@ const onImageError = (image: GeneratedImage) => {
   flex-direction: column;
   overflow-x: auto;
   overflow-y: visible;
+
+  // 動的コンテンツ倍率（ヘッダー画像幅基準）
+  --content-scale: v-bind(contentScale);
+
+  // コンテナは固定サイズ、コンテンツのみスケール
 }
 
 .state {
@@ -355,8 +364,11 @@ const onImageError = (image: GeneratedImage) => {
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 1rem;
   flex: 1;
-  // 画像倍率設定
-  --image-scale: clamp(0.8, 2.0vw, 1.2);
+
+  // コンテンツスケールを適用
+  transform: scale(var(--content-scale));
+  transform-origin: center;
+  transition: transform 0.3s ease;
 }
 
 .image-item {
@@ -365,6 +377,10 @@ const onImageError = (image: GeneratedImage) => {
   border-radius: 8px;
   overflow: hidden;
   transition: box-shadow 0.2s;
+
+  // レスポンシブスケールは.gridレベルで適用するため削除
+  // transform: scale(var(--responsive-scale, 1));
+  // transform-origin: center;
 }
 
 .image-item:hover {
@@ -378,10 +394,16 @@ const onImageError = (image: GeneratedImage) => {
   cursor: pointer;
   display: block;
   object-fit: contain;
-  transition: transform 0.2s;
-  // 適応的スケール適用
-  transform: scale(var(--image-scale, 1));
-  transform-origin: center;
+  transition: transform 0.3s ease;
+  // レスポンシブスケールは.image-itemレベルで適用するため削除
+  // transform: scale(var(--responsive-scale, 1));
+  // transform-origin: center;
+
+  // SVG特有の追加制限
+  &[src*="image/svg"], &[src*=".svg"] {
+    max-width: 500px; // SVGの場合はより小さく制限
+    max-height: 400px;
+  }
 }
 
 .info {

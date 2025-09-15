@@ -982,7 +982,7 @@ export class ParsedVial {
 
       // 背景色を描画
       renderer.fillStyle = colors.headerBackground;
-      renderer.fillRect(0, 0, width, 37);
+      renderer.fillRect(0, 0, width, height);
 
       // ヘッダーテキストを描画（左側）
       renderer.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
@@ -1001,7 +1001,7 @@ export class ParsedVial {
 
       // 区切り線を描画
       renderer.fillStyle = colors.borderNormal;
-      renderer.fillRect(0, 37, width, 1);
+      renderer.fillRect(0, 44, width, 1);
 
       svgStrings.push(renderer.toSVG());
     }

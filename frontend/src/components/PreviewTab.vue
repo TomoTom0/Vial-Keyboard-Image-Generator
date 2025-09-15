@@ -7,16 +7,16 @@
         alt="Layout header"
         class="preview-header-image"
       />
-      
+
       <!-- Layers grid -->
       <div :class="getLayersLayoutClass()">
-        <div 
+        <div
           v-for="layer in getOrderedLayers()"
           :key="layer"
           v-show="settingsStore.layerSelection[layer]"
           class="layer-item"
         >
-          <img 
+          <img
             v-if="imagesStore.getLayerImageUrl(layer)"
             :src="imagesStore.getLayerImageUrl(layer)"
             :alt="`Layer ${layer}`"
@@ -28,14 +28,13 @@
           />
         </div>
       </div>
-      
+
       <!-- Combo section -->
       <img v-if="settingsStore.showCombos && settingsStore.outputFormat !== 'separated' && imagesStore.getComboImageUrl()"
         :src="imagesStore.getComboImageUrl()"
         alt="Combo information"
         class="preview-combo-image"
       />
-      
     </div>
   </div>
 </template>
@@ -62,7 +61,7 @@ const generatedImages = computed(() => imagesStore.images)
 const imageLoadingStates = ref<{[key: number]: boolean}>({})
 const imageLoadedStates = ref<{[key: number]: boolean}>({})
 
-// 画面幅を監視してレイアウト変更をトリガー
+// 画面幅の監視（separatedレイアウト用）
 const screenWidth = ref(window.innerWidth)
 
 const updateScreenWidth = () => {
@@ -152,24 +151,12 @@ $transition-duration: 0.2s;
   transition: all 0.3s ease-in-out;
   box-sizing: border-box;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  
-  // ウィンドウサイズ基準の共通画像倍率（余裕がある場合はより大きく）
-  --image-scale: clamp(1.0, 3.5vw, 2.5);
-  
-  // 大きな画面でより大きく表示
-  @media (min-width: 1400px) {
-    --image-scale: clamp(2.0, 4.5vw, 3.5);
-  }
-  
-  // 超大型画面でさらに大きく表示
-  @media (min-width: 1800px) {
-    --image-scale: clamp(2.5, 5.0vw, 4.0);
-  }
 }
+
 
 // Common image styles
 @mixin preview-image-base {
@@ -183,9 +170,6 @@ $transition-duration: 0.2s;
   box-sizing: border-box;
   transition: all $transition-duration;
   
-  // ウィンドウサイズ基準の共通倍率を適用
-  transform: scale(var(--image-scale));
-  transform-origin: center;
 }
 
 .preview-header-image {
@@ -193,6 +177,8 @@ $transition-duration: 0.2s;
   border-radius: 8px 8px 0 0;
   margin: 0 auto;
   align-self: center;
+  max-width: 100%;
+  height: auto;
 }
 
 .preview-combo-image {
@@ -200,6 +186,8 @@ $transition-duration: 0.2s;
   border-radius: 0 0 8px 8px;
   margin: 0 auto;
   align-self: center;
+  max-width: 100%;
+  height: auto;
 }
 
 .preview-layer-image {
@@ -212,13 +200,14 @@ $transition-duration: 0.2s;
   margin: 10px auto;
   display: grid;
   justify-self: center;
-  
+
+
   // 大きな画面でより大きな間隔
   @media (min-width: 1400px) {
     margin: 15px;
     gap: 15px;
   }
-  
+
   @media (min-width: 1800px) {
     margin: 20px;
     gap: 20px;
@@ -231,6 +220,8 @@ $transition-duration: 0.2s;
   margin: 10px auto;
   display: grid;
   justify-self: center;
+  max-width: 100%;
+
 }
 
 .layers-separated-2col {
@@ -239,12 +230,13 @@ $transition-duration: 0.2s;
   margin: 10px auto;
   display: grid;
   justify-self: center;
-  
+
+
   @media (min-width: 1400px) {
     margin: 15px;
     gap: 15px;
   }
-  
+
   @media (min-width: 1800px) {
     margin: 20px;
     gap: 20px;
@@ -257,12 +249,13 @@ $transition-duration: 0.2s;
   margin: 10px auto;
   display: grid;
   justify-self: center;
-  
+
+
   @media (min-width: 1400px) {
     margin: 15px;
     gap: 15px;
   }
-  
+
   @media (min-width: 1800px) {
     margin: 20px;
     gap: 20px;
@@ -271,6 +264,8 @@ $transition-duration: 0.2s;
 
 .layers-vertical {
   @include layout.layers-vertical-layout;
+  max-width: 100%;
+
 }
 
 .layers-rectangular-2col {
@@ -278,6 +273,8 @@ $transition-duration: 0.2s;
   margin: 0 auto;
   display: grid;
   justify-self: center;
+  max-width: 100%;
+
 }
 
 .layers-rectangular-3col {
@@ -285,18 +282,27 @@ $transition-duration: 0.2s;
   margin: 0 auto;
   display: grid;
   justify-self: center;
+  max-width: 100%;
+
 }
 
 .layer-item {
   transition: all $transition-duration;
   position: relative;
+
+
+  // 基本レイアウト調整
+  width: fit-content;
+  height: fit-content;
 }
 
 .layer-preview {
   @include preview-image-base;
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
-  
+  max-width: 100%;
+  height: auto;
+
   &.image-loaded {
     opacity: 1;
   }
@@ -332,8 +338,6 @@ $transition-duration: 0.2s;
     max-width: calc(100vw - 80px); // 折りたたみサイドバー40px + 余白40px
     align-items: center;
     
-    // 小画面では画像スケールを調整
-    --image-scale: clamp(0.8, 2.5vw, 1.5);
   }
   
   
