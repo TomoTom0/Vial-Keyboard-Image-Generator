@@ -213,39 +213,19 @@ $background-light: #f5f5f5;
   flex-direction: column;
   align-items: center;
   
-  // ウィンドウサイズ基準の共通画像倍率（余裕がある場合はより大きく）
-  --image-scale: clamp(0.6, 2.5vw, 1.5);
-  
-  // 大きな画面でより大きく表示
-  @media (min-width: 1400px) {
-    --image-scale: clamp(1.2, 3.5vw, 2.2);
-  }
-  
-  // 超大型画面でさらに大きく表示
-  @media (min-width: 1800px) {
-    --image-scale: clamp(1.5, 4.0vw, 2.8);
-  }
-  
-  // 内部コンテンツの最小幅を確保（画像がスケールされた状態での適切な表示のため）
-  > * {
-    min-width: max-content;
-  }
 }
 
 // Mixin for common image styles
 @mixin image-base {
   width: auto;
   height: auto;
+  max-width: 100%;
   object-fit: contain;
   display: block;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   transition: all $transition-duration;
-  
-  // ウィンドウサイズ基準の共通倍率を適用
-  transform: scale(var(--image-scale));
-  transform-origin: center;
 }
 
 

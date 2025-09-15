@@ -5,6 +5,7 @@ import SelectTab from './components/SelectTab.vue'
 import PreviewTab from './components/PreviewTab.vue'
 import OutputTab from './components/OutputTab.vue'
 import Toast from './components/Toast.vue'
+import AppFooter from './components/AppFooter.vue'
 import { useVialStore } from './stores/vial'
 import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
@@ -153,6 +154,9 @@ onUnmounted(() => {
         </main>
       </div> <!-- main-content end -->
     </div> <!-- main-layout end -->
+
+    <!-- フッター -->
+    <AppFooter />
   </div> <!-- app end -->
 
   <!-- トースト通知 -->
