@@ -18,13 +18,11 @@ export const useVialStore = defineStore('vial', () => {
   const vialFiles = ref<VialData[]>([])
   const selectedVialId = ref<string>('')
   
-  console.log('🔍 VialStore: Manual localStorage check:', localStorage.getItem('vial-store'))
   
   // レガシーデータの変換処理
   const migrateData = () => {
     vialFiles.value = vialFiles.value.filter(file => {
       if (!file.content) {
-        console.log('🔄 Removing legacy data without content:', file.name)
         return false
       }
       return true
@@ -33,13 +31,11 @@ export const useVialStore = defineStore('vial', () => {
     // ParsedVialは画像作成時に必要に応じて計算する（事前計算はしない）
     
     if (selectedVialId.value && !vialFiles.value.find(v => v.id === selectedVialId.value)) {
-      console.log('🔄 Resetting invalid selectedVialId')
       selectedVialId.value = ''
     }
 
     // ファイルが何もなく、何も選択されていない場合はsampleを選択
     if (vialFiles.value.length === 0 && !selectedVialId.value) {
-      console.log('🔄 No files and no selection, setting to sample')
       selectedVialId.value = 'sample'
     }
   }
@@ -56,27 +52,16 @@ export const useVialStore = defineStore('vial', () => {
 
   // 選択されているファイル名
   const selectedFileName = computed(() => {
-    console.log('🔍 selectedFileName computed:', {
-      selectedVialId: selectedVialId.value,
-      vialFilesLength: vialFiles.value.length,
-      vialFiles: vialFiles.value.map(f => ({ id: f.id, name: f.name }))
-    })
-    
     if (!selectedVialId.value || selectedVialId.value === 'sample') {
-      console.log('📝 selectedFileName returning "sample" (no selection or sample)')
       return 'sample'
     }
     const selectedFile = vialFiles.value.find(f => f.id === selectedVialId.value)
-    const result = selectedFile?.name || 'sample'
-    console.log('📝 selectedFileName result:', result, 'from selectedFile:', selectedFile)
-    return result
+    return selectedFile?.name || 'sample'
   })
 
   // VILデータを追加
   const addVialData = (name: string, config: VialConfig, content: string) => {
     const id = uuidv4()
-    console.log('📁 addVialData: Generated UUID:', id)
-    console.log('📁 addVialData: content length:', content.length)
     
     // アップロード時はVialConfigのみ保存（ParsedVialは必要時に生成）
     const vialData: VialData = {
@@ -87,8 +72,6 @@ export const useVialStore = defineStore('vial', () => {
       timestamp: Date.now(), // unixtime (number)
       // parsedVial: undefined  // 必要時に生成
     }
-    console.log('📁 addVialData: Created vialData with content:', !!vialData.content)
-    console.log('📁 addVialData: Full vialData:', vialData)
     
     // 同名ファイルがあれば削除
     const existingIndex = vialFiles.value.findIndex(v => v.name === name)

@@ -140,7 +140,6 @@ const loadImageToCanvas = (imageUrl: string): Promise<HTMLCanvasElement | null> 
     }
 
     img.onerror = () => {
-      console.error('Failed to load image:', imageUrl)
       resolve(null)
     }
 
@@ -166,7 +165,6 @@ const updateCombinedImageUrl = async () => {
     // 画像サイズを設定
     imageSize.value = { width, height }
 
-    console.log('SVG content generated for zoom (vector quality)')
 
     // SVGコンテンツ更新後にサイズを再計算
     nextTick(() => {
@@ -179,7 +177,6 @@ const updateCombinedImageUrl = async () => {
   }
 
   // SVG生成に失敗した場合のみキャンバス結合を使用
-  console.warn('SVG generation failed, falling back to canvas')
   const combinedCanvas = await generatePreviewStyleCombinedCanvas()
   if (combinedCanvas) {
     combinedImageUrl.value = combinedCanvas.toDataURL('image/png', 1.0)
@@ -188,7 +185,6 @@ const updateCombinedImageUrl = async () => {
     // 画像サイズを設定
     imageSize.value = { width: combinedCanvas.width, height: combinedCanvas.height }
 
-    console.log('Canvas fallback used for zoom')
 
     // 画像更新後にサイズを再計算
     nextTick(() => {
@@ -201,7 +197,6 @@ const updateCombinedImageUrl = async () => {
     // 最終フォールバック：元の画像を使用
     combinedImageUrl.value = props.imageUrl
     combinedSVGContent.value = ''
-    console.log('Using final fallback image URL')
   }
 }
 
@@ -235,25 +230,20 @@ const generatePreviewStyleCombinedCanvas = async (): Promise<HTMLCanvasElement |
       .map(([layer, _]) => parseInt(layer))
       .sort((a, b) => a - b)
 
-    console.log('Selected layers for zoom:', selectedLayers)
 
     for (const layer of selectedLayers) {
       const layerUrl = imagesStore.getLayerImageUrl(layer)
-      console.log(`Processing layer ${layer}:`, layerUrl ? 'URL found' : 'No URL')
       if (layerUrl) {
         const layerCanvas = await loadImageToCanvas(layerUrl)
         if (layerCanvas) {
           components.push({ canvas: layerCanvas, type: 'layer' })
           maxWidth = Math.max(maxWidth, layerCanvas.width)
           totalHeight += layerCanvas.height
-          console.log(`Layer ${layer} added:`, { width: layerCanvas.width, height: layerCanvas.height })
         } else {
-          console.warn(`Failed to load canvas for layer ${layer}`)
         }
       }
     }
 
-    console.log('Total components for zoom:', components.length)
 
     // コンボ画像を追加
     if (settingsStore.showCombos && settingsStore.outputFormat !== 'separated') {
@@ -292,7 +282,6 @@ const generatePreviewStyleCombinedCanvas = async (): Promise<HTMLCanvasElement |
 
     return combinedCanvas
   } catch (error) {
-    console.error('Failed to generate preview-style combined canvas:', error)
     return null
   } finally {
     isGeneratingCombined.value = false
@@ -376,7 +365,6 @@ const generateSVGCombinedCanvas = async (): Promise<HTMLCanvasElement | null> =>
 
     return combinedCanvas
   } catch (error) {
-    console.error('Failed to generate SVG combined canvas:', error)
     return null
   }
 }
@@ -384,11 +372,9 @@ const generateSVGCombinedCanvas = async (): Promise<HTMLCanvasElement | null> =>
 // VialストアからSVGを直接生成（ズーム専用）
 const generateSVGFromVialStore = async (): Promise<string | null> => {
   try {
-    console.log('🔍 generateSVGFromVialStore called')
 
     const currentVial = vialStore.currentVial
     if (!currentVial) {
-      console.warn('❌ No current vial available for SVG generation')
       return null
     }
 
@@ -397,10 +383,8 @@ const generateSVGFromVialStore = async (): Promise<string | null> => {
     const parsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, currentVial.name)
 
     if (!parsedVial) {
-      console.warn('❌ Failed to parse vial config for SVG generation')
       return null
     }
-    console.log('✅ parsedVial generated from config, proceeding with SVG generation')
 
     const svgContents: string[] = []
     let totalHeight = 0
@@ -459,7 +443,6 @@ const generateSVGFromVialStore = async (): Promise<string | null> => {
     }
 
     if (svgContents.length === 0) {
-      console.warn('❌ No SVG contents generated')
       return null
     }
 
@@ -472,10 +455,8 @@ const generateSVGFromVialStore = async (): Promise<string | null> => {
 ${svgContents.join('\n')}
 </svg>`
 
-    console.log('✅ SVG generated successfully:', { maxWidth, totalHeight, contentCount: svgContents.length })
     return result
   } catch (error) {
-    console.error('❌ Failed to generate SVG from vial store:', error)
     return null
   }
 }
@@ -547,7 +528,6 @@ const generateSVGCombinedContent = async (): Promise<string | null> => {
 ${svgContents.join('\n')}
 </svg>`
   } catch (error) {
-    console.error('Failed to generate SVG combined content:', error)
     return null
   }
 }
@@ -559,7 +539,6 @@ const fetchSVGContent = async (url: string): Promise<string | null> => {
     if (!response.ok) return null
     return await response.text()
   } catch (error) {
-    console.error('Failed to fetch SVG content:', error)
     return null
   }
 }
@@ -595,7 +574,6 @@ const loadSVGToCanvas = (svgUrl: string): Promise<HTMLCanvasElement | null> => {
     }
 
     img.onerror = () => {
-      console.error('Failed to load SVG image:', svgUrl)
       resolve(null)
     }
 
@@ -616,7 +594,6 @@ const zoomTargetBoxStyle = computed(() => {
 
   if (!container || !placeholder) {
     // DOM要素がまだ利用可能でない場合のフォールバック
-    console.log('Using fallback square box - container:', !!container, 'placeholder:', !!placeholder)
     const boxSize = 15  // 15%固定
     const left = Math.max(0, Math.min(100 - boxSize, targetX.value * 100 - boxSize / 2))
     const top = Math.max(0, Math.min(100 - boxSize, targetY.value * 100 - boxSize / 2))
@@ -631,9 +608,6 @@ const zoomTargetBoxStyle = computed(() => {
   const containerRect = container.getBoundingClientRect()
   const placeholderRect = placeholder.getBoundingClientRect()
 
-  console.log('Container size:', containerRect.width, 'x', containerRect.height)
-  console.log('Placeholder size:', placeholderRect.width, 'x', placeholderRect.height)
-  console.log('Using normal square box calculation')
 
   // 小さい正方形のボックス
   const boxSize = 15  // 15%の固定サイズ
@@ -654,10 +628,6 @@ const zoomTargetBoxStyle = computed(() => {
   const left = constrainedX * 100 - boxWidthPercent / 2
   const top = constrainedY * 100 - boxHeightPercent / 2
 
-  console.log('Box size percent:', boxWidthPercent.toFixed(1), 'x', boxHeightPercent.toFixed(1))
-  console.log('Target position:', targetX.value.toFixed(2), targetY.value.toFixed(2))
-  console.log('Constrained position:', constrainedX.toFixed(2), constrainedY.toFixed(2))
-  console.log('Box final position:', left.toFixed(1), top.toFixed(1))
 
   return {
     left: `${left}%`,
@@ -738,7 +708,6 @@ const zoomImageStyle = computed(() => {
   const translateY = centerY - (targetPixelY * zoomLevel.value) + panY.value
 
   // デバッグ用（必要時のみ有効化）
-  // console.log('Zoom transform calculation:', {
   //   targetX: targetX.value,
   //   targetY: targetY.value,
   //   targetPixelX,
@@ -794,7 +763,6 @@ const resetZoom = () => {
   panY.value = 0
   targetX.value = 0.5
   targetY.value = 0.5
-  console.log('Zoom reset to default values')
 }
 
 // ホイールズーム
@@ -806,9 +774,7 @@ const handleWheel = (event: WheelEvent) => {
 
 // ズーム先ボックスのドラッグ
 const startTargetDrag = (event: MouseEvent) => {
-  console.log('Starting target drag', event)
   isTargetDragging.value = true
-  console.log('isTargetDragging set to:', isTargetDragging.value)
 
   // 即座に位置を更新（クリック位置に移動）
   const placeholder = document.querySelector('.overview-placeholder') as HTMLElement
@@ -838,7 +804,6 @@ const startTargetDrag = (event: MouseEvent) => {
     panX.value = 0
     panY.value = 0
 
-    console.log('Updated target to:', x.toFixed(2), y.toFixed(2), 'with margins:', marginX.toFixed(2), marginY.toFixed(2))
   }
 
   event.preventDefault()
@@ -862,7 +827,6 @@ const startImageDrag = (event: MouseEvent) => {
 // マウス移動ハンドラ
 const handleMouseMove = (event: MouseEvent) => {
   if (isTargetDragging.value) {
-    console.log('Target dragging in progress')
     // プレースホルダー内でのドラッグ処理
     const placeholder = document.querySelector('.overview-placeholder') as HTMLElement
     if (placeholder) {
@@ -884,7 +848,6 @@ const handleMouseMove = (event: MouseEvent) => {
       targetX.value = x
       targetY.value = y
 
-      console.log('Target position:', targetX.value, targetY.value, 'margins:', marginX, marginY)
 
       // パン位置をリセット（新しい位置の基準点として）
       panX.value = 0
@@ -907,7 +870,6 @@ const handleMouseMove = (event: MouseEvent) => {
 // マウスアップハンドラ
 const handleMouseUp = () => {
   if (isTargetDragging.value) {
-    console.log('Ending target drag')
   }
   isDragging.value = false
   isTargetDragging.value = false
@@ -942,7 +904,6 @@ const handleOverviewImageLoad = () => {
     const containerWidth = container.clientWidth - 20 // padding考慮
     const containerHeight = container.clientHeight - 20 // padding考慮
 
-    console.log('Container size for overview:', { containerWidth, containerHeight })
 
     // 画像をコンテナに収めるための倍率を計算
     const scaleX = containerWidth / naturalWidth
@@ -964,13 +925,6 @@ const handleOverviewImageLoad = () => {
       overviewImageRef.value.style.width = `${naturalWidth * scale}px`
       overviewImageRef.value.style.height = `${naturalHeight * scale}px`
     }
-
-    console.log('Overview image scaled:', {
-      natural: { width: naturalWidth, height: naturalHeight },
-      container: { width: containerWidth, height: containerHeight },
-      scale: scale,
-      final: { width: naturalWidth * scale, height: naturalHeight * scale }
-    })
   }
 }
 
@@ -985,7 +939,6 @@ const handleZoomImageLoad = () => {
 
       imageSize.value = { width, height }
 
-      // console.log('SVG zoom image initialized:', {
       //   width,
       //   height,
       //   containerSize: containerSize.value
@@ -998,7 +951,6 @@ const handleZoomImageLoad = () => {
         height: zoomImageRef.value.naturalHeight
       }
 
-      // console.log('Zoom image loaded:', {
       //   naturalWidth: zoomImageRef.value.naturalWidth,
       //   naturalHeight: zoomImageRef.value.naturalHeight,
       //   containerSize: containerSize.value
@@ -1009,7 +961,6 @@ const handleZoomImageLoad = () => {
     nextTick(() => {
       updateContainerSize()
       // 初期位置を確認用にログ出力
-      // console.log('Initial position check:', {
       //   targetX: targetX.value,
       //   targetY: targetY.value,
       //   imageSize: imageSize.value,
@@ -1076,7 +1027,6 @@ const updateElementSizes = () => {
   const placeholder = document.querySelector('.overview-placeholder') as HTMLElement
 
   if (container && placeholder) {
-    console.log('DOM elements found, updating sizes')
     // computedを再実行させるためにtriggerRefを使う代わりに、値を変更する
     targetX.value = targetX.value // 強制再計算
   }
