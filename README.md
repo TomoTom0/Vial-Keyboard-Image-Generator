@@ -3,7 +3,7 @@
 [![Deploy to Cloudflare Pages](https://img.shields.io/badge/deploy-Cloudflare%20Pages-orange)](https://ytomo-vial-kb-to-image.pages.dev)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3.5-4FC08D?logo=vue.js)](https://vuejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![Rust](https://img.shields.io/badge/Rust-Backend-000000?logo=rust)](https://www.rust-lang.org/)
+[![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare)](https://pages.cloudflare.com/)
 
 **vial.rocks設定ファイルから美しいキーボードレイアウト画像を自動生成するWebアプリケーション**
 
@@ -55,9 +55,8 @@
 - **Vite** - 高速ビルドツール
 - **Sass** - スタイリング
 
-### Backend
-- **Rust** - 高性能画像処理
-- **Cloudflare Pages** - デプロイメント
+### デプロイメント
+- **Cloudflare Pages** - 静的サイトホスティング
 
 ### 主要ライブラリ
 - **JSZip** - アーカイブ機能
@@ -84,7 +83,6 @@
 
 ### 必要環境
 - **Node.js** 18.0.0以上
-- **Rust** 1.70.0以上 (Backendを使用する場合)
 
 ### セットアップ
 
@@ -103,9 +101,6 @@ npm run dev
 ```bash
 # フロントエンド（ポート5173）
 npm run dev
-
-# Rustバックエンド（開発中）
-cargo run
 ```
 
 ### ビルド
@@ -128,18 +123,10 @@ npm run preview
 │   │   └── constants/     # 定数定義
 │   ├── public/            # 静的ファイル
 │   └── scripts/           # ビルドスクリプト
-├── backend/           # Rust画像処理（開発中）
 ├── data/              # サンプルVialファイル
-└── output/            # 生成画像出力先
+└── deploy.sh          # デプロイスクリプト
 ```
 
-## 🎯 今後の予定
-
-- [ ] 🎨 カスタムテーマエディタ
-- [ ] ⌨️ より多くのキーボード対応
-- [ ] 📊 使用統計の表示
-- [ ] 🔄 バッチ処理機能
-- [ ] 📱 PWA対応
 
 ## 🤝 コントリビューション
 
@@ -159,7 +146,7 @@ npm run preview
 
 - [Vial](https://vial.rocks) - 素晴らしいキーボードカスタマイズツール
 - [Vue.js](https://vuejs.org/) - 優秀なフロントエンドフレームワーク
-- [Rust](https://www.rust-lang.org/) - 高性能システムプログラミング言語
+- [Cloudflare Pages](https://pages.cloudflare.com/) - 高速静的サイトホスティング
 
 ---
 
