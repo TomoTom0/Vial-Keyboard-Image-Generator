@@ -108,9 +108,7 @@ dist/
 output/
 target/
 tests/
-tasks/
 tmp/
-doc/
 assets/
 .wrangler/
 node_modules/

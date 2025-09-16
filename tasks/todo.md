@@ -1,0 +1,106 @@
+# TODO - Vial Keyboard Image Project
+
+## 完了済みタスク
+
+- [x] Vilファイルの構造分析と理解
+- [x] サンプル画像からキーレイアウト情報の抽出
+- [x] キーコードとラベル表示の対応関係調査
+- [x] 技術要件の整理
+- [x] TypeScriptプロジェクトでの実装完了
+- [x] Tap Dance複数サブテキスト表示機能
+- [x] Layer Tap表示機能
+- [x] レイアウト調整（左右ブロック間隔、右端列位置）
+- [x] レイヤー番号装飾表示機能
+- [x] モジュール分割と画像結合機能の実装
+- [x] ダークモード・ライトモードのテーマ対応
+- [x] コンボ情報表示機能の実装
+- [x] ヘッダー統一とファイル名ラベル表示
+- [x] 拡張子表示対応
+
+## 画像倍率システム検討
+
+### 問題点の整理
+- 現在のCSS変数による固定倍率では画面サイズに対応しきれない
+- transform:scaleは視覚サイズのみ変更、レイアウトスペースは元のまま
+- 大きな画像（1276px）が小画面でははみ出す
+
+### 検討すべき実装方式
+
+#### 方式A: CSS Container Queriesによる適応的倍率
+- `@container`クエリでコンテナ幅に応じてCSS変数を動的変更
+- JavaScript不要、純CSS実装
+- 問題：transform:scaleのレイアウトスペース問題は残る
+
+#### 方式B: ResizeObserverによるJavaScript制御
+- ResizeObserverでコンテナサイズ監視
+- `max-width`や`width`でCSSサイズ直接制御（transformは使わない）
+- レイアウトスペースも正しく計算される
+
+#### 方式C: 画像生成時サイズ制御
+- Canvas生成時に目標サイズを指定
+- qualityScaleパラメータを利用
+- 根本的解決だが生成コストが高い
+
+#### 方式D: CSS Grid/Flexbox + object-fit制御
+- CSS GridまたはFlexboxでコンテナサイズ制限
+- `object-fit: contain`でアスペクト比維持しつつサイズフィット
+- シンプルで確実
+
+### 推奨実装順序
+1. **方式D（CSS制御）を試行** - 最もシンプル
+2. 不十分な場合は**方式B（ResizeObserver）**を追加
+3. パフォーマンス問題があれば**方式C（生成時制御）**を検討
+
+### 具体的実装タスク
+- [ ] CSS GridまたはFlexboxでコンテナサイズ制限実装
+- [ ] object-fit: containによる自動フィット確認
+- [ ] レスポンシブ対応（タブレット・スマホサイズ）
+- [ ] 必要に応じてResizeObserverによる高度制御追加
+
+## 現在のタスク：Webフロントエンド開発
+
+### Phase 1: プロジェクト基盤構築
+
+- [ ] プロジェクト構造の初期セットアップ（frontend/backend フォルダ作成）
+- [ ] Vue.js 3 + Viteでフロントエンドプロジェクト作成
+- [ ] Express.jsでバックエンドAPI作成
+- [ ] 既存TypeScriptモジュールをバックエンドに統合
+
+### Phase 2: 基本機能実装
+- [ ] ファイルアップロード機能の実装（ドラッグ&ドロップ対応）
+- [ ] 画像生成設定UI（テーマ・形式選択）の実装
+- [ ] 画像プレビュー・ダウンロード機能の実装
+- [ ] API設計と実装（POST /api/generate, GET /api/download）
+
+### Phase 3: 高度な機能
+- [ ] キャッシュ機能（LocalStorage + Redis）の実装
+- [ ] 履歴管理機能の実装（過去の生成結果保存）
+- [ ] セキュリティ対策（ファイル形式・サイズ制限、Rate Limiting）
+
+### Phase 4: 最終調整
+- [ ] テスト・デバッグ・パフォーマンス調整
+- [ ] UI/UXの改善
+- [ ] ドキュメント整備
+
+## アーキテクチャ参考
+
+### 旧タスク（参考として保持）
+<details>
+<summary>ソースコード分割タスク（完了済み）</summary>
+
+#### 型定義の分離
+- [x] modules/types.ts - 型定義と色定義の統合
+
+#### パーサー機能の分離
+- [x] modules/parser.ts - VILファイル・コンボ解析
+
+#### レンダリング機能の分離
+- [x] modules/renderer.ts - キー・テキスト描画機能
+- [x] modules/combo_renderer.ts - コンボ情報描画
+- [x] modules/combiner.ts - 画像結合機能
+
+#### ユーティリティ機能の分離
+- [x] modules/generator.ts - メイン生成ロジック
+- [x] modules/utils.ts - ファイル操作
+
+</details>
