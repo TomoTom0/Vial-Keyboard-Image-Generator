@@ -101,6 +101,19 @@ frontend/node_modules/
 # Unused directories
 backend/
 ref/
+src/
+scripts/
+shared/
+dist/
+output/
+target/
+tests/
+tasks/
+tmp/
+doc/
+assets/
+.wrangler/
+node_modules/
 
 # OS generated files
 .DS_Store
