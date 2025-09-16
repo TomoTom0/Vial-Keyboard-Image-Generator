@@ -98,6 +98,10 @@ frontend/.wrangler/
 frontend/node_modules/
 *.generated.ts
 
+# Unused directories
+backend/
+ref/
+
 # OS generated files
 .DS_Store
 .DS_Store?
