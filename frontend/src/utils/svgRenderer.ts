@@ -7,6 +7,7 @@ export class SVGRenderer {
   private currentFont: string = '16px Arial'
   private currentTextAlign: string = 'start'
   private currentTextBaseline: string = 'alphabetic'
+  private vilData: string | null = null
 
   constructor(private width: number, private height: number) {}
 
@@ -142,18 +143,55 @@ export class SVGRenderer {
     this.elements.push(textElement)
   }
 
-  // SVG文字列を生成
+  // VILデータを設定
+  setVilData(vilContent: string): void {
+    // Base64エンコードしてSVGに埋め込み可能にする
+    this.vilData = btoa(unescape(encodeURIComponent(vilContent)))
+  }
+
+  // SVG文字列を生成（VILデータメタデータ付き）
   toSVG(): string {
     const svgHeader = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${this.width}" height="${this.height}" xmlns="http://www.w3.org/2000/svg">`
+
+    let metadataSection = ''
+    if (this.vilData) {
+      metadataSection = `
+  <metadata>
+    <vil-keyboard-data encoding="base64">${this.vilData}</vil-keyboard-data>
+  </metadata>`
+    }
+
     const svgFooter = `</svg>`
 
-    return svgHeader + '\n' + this.elements.join('\n') + '\n' + svgFooter
+    return svgHeader + metadataSection + '\n' + this.elements.join('\n') + '\n' + svgFooter
   }
 
   // リセット
   clear(): void {
     this.elements = []
     this.pathCommands = []
+    this.vilData = null
+  }
+
+  // SVGからVILデータを抽出する静的メソッド
+  static extractVilDataFromSVG(svgContent: string): string | null {
+    try {
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(svgContent, 'image/svg+xml')
+      const vilElement = doc.querySelector('vil-keyboard-data')
+
+      if (vilElement && vilElement.getAttribute('encoding') === 'base64') {
+        const base64Data = vilElement.textContent?.trim()
+        if (base64Data) {
+          // Base64デコードしてJSON文字列を復元
+          return decodeURIComponent(escape(atob(base64Data)))
+        }
+      }
+      return null
+    } catch (error) {
+      console.error('Failed to extract VIL data from SVG:', error)
+      return null
+    }
   }
 }

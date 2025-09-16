@@ -871,7 +871,8 @@ export class ParsedVial {
     public metadata?: {                     // メタデータ（オプション）
       generatedAt: Date;
       version?: string;
-    }
+    },
+    public vilContent?: string              // 元のVILファイルの内容（JSON文字列）
   ) {}
   
   generateLayerCanvas(layerIndex: number, options: RenderOptions, qualityScale: number): HTMLCanvasElement {
@@ -901,6 +902,11 @@ export class ParsedVial {
 
     const canvasSize = layer.calculateCanvasSize();
     const renderer = new SVGRenderer(canvasSize.width, canvasSize.height);
+
+    // VILデータが利用可能な場合は埋め込み
+    if (this.vilContent) {
+      renderer.setVilData(this.vilContent);
+    }
 
     layer.drawSVG(renderer, options, this.combos, qualityScale);
     return renderer.toSVG();
@@ -978,6 +984,12 @@ export class ParsedVial {
       const height = 45; // 古い実装の高さに合わせる
 
       const renderer = new SVGRenderer(width, height);
+
+      // VILデータが利用可能な場合は埋め込み
+      if (this.vilContent) {
+        renderer.setVilData(this.vilContent);
+      }
+
       const colors = getThemeColors(options.theme);
 
       // 背景色を描画
@@ -1026,12 +1038,12 @@ export class ParsedVial {
     // 1x, 2x, 3x の3つの幅倍率で生成
     for (let widthScale = 1; widthScale <= 3; widthScale++) {
       const canvas = document.createElement('canvas');
-      
+
       const width = baseImageWidth * widthScale;
       // 古い実装に合わせた高さ計算
       const headerHeight = 45;
       const lineHeight = 70;
-      const columnsCount = widthScale >= 3 ? 6 : (widthScale >= 2 ? 4 : 3);
+      const columnsCount = 2;
       const rows = Math.ceil(this.combos.length / columnsCount);
       const totalHeight = headerHeight + (rows * lineHeight) + margin;
       
@@ -1060,15 +1072,15 @@ export class ParsedVial {
       ctx.fillStyle = colors.borderNormal;
       ctx.fillRect(0, headerHeight - 8, width, 1);
       
-      // コンボリスト（グリッドレイアウト）
-      const columnWidth = (width - 30) / columnsCount;
+      // コンボリスト（2列固定レイアウト）
+      const columnWidth = (width - 30) / 2;
       for (let index = 0; index < this.combos.length; index++) {
         const combo = this.combos[index];
-        const row = Math.floor(index / columnsCount);
-        const col = index % columnsCount;
+        const row = Math.floor(index / 2);
+        const col = index % 2;
         const x = 15 + col * columnWidth;
         const y = headerHeight + 10 + row * lineHeight;
-        
+
         await combo.draw(ctx, x, y, columnWidth - 10, KEYBOARD_CONSTANTS.keyHeight, options, qualityScale);
       }
       
@@ -1098,11 +1110,17 @@ export class ParsedVial {
       // 古い実装に合わせた高さ計算
       const headerHeight = 45;
       const lineHeight = 70;
-      const columnsCount = widthScale >= 3 ? 6 : (widthScale >= 2 ? 4 : 3);
+      const columnsCount = 2;
       const rows = Math.ceil(this.combos.length / columnsCount);
       const totalHeight = headerHeight + (rows * lineHeight) + margin;
 
       const renderer = new SVGRenderer(width, totalHeight);
+
+      // VILデータが利用可能な場合は埋め込み
+      if (this.vilContent) {
+        renderer.setVilData(this.vilContent);
+      }
+
       const colors = getThemeColors(options.theme);
 
       // 背景
@@ -1122,12 +1140,12 @@ export class ParsedVial {
       renderer.fillStyle = colors.borderNormal;
       renderer.fillRect(0, headerHeight - 8, width, 1);
 
-      // コンボリスト（グリッドレイアウト）
-      const columnWidth = (width - 30) / columnsCount;
+      // コンボリスト（2列固定レイアウト）
+      const columnWidth = (width - 30) / 2;
       for (let index = 0; index < this.combos.length; index++) {
         const combo = this.combos[index];
-        const row = Math.floor(index / columnsCount);
-        const col = index % columnsCount;
+        const row = Math.floor(index / 2);
+        const col = index % 2;
         const x = 15 + col * columnWidth;
         const y = headerHeight + 10 + row * lineHeight;
 

@@ -36,7 +36,7 @@ echo "🔧 Building project..."
 npm run build
 
 echo "☁️ Deploying to Cloudflare Pages..."
-npx wrangler pages deploy dist --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --commit-dirty
+npx wrangler pages deploy dist --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --commit-dirty --commit-message "Deploy from script"
 
 echo "✅ Deployment completed successfully!"
 echo "🌐 Your site should be available at: https://$CLOUDFLARE_PAGES_PROJECT_NAME.pages.dev"

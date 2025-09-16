@@ -22,15 +22,31 @@
           @click="toggleLayer(layer, !settingsStore.layerSelection[layer])"
         >
           <template v-if="imagesStore.getLayerImageUrl(layer)">
-            <img 
-              :src="imagesStore.getLayerImageUrl(layer)"
-              :alt="`Layer ${layer}`"
-              :class="['layer-preview', { 'image-loaded': imageLoadedStates[layer] }]"
-              loading="eager"
-              @load="handleImageLoad(layer)"
-              @loadstart="handleImageLoadStart(layer)"
-              @error="handleImageError"
-            />
+            <div class="layer-image-container">
+              <img
+                :src="imagesStore.getLayerImageUrl(layer)"
+                :alt="`Layer ${layer}`"
+                :class="['layer-preview', { 'image-loaded': imageLoadedStates[layer] }]"
+                loading="eager"
+                @load="handleImageLoad(layer)"
+                @loadstart="handleImageLoadStart(layer)"
+                @error="handleImageError"
+              />
+              <!-- ズームボタン（最初のレイヤーのみ） -->
+              <button
+                v-if="layer === 0"
+                class="zoom-btn"
+                @click.stop="openZoomModal(imagesStore.getLayerImageUrl(layer), `Layer ${layer}`)"
+                title="拡大表示"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="21 21l-4.35-4.35"/>
+                  <line x1="8" y1="11" x2="14" y2="11"/>
+                  <line x1="11" y1="8" x2="11" y2="14"/>
+                </svg>
+              </button>
+            </div>
           </template>
           <template v-else>
             <div class="layer-placeholder">
@@ -52,6 +68,14 @@
         />
       </div>
     </div>
+
+    <!-- ズームモーダル -->
+    <ImageZoomModal
+      :is-open="isZoomModalOpen"
+      :image-url="zoomImageUrl"
+      :title="zoomImageTitle"
+      @close="closeZoomModal"
+    />
   </div>
 </template>
 
@@ -61,6 +85,7 @@ import { LAYERS } from '../constants/layout'
 import { useVialStore } from '../stores/vial'
 import { useSettingsStore } from '../stores/settings'
 import { useImagesStore } from '../stores/images'
+import ImageZoomModal from './ImageZoomModal.vue'
 
 interface LayerSelection {
   [layerId: number]: boolean
@@ -80,6 +105,11 @@ const availableLayers = LAYERS.AVAILABLE
 // 画像読み込み状態管理
 const imageLoadingStates = ref<{[key: number]: boolean}>({})
 const imageLoadedStates = ref<{[key: number]: boolean}>({})
+
+// ズームモーダル状態
+const isZoomModalOpen = ref(false)
+const zoomImageUrl = ref('')
+const zoomImageTitle = ref('')
 
 // 画面幅を監視してレイアウト変更をトリガー
 const screenWidth = ref(window.innerWidth)
@@ -109,6 +139,19 @@ const toggleCombos = () => {
 
 const toggleHeader = () => {
   settingsStore.showHeader = !settingsStore.showHeader
+}
+
+// ズーム機能
+const openZoomModal = (imageUrl: string, title: string) => {
+  zoomImageUrl.value = imageUrl
+  zoomImageTitle.value = title
+  isZoomModalOpen.value = true
+}
+
+const closeZoomModal = () => {
+  isZoomModalOpen.value = false
+  zoomImageUrl.value = ''
+  zoomImageTitle.value = ''
 }
 
 const getLayersLayoutClass = (): string => {
@@ -226,6 +269,54 @@ $background-light: #f5f5f5;
   padding: 0;
   box-sizing: border-box;
   transition: all $transition-duration;
+}
+
+.layer-image-container {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.layer-image-container {
+  .zoom-btn {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+    z-index: 10;
+    opacity: 1;
+
+    svg {
+      width: 16px !important;
+      height: 16px !important;
+      min-width: 16px;
+      min-height: 16px;
+      display: block;
+    }
+
+    &:hover {
+      background-color: #0056b3;
+      transform: scale(1.05);
+      box-shadow: 0 4px 16px rgba(0, 123, 255, 0.5);
+    }
+
+    &:active {
+      transform: scale(0.95);
+      background-color: #004494;
+    }
+  }
 }
 
 
@@ -387,6 +478,11 @@ $background-light: #f5f5f5;
 .layer-item {
   @include interactive-element;
   position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &:not(.layer-selected) {
     @include inactive-state;

@@ -12,18 +12,18 @@ export class ParsedVialProcessor {
   /**
    * VIALConfigからParsedVialを生成
    */
-  static parseVialConfig(config: VialConfig, keyboardName?: string): ParsedVial {
-    
+  static parseVialConfig(config: VialConfig, keyboardName?: string, vilContent?: string): ParsedVial {
+
     // VialDataProcessorにconfigを設定
     VialDataProcessor.setConfig(config);
-    
+
     // TapDanceとCombo情報を事前取得
     const tapDances = VialDataProcessor.getTapDances(config);
     const combos = VialDataProcessor.getCombos(config);
-    
+
     // レイヤー情報を解析
     const layers = ParsedVialProcessor.parseLayers(config);
-    
+
     return new ParsedVial(
       config,
       tapDances,
@@ -33,7 +33,8 @@ export class ParsedVialProcessor {
       {
         generatedAt: new Date(),
         version: '1.0.0'
-      }
+      },
+      vilContent
     );
   }
   
