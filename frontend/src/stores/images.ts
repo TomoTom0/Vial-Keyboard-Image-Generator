@@ -313,11 +313,9 @@ export const useImagesStore = defineStore('images', () => {
       }
       
       // レイヤー画像を次世代配列に追加
-      console.log(`Generated ${imageDataArray.length} layer images (${settingsStore.imageFormat.toUpperCase()}), quality=${quality}`)
       imageDataArray.forEach((imageData) => {
         const { layerIndex, dataUrl, url } = imageData
         const imageUrl = dataUrl || url
-        console.log(`Adding layer ${layerIndex} image: ${imageUrl?.substring(0, 50)}...`)
 
         const imageObject = {
           id: `parsed-layer-${layerIndex}-${quality}`,
@@ -453,10 +451,7 @@ export const useImagesStore = defineStore('images', () => {
       
       // 低品質画像（プレビュー）の場合、一括切り替え
       if (quality === 'low') {
-        console.log(`Swapping to next images, previewImages before: ${previewImages.value.length}`)
-        console.log(`nextPreviewImages before swap:`, nextPreviewImages.value.map(img => ({ id: img.id, layer: img.layer, type: img.type })))
         swapToNextImages()
-        console.log(`Swapping completed, previewImages after: ${previewImages.value.length}`)
       }
       
       
@@ -647,6 +642,96 @@ ${combinedContent}
 </svg>`
   }
 
+  // 長方形配置（ヘッダー + グリッド + コンボ）
+  const generateRectangularWithHeaderComboSVG = (
+    layerSvgs: string[],
+    headerSvg: string,
+    comboSvg: string
+  ): string => {
+    const svgData = layerSvgs.map(svg => {
+      const widthMatch = svg.match(/width="(\d+)"/)
+      const heightMatch = svg.match(/height="(\d+)"/)
+      const width = widthMatch ? parseInt(widthMatch[1]) : 400
+      const height = heightMatch ? parseInt(heightMatch[1]) : 200
+      const content = svg.replace(/<\?xml[^>]*\?>/, '').replace(/<svg[^>]*>/, '').replace(/<\/svg>/, '')
+      return { width, height, content }
+    })
+
+    let headerData = { width: 0, height: 0, content: '' }
+    let comboData = { width: 0, height: 0, content: '' }
+
+    if (headerSvg) {
+      const widthMatch = headerSvg.match(/width="(\d+)"/)
+      const heightMatch = headerSvg.match(/height="(\d+)"/)
+      headerData = {
+        width: widthMatch ? parseInt(widthMatch[1]) : 400,
+        height: heightMatch ? parseInt(heightMatch[1]) : 100,
+        content: headerSvg.replace(/<\?xml[^>]*\?>/, '').replace(/<svg[^>]*>/, '').replace(/<\/svg>/, '')
+      }
+    }
+
+    if (comboSvg) {
+      const widthMatch = comboSvg.match(/width="(\d+)"/)
+      const heightMatch = comboSvg.match(/height="(\d+)"/)
+      comboData = {
+        width: widthMatch ? parseInt(widthMatch[1]) : 400,
+        height: heightMatch ? parseInt(heightMatch[1]) : 100,
+        content: comboSvg.replace(/<\?xml[^>]*\?>/, '').replace(/<svg[^>]*>/, '').replace(/<\/svg>/, '')
+      }
+    }
+
+    // レイヤーグリッドの配置を計算
+    let cols: number
+    if (layerSvgs.length >= 5) {
+      cols = 3
+    } else if (layerSvgs.length >= 2) {
+      cols = 2
+    } else {
+      cols = 1
+    }
+    const rows = Math.ceil(layerSvgs.length / cols)
+    const cellWidth = Math.max(...svgData.map(d => d.width))
+    const cellHeight = Math.max(...svgData.map(d => d.height))
+    const gridWidth = cellWidth * cols
+    const gridHeight = cellHeight * rows
+
+    // 全体の幅と高さを計算
+    const totalWidth = Math.max(gridWidth, headerData.width, comboData.width)
+    const totalHeight = headerData.height + gridHeight + comboData.height
+
+    let currentY = 0
+    const combinedContent = []
+
+    // ヘッダーを上部に配置
+    if (headerSvg) {
+      const centerX = (totalWidth - headerData.width) / 2
+      combinedContent.push(`<g transform="translate(${centerX}, ${currentY})">${headerData.content}</g>`)
+      currentY += headerData.height
+    }
+
+    // レイヤーをグリッド配置
+    svgData.forEach((data, index) => {
+      const col = index % cols
+      const row = Math.floor(index / cols)
+      const x = (totalWidth - gridWidth) / 2 + col * cellWidth + (cellWidth - data.width) / 2
+      const y = currentY + row * cellHeight + (cellHeight - data.height) / 2
+      combinedContent.push(`<g transform="translate(${x}, ${y})">${data.content}</g>`)
+    })
+    currentY += gridHeight
+
+    // コンボを下部に配置
+    if (comboSvg) {
+      const centerX = (totalWidth - comboData.width) / 2
+      combinedContent.push(`<g transform="translate(${centerX}, ${currentY})">${comboData.content}</g>`)
+    }
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${totalWidth}" height="${totalHeight}" xmlns="http://www.w3.org/2000/svg">
+<rect width="${totalWidth}" height="${totalHeight}" fill="white"/>
+${combinedContent.join('\n')}
+</svg>`
+  }
+
   const generateRectangularCombinedSVG = (svgs: string[]): string => {
     if (svgs.length === 0) return ''
 
@@ -661,7 +746,15 @@ ${combinedContent}
       return { width, height, content }
     })
 
-    const cols = Math.ceil(Math.sqrt(svgs.length))
+    // レイヤー数に応じて列数を決定（PNG版と同じロジック）
+    let cols: number
+    if (svgs.length >= 5) {
+      cols = 3
+    } else if (svgs.length >= 2) {
+      cols = 2
+    } else {
+      cols = 1
+    }
     const rows = Math.ceil(svgs.length / cols)
     const cellWidth = Math.max(...svgData.map(d => d.width))
     const cellHeight = Math.max(...svgData.map(d => d.height))
@@ -1213,7 +1306,6 @@ ${combinedContent}
     // PNG/SVG分岐処理
     if (settingsStore.imageFormat === 'svg') {
       // SVG生成
-      console.log('🎨 SVG generation started, format:', settingsStore.outputFormat)
       const svgResults: { layerIndex: number, svg: string }[] = []
 
       for (const layerIndex of selectedLayerIndices) {
@@ -1224,7 +1316,6 @@ ${combinedContent}
       const finalOutputImages: GeneratedImage[] = []
 
       if (settingsStore.outputFormat === 'separated') {
-        console.log('📋 Processing separated format');
         // separated: 各レイヤーを個別出力
         svgResults.forEach(({ layerIndex, svg }) => {
           const blob = new Blob([svg], { type: 'image/svg+xml' })
@@ -1244,36 +1335,43 @@ ${combinedContent}
         })
       } else {
         // vertical/rectangular: SVG結合生成を実装（ヘッダー・レイヤー・コンボを含む完全版）
-        console.log('🔗 Processing combined format:', settingsStore.outputFormat)
 
-        // ヘッダーSVG生成
+        // ヘッダーSVG生成（適切な幅を選択）
         let headerSvg = ''
         if (settingsStore.showHeader) {
           const label = settingsStore.outputLabel || vialStore.selectedFileName || ''
           const headerSVGs = parsedVial.generateLayoutHeaderSVG(renderOptions, qualityScale, label)
-          headerSvg = headerSVGs[0] || '' // 最初の幅のヘッダーを使用
+          // PreviewDisplayColumnsの設定に応じて適切な幅を選択
+          const displayColumns = settingsStore.previewDisplayColumns
+          const headerIndex = Math.min(Math.max(displayColumns - 1, 0), headerSVGs.length - 1)
+          headerSvg = headerSVGs[headerIndex] || headerSVGs[0] || ''
         }
 
-        // コンボSVG生成
+        // コンボSVG生成（適切な幅を選択）
         let comboSvg = ''
         if (settingsStore.showCombos) {
           const comboSVGs = await parsedVial.generateComboListSVG(renderOptions, qualityScale)
-          comboSvg = comboSVGs[0] || '' // 最初の幅のコンボを使用
+          // PreviewDisplayColumnsの設定に応じて適切な幅を選択
+          const displayColumns = settingsStore.previewDisplayColumns
+          const comboIndex = Math.min(Math.max(displayColumns - 1, 0), comboSVGs.length - 1)
+          comboSvg = comboSVGs[comboIndex] || comboSVGs[0] || ''
         }
-
-        // 全要素を結合
-        const allSvgs = []
-        if (headerSvg) allSvgs.push(headerSvg)
-        allSvgs.push(...svgResults.map(r => r.svg))
-        if (comboSvg) allSvgs.push(comboSvg)
 
         let combinedSvg: string
         if (settingsStore.outputFormat === 'vertical') {
-          console.log('📏 Generating vertical combined SVG with header/combo')
+          // vertical: 全要素を縦に配置
+          const allSvgs = []
+          if (headerSvg) allSvgs.push(headerSvg)
+          allSvgs.push(...svgResults.map(r => r.svg))
+          if (comboSvg) allSvgs.push(comboSvg)
           combinedSvg = generateVerticalCombinedSVG(allSvgs)
         } else {
-          console.log('🔲 Generating rectangular combined SVG with header/combo')
-          combinedSvg = generateRectangularCombinedSVG(allSvgs)
+          // rectangular: ヘッダー + レイヤーグリッド + コンボの3段構成
+          combinedSvg = generateRectangularWithHeaderComboSVG(
+            svgResults.map(r => r.svg),
+            headerSvg,
+            comboSvg
+          )
         }
 
         const blob = new Blob([combinedSvg], { type: 'image/svg+xml' })
@@ -1292,9 +1390,7 @@ ${combinedContent}
         })
       }
 
-      console.log('📤 Setting outputImages for SVG:', finalOutputImages.length, 'images')
       finalOutputImages.forEach((img, i) => {
-        console.log(`  ${i}: ${img.type} - ${img.filename} (${img.format})`)
       })
       outputImages.value = finalOutputImages
       uiStore.isGenerated = true

@@ -86,15 +86,11 @@ export const useVialStore = defineStore('vial', () => {
 
   // VILデータを削除
   const removeVialData = (id: string) => {
-    console.log('🗑️ removeVialData called with:', id)
-    
     vialFiles.value = vialFiles.value.filter(v => v.id !== id)
-    console.log('🗑️ Removed from array, new length:', vialFiles.value.length)
-    
+
     // 削除されたファイルが選択されている場合、空にする
     if (selectedVialId.value === id) {
       selectedVialId.value = ''
-      console.log('🗑️ Reset selectedVialId to empty')
     }
   }
 

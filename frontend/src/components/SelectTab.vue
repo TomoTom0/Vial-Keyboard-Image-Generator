@@ -283,33 +283,34 @@ $background-light: #f5f5f5;
     position: absolute;
     bottom: 8px;
     left: 8px;
-    background-color: #007bff;
+    background-color: rgba(0, 123, 255, 0.8);
     color: white;
     border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+    box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3);
     z-index: 10;
-    opacity: 1;
+    opacity: 0.8;
 
     svg {
-      width: 16px !important;
-      height: 16px !important;
-      min-width: 16px;
-      min-height: 16px;
+      width: 10px !important;
+      height: 10px !important;
+      min-width: 10px;
+      min-height: 10px;
       display: block;
     }
 
     &:hover {
-      background-color: #0056b3;
+      background-color: rgba(0, 86, 179, 0.9);
       transform: scale(1.05);
-      box-shadow: 0 4px 16px rgba(0, 123, 255, 0.5);
+      box-shadow: 0 3px 10px rgba(0, 123, 255, 0.4);
+      opacity: 1;
     }
 
     &:active {

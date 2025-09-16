@@ -40,10 +40,8 @@ export const useSettingsStore = defineStore('settings', () => {
   
   // キーボード言語を変更
   const setKeyboardLanguage = (languageId: string) => {
-    console.log('🔄 Setting keyboard language:', languageId)
     keyboardLanguage.value = languageId
     setCurrentKeyboardLanguage(languageId)
-    console.log('✅ Keyboard language set, localStorage:', localStorage.getItem('vial-keyboard-language'))
     
     // 言語変更時にバリデーション状態を更新
     updateReplaceRulesValidation()

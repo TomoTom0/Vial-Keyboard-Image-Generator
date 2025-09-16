@@ -22,27 +22,22 @@ export function convertKeycode(keycode: string | number, fromLanguage: string, t
     return keycode
   }
 
-  console.log(`🔄 Converting keycode: ${keycode} from ${fromLanguage} to ${toLanguage}`)
 
   // 元の言語で文字を取得
   const character = getCharacterFromKeycode(keycode, fromLanguage)
   
   if (!character) {
-    console.log(`⚠️ No character found for keycode: ${keycode} in ${fromLanguage}`)
     return keycode // 変換できない場合は元のキーコードを返す
   }
 
-  console.log(`🔍 Character found: "${character}"`)
 
   // ターゲット言語でキーコードを逆引き
   const newKeycode = getKeycodeForCharacter(character, toLanguage)
   
   if (!newKeycode) {
-    console.log(`⚠️ No keycode found for character: "${character}" in ${toLanguage}`)
     return keycode // 変換できない場合は元のキーコードを返す
   }
 
-  console.log(`✅ Converted to: ${newKeycode}`)
   return newKeycode
 }
 
@@ -50,9 +45,6 @@ export function convertKeycode(keycode: string | number, fromLanguage: string, t
  * VILファイルの全キーコードを変換する
  */
 export function convertVialConfig(config: VialConfig, fromLanguage: string, toLanguage: string): VialConfig {
-  console.log(`🚀 Starting VIL conversion: ${fromLanguage} → ${toLanguage}`)
-  console.log('🔍 Input config:', config)
-  console.log('🔍 Layout structure:', config.layout)
   
   // ディープコピーを作成
   const convertedConfig: VialConfig = JSON.parse(JSON.stringify(config))
@@ -61,7 +53,6 @@ export function convertVialConfig(config: VialConfig, fromLanguage: string, toLa
   
   // レイアウトの各キーコードを変換
   convertedConfig.layout = config.layout.map((layer, layerIndex) => {
-    console.log(`🔄 Converting layer ${layerIndex}`)
     const convertedLayer: { [rowIndex: number]: (string | number)[] } = {}
     
     // レイヤーの各行を処理
@@ -71,7 +62,6 @@ export function convertVialConfig(config: VialConfig, fromLanguage: string, toLa
         convertedLayer[rowIndex] = row.map((keycode, keyIndex) => {
           const converted = convertKeycode(keycode, fromLanguage, toLanguage)
           if (converted !== keycode) {
-            console.log(`  Layer ${layerIndex}, Row ${rowIndex}, Key[${keyIndex}]: ${keycode} → ${converted}`)
             totalConverted++
           }
           return converted
@@ -82,7 +72,6 @@ export function convertVialConfig(config: VialConfig, fromLanguage: string, toLa
     return convertedLayer
   })
   
-  console.log(`✅ Total converted keys: ${totalConverted}`)
   
   // コンボの変換（存在する場合）
   if (convertedConfig.combo) {
@@ -90,7 +79,6 @@ export function convertVialConfig(config: VialConfig, fromLanguage: string, toLa
       if (combo.keycode) {
         const converted = convertKeycode(combo.keycode as string, fromLanguage, toLanguage)
         if (converted !== combo.keycode) {
-          console.log(`🔄 Combo keycode: ${combo.keycode} → ${converted}`)
         }
         return { ...combo, keycode: converted }
       }
@@ -105,7 +93,6 @@ export function convertVialConfig(config: VialConfig, fromLanguage: string, toLa
         td.keycodes = td.keycodes.map((keycode: string | number) => {
           const converted = convertKeycode(keycode, fromLanguage, toLanguage)
           if (converted !== keycode) {
-            console.log(`🔄 TapDance keycode: ${keycode} → ${converted}`)
           }
           return converted
         })
@@ -114,7 +101,6 @@ export function convertVialConfig(config: VialConfig, fromLanguage: string, toLa
     })
   }
 
-  console.log(`✅ VIL conversion completed`)
   return convertedConfig
 }
 
@@ -145,7 +131,6 @@ export function downloadVilFile(config: VialConfig, originalFilename: string) {
   // URLオブジェクトを解放
   URL.revokeObjectURL(url)
   
-  console.log(`📥 Downloaded: ${filename}`)
 }
 
 /**
@@ -176,7 +161,6 @@ export function downloadConvertedVilFile(config: VialConfig, originalFilename: s
   // URLオブジェクトを解放
   URL.revokeObjectURL(url)
   
-  console.log(`📥 Downloaded: ${newFilename}`)
 }
 
 /**
@@ -265,7 +249,6 @@ function applyReplaceRulesToKeycode(keycode: string | number, replaceRules: Repl
     }
     
     const result = reconstructComplexKeycode(parsed, newInnerKeycode.toString())
-    console.log(`🔄 Complex Replace Rule applied: ${keycode} → ${result} (inner: ${parsed.innerKeycode} → ${newInnerKeycode})`)
     return result
   }
 }
@@ -302,7 +285,6 @@ function applyReplaceRulesToCharacter(character: string, originalKeycode: string
     if (character === fromText) {
       // 置換先の文字からキーコードを逆引き（既に検証済み）
       const newKeycode = getKeycodeForCharacter(toText, languageId)!
-      console.log(`🔄 Replace Rule applied: ${originalKeycode} (${character}) → ${newKeycode} (${toText})`)
       return newKeycode
     }
   }
@@ -314,8 +296,6 @@ function applyReplaceRulesToCharacter(character: string, originalKeycode: string
  * Replace Rulesを適用してVILファイルを変換する
  */
 export function convertVialConfigWithReplaceRules(config: VialConfig, replaceRules: ReplaceRule[], languageId: string): VialConfig {
-  console.log(`🚀 Starting VIL conversion with Replace Rules`)
-  console.log('🔍 Replace rules:', replaceRules.filter(r => r.enabled))
   
   // ディープコピーを作成
   const convertedConfig: VialConfig = JSON.parse(JSON.stringify(config))
@@ -324,7 +304,6 @@ export function convertVialConfigWithReplaceRules(config: VialConfig, replaceRul
   
   // レイアウトの各キーコードに置換ルールを適用
   convertedConfig.layout = config.layout.map((layer, layerIndex) => {
-    console.log(`🔄 Converting layer ${layerIndex} with replace rules`)
     const convertedLayer: { [rowIndex: number]: (string | number)[] } = {}
     
     // レイヤーの各行を処理
@@ -334,7 +313,6 @@ export function convertVialConfigWithReplaceRules(config: VialConfig, replaceRul
         convertedLayer[rowIndex] = row.map((keycode, keyIndex) => {
           const converted = applyReplaceRulesToKeycode(keycode, replaceRules, languageId)
           if (converted !== keycode) {
-            console.log(`  Layer ${layerIndex}, Row ${rowIndex}, Key[${keyIndex}]: ${keycode} → ${converted}`)
             totalConverted++
           }
           return converted
@@ -351,7 +329,6 @@ export function convertVialConfigWithReplaceRules(config: VialConfig, replaceRul
       if (combo.keycode) {
         const converted = applyReplaceRulesToKeycode(combo.keycode, replaceRules, languageId)
         if (converted !== combo.keycode) {
-          console.log(`🔄 Combo keycode: ${combo.keycode} → ${converted}`)
           totalConverted++
         }
         return { ...combo, keycode: converted }
@@ -369,7 +346,6 @@ export function convertVialConfigWithReplaceRules(config: VialConfig, replaceRul
         if (typeof td[i] === 'string' || typeof td[i] === 'number') {
           const converted = applyReplaceRulesToKeycode(td[i], replaceRules, languageId)
           if (converted !== td[i]) {
-            console.log(`🔄 TapDance[${i}]: ${td[i]} → ${converted}`)
             totalConverted++
           }
           convertedTd[i] = converted
@@ -379,7 +355,6 @@ export function convertVialConfigWithReplaceRules(config: VialConfig, replaceRul
     })
   }
   
-  console.log(`✅ Total converted keys with replace rules: ${totalConverted}`)
   
   // 変換後の基本構造検証
   const validationResult = validateConvertedConfig(config, convertedConfig)
@@ -527,5 +502,4 @@ export function downloadVilFileWithReplaceRules(config: VialConfig, replaceRules
   // URLオブジェクトを解放
   URL.revokeObjectURL(url)
   
-  console.log(`📥 Downloaded with replace rules: ${newFilename}`)
 }
