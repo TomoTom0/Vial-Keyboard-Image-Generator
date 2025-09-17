@@ -4,6 +4,8 @@
 
 Vial Keyboard Image GeneratorのCloudflare Pagesへのデプロイ手順とメンテナンス方法を記載します。
 
+**注意**: Cloudflareへのデプロイは必須ではありません。ローカル開発や他のホスティングサービスでも利用可能です。
+
 ## 前提条件
 
 ### 必要なツール
@@ -76,11 +78,22 @@ vite build
 - `src/utils/keyboardConfig.generated.ts` - キーボード言語設定
 - `src/utils/styleConfig.generated.ts` - フォント・色設定
 
-## デプロイ先URL
+## アクセスURL
 
-### 本番環境
-- **メインURL**: https://ytomo-vial-kb-to-image.pages.dev
-- **プレビューURL**: https://[commit-hash].ytomo-vial-kb-to-image.pages.dev
+### ローカル開発環境
+```bash
+cd frontend
+npm run dev
+# http://localhost:5173 (ポートが使用中の場合は自動的に別ポートが選択されます)
+```
+
+### Cloudflare Pages（デプロイ時）
+- **URL形式**: https://[your-project-name].pages.dev
+- **プレビューURL**: https://[commit-hash].[your-project-name].pages.dev
+
+**注意**:
+- 実際のURLは設定したプロジェクト名によって異なります
+- 上記は一例です（各自が独自のプロジェクト名を設定する必要があります）
 
 ### 設定確認
 

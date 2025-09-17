@@ -243,8 +243,64 @@ onUnmounted(() => {
   transform: translateX(-50%);
 }
 
-.header-spacer {
+.header-actions {
   min-width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.settings-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+  color: #ffffff;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.3s ease;
+
+    &:first-child {
+      transform: translateX(0);
+    }
+
+    &:last-child {
+      position: absolute;
+      left: 8px;
+      transform: translateX(20px);
+      opacity: 0;
+    }
+  }
+
+  &:hover svg {
+    &:first-child {
+      transform: translateX(-20px);
+      opacity: 0;
+    }
+
+    &:last-child {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
 }
 
 /* メインレイアウトエリア */
@@ -593,8 +649,17 @@ onUnmounted(() => {
     padding: 4px 8px;
   }
   
-  .header-spacer {
-    display: none;
+  .header-actions {
+    min-width: 40px;
+  }
+
+  .settings-btn {
+    padding: 6px;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
   }
   
   .workspace-header {
@@ -628,8 +693,17 @@ onUnmounted(() => {
     padding: 3px 6px;
   }
   
-  .header-spacer {
-    display: none;
+  .header-actions {
+    min-width: 40px;
+  }
+
+  .settings-btn {
+    padding: 6px;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
   }
   
   .workspace-header {

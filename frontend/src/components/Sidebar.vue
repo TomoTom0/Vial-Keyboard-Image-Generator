@@ -12,8 +12,8 @@
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
           </svg>
         </div>
-        <div 
-          :class="['nav-item', { active: uiStore.sidebarSection === 'generate' }]" 
+        <div
+          :class="['nav-item', { active: uiStore.sidebarSection === 'generate' }]"
           title="Generate"
           @click="switchNavSection('generate')"
         >
@@ -21,8 +21,8 @@
             <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/>
           </svg>
         </div>
-        <div 
-          :class="['nav-item', { active: uiStore.sidebarSection === 'settings' }]" 
+        <div
+          :class="['nav-item', { active: uiStore.sidebarSection === 'settings' }]"
           title="Settings"
           @click="switchNavSection('settings')"
         >
@@ -30,6 +30,22 @@
             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
             <circle cx="12" cy="12" r="3"/>
           </svg>
+        </div>
+        <div
+          :class="['nav-item', { active: uiStore.sidebarSection === 'preferences' }]"
+          title="Preferences"
+          @click="switchNavSection('preferences')"
+        >
+          <div class="double-gear-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="gear-large">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="gear-small">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
         </div>
       </div>
     </div>
@@ -194,13 +210,18 @@
               <h4 class="settings-group-title">Layout</h4>
               <KeyboardTab :selected-file="vialStore.selectedVialId" />
             </div>
-            
+
             <!-- Replace設定 -->
             <div class="settings-group">
               <h4 class="settings-group-title">Replace Rules</h4>
               <ReplaceTab />
             </div>
           </div>
+        </div>
+
+        <!-- Preferences領域（Preferences選択時のみ表示） -->
+        <div v-show="uiStore.sidebarSection === 'preferences'" class="sidebar-section preferences-section">
+          <PreferencesTab />
         </div>
       </div>
     </div>
@@ -213,6 +234,7 @@ import FileUpload from './FileUpload.vue'
 import FileHistory from './FileHistory.vue'
 import KeyboardTab from './KeyboardTab.vue'
 import ReplaceTab from './ReplaceTab.vue'
+import PreferencesTab from './PreferencesTab.vue'
 import { useVialStore } from '../stores/vial'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
@@ -224,6 +246,7 @@ const vialStore = useVialStore()
 const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
 const imagesStore = useImagesStore()
+
 
 // Debounced preview generation
 let generateTimeout: NodeJS.Timeout | null = null
@@ -274,7 +297,7 @@ const imageFormatDisplayName = computed(() => {
 })
 
 // Methods
-const switchNavSection = (section: 'files' | 'generate' | 'settings') => {
+const switchNavSection = (section: 'files' | 'generate' | 'settings' | 'preferences') => {
   // 現在開いているセクションと同じアイコンをクリックした場合は折りたたみを切り替え
   if (uiStore.sidebarSection === section && !uiStore.sidebarCollapsed) {
     uiStore.toggleSidebarCollapsed()
@@ -339,6 +362,7 @@ const isSmallScreen = computed(() => {
   if (typeof window === 'undefined') return false
   return window.innerWidth < 768
 })
+
 
 // 小画面での初期状態設定
 onMounted(() => {
@@ -408,6 +432,28 @@ onMounted(() => {
     }
   }
 }
+
+.double-gear-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+
+  .gear-large {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  .gear-small {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+  }
+}
+
 
 /* メインサイドバーコンテンツ */
 .sidebar-main {

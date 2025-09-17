@@ -6,19 +6,14 @@ Vial Keyboard Image GeneratorはVue.js 3 + TypeScriptで構築されたSPA（Sin
 
 ## 技術スタック
 
-### フロントエンド
 - **Vue.js 3.5** - UIフレームワーク（Composition API）
 - **TypeScript 5.8** - 型安全な開発
 - **Vite 7.1** - 高速ビルドツール
 - **Pinia 3.0** - 状態管理
 - **Vue Router 4.5** - ルーティング
 - **Sass** - CSS拡張
-
-### 主要ライブラリ
 - **JSZip 3.10** - ZIPファイル生成
 - **UUID 13.0** - ユニークID生成
-
-### デプロイメント
 - **Cloudflare Pages** - 静的サイトホスティング
 - **Wrangler 4.36** - デプロイメントツール
 
@@ -28,13 +23,13 @@ Vial Keyboard Image GeneratorはVue.js 3 + TypeScriptで構築されたSPA（Sin
 ┌─────────────────────────────────────────────────────────┐
 │                   Browser (Client)                     │
 ├─────────────────────────────────────────────────────────┤
-│  Vue.js Application                                     │
+│  Vue.js SPA                                             │
 │  ┌─────────────────┐  ┌─────────────────────────────────┐ │
 │  │   Components    │  │         Stores (Pinia)         │ │
 │  │  - FileUpload   │  │  - vialStore                    │ │
 │  │  - PreviewTab   │  │  - imagesStore                  │ │
 │  │  - OutputTab    │  │  - settingsStore                │ │
-│  │  - ...          │  │  - uiStore                      │ │
+│  │  - SelectTab    │  │  - uiStore                      │ │
 │  └─────────────────┘  └─────────────────────────────────┘ │
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │                 Utils & Processors                      │ │
@@ -46,10 +41,11 @@ Vial Keyboard Image GeneratorはVue.js 3 + TypeScriptで構築されたSPA（Sin
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────┐
-│              Cloudflare Pages (CDN)                    │
-│  - Global Distribution                                  │
+│              Cloudflare Pages                          │
+│  - Global CDN Distribution                              │
 │  - Automatic HTTPS                                     │
 │  - Edge Caching                                        │
+│  - Static Site Hosting                                 │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -329,25 +325,22 @@ function embedMetadata(imageDataUrl: string, metadata: PngMetadata): string {
 
 ### 1. 新しいキーボード対応
 ```typescript
-// constants/keyboard.ts に追加
-export const KEYBOARD_LAYOUTS = {
-  corne_v4: { /* 定義 */ },
-  new_keyboard: { /* 新しい定義 */ }
-}
+// utils/keyboardConfig.generated.ts に定義を追加
+// または data/layouts/ に新しいTSVファイルを追加して再生成
 ```
 
 ### 2. 新しい出力フォーマット
 ```typescript
-// utils/に新しいレンダラー追加
-export class NewFormatRenderer {
-  generate(parsedVial: ParsedVial): OutputData
+// stores/images.ts に新しい生成メソッドを追加
+export const generateNewFormatImages = () => {
+  // 新しいフォーマット生成ロジック
 }
 ```
 
 ### 3. 新しい言語対応
 ```typescript
-// data/keymaps/に新しい言語マッピング追加
-new_language.tsv
+// data/keymaps/ に新しい言語マッピングを追加
+// npm run generate-mappings で自動生成
 ```
 
 ## 今後の改善予定

@@ -31,24 +31,15 @@ cd frontend
 npm install
 ```
 
-### 3. 環境変数設定
+### 3. 環境変数設定（オプション）
 
-プロジェクトルートに `.env` ファイルを作成：
+Cloudflare Pagesへのデプロイを行う場合のみ、プロジェクトルートに `.env` ファイルを作成：
 
 ```bash
 cp .env.example .env
 ```
 
-`.env` ファイルを編集：
-```bash
-# Cloudflare Pages 設定（デプロイ時のみ必要）
-CLOUDFLARE_API_TOKEN=your_api_token_here
-CLOUDFLARE_ACCOUNT_ID=your_account_id_here
-CLOUDFLARE_PAGES_PROJECT_NAME=ytomo-vial-kb-to-image
-
-# 開発環境設定
-NODE_ENV=development
-```
+**注意**: ローカル開発のみの場合、この手順は不要です。
 
 ## 開発サーバー起動
 

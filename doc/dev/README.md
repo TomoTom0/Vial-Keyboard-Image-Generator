@@ -95,20 +95,70 @@ Vial-Keyboard-Image-Generator/
 
 ## よくある開発タスク
 
-### 新しいキーボード追加
-1. `constants/keyboard.ts` にレイアウト定義追加
-2. `data/layouts/` に TSV ファイル追加
-3. `scripts/generate-keyboard-mappings.cjs` 実行
+### 新しいキーボードレイアウト追加
 
-### 新しい言語追加
-1. `data/keymaps/` に TSV ファイル追加
-2. `scripts/generate-keyboard-mappings.cjs` 実行
-3. UI の言語選択に追加
+#### 1. レイアウト定義ファイル作成
+`frontend/data/layouts/[keyboard_name].tsv` を作成：
+
+```tsv
+vial_row	vial_col	layout_row	layout_col	canvas_x	canvas_y	canvas_width	canvas_height	canvas_rotation	description
+0	0	0	0	20.0	20.0	78	60	0.0	Left top row - Key 1
+0	1	0	1	102.0	20.0	78	60	0.0	Left top row - Key 2
+...
+```
+
+**各列の説明**:
+- `vial_row`, `vial_col`: VIL設定ファイル内の行・列位置
+- `layout_row`, `layout_col`: 画面上の論理的な行・列位置
+- `canvas_x`, `canvas_y`: キャンバス上のピクセル座標
+- `canvas_width`, `canvas_height`: キーのサイズ（ピクセル）
+- `canvas_rotation`: キーの回転角度（通常は0.0）
+- `description`: キーの説明
+
+#### 2. 自動生成実行
+```bash
+cd frontend
+npm run generate-mappings
+```
+
+#### 3. 確認
+生成される `src/utils/keyboardConfig.generated.ts` を確認
+
+### 新しい言語キーマップ追加
+
+#### 1. キーマップファイル作成
+`frontend/data/keymaps/[language_name].tsv` を作成：
+
+```tsv
+keycode	display	shift_display	description
+KC_Q	q	Q	Letter Q
+KC_W	w	W	Letter W
+KC_SCLN	;	:	Semicolon/Colon
+...
+```
+
+**各列の説明**:
+- `keycode`: QMKキーコード
+- `display`: 通常時の表示文字
+- `shift_display`: Shiftキー押下時の表示文字
+- `description`: キーの説明
+
+#### 2. 共通キーマップ確認
+`frontend/data/keymaps/common.tsv` に共通キーが定義されています。
+言語固有の文字のみを新しいファイルに記載してください。
+
+#### 3. 自動生成実行
+```bash
+cd frontend
+npm run generate-mappings
+```
+
+#### 4. UI追加
+言語選択UIに新しい言語を追加する場合は、該当コンポーネントを修正してください。
 
 ### 新しい出力フォーマット追加
-1. `utils/` に新しいレンダラー作成
-2. `stores/images.ts` に生成ロジック追加
-3. `components/OutputTab.vue` に UI 追加
+1. `stores/images.ts` に新しい生成メソッドを追加
+2. `components/OutputTab.vue` に UI を追加
 
 ## サポート
 
