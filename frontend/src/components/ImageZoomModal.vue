@@ -1,80 +1,46 @@
 <template>
-  <div v-if="isOpen" class="zoom-modal-overlay" @click="closeModal">
-    <div class="zoom-modal-container" @click.stop>
-      <!-- メインズーム表示エリア -->
-      <div class="zoom-main-area">
+  <!-- ルーペダイアログのみ表示（元画像は表示しない） -->
+  <div
+    v-if="isOpen"
+    class="loupe-dialog"
+    :style="loupeDialogStyle"
+    @mousedown="startLoupeDrag"
+  >
+    <!-- ルーペ内部の拡大表示 -->
+    <div class="loupe-content">
+      <!-- ルーペ内に表示する拡大画像 -->
+      <div class="loupe-magnifier" :style="loupeContentStyle">
+        <!-- SVGコンテンツの拡大表示 -->
         <div
-          class="zoom-image-wrapper"
-          @mousedown="startImageDrag"
-          @wheel.prevent="handleWheel"
-        >
-          <!-- SVGコンテンツがある場合：SVG要素として表示（高品質） -->
-          <div
-            v-if="combinedSVGContent"
-            ref="zoomImageRef"
-            class="zoom-image svg-container"
-            :style="zoomImageStyle"
-            v-html="combinedSVGContent"
-          ></div>
-
-          <!-- PNG結合画像がある場合：img要素で表示 -->
-          <img
-            v-else-if="combinedImageUrl"
-            ref="zoomImageRef"
-            :src="combinedImageUrl"
-            :alt="title"
-            class="zoom-image"
-            :style="zoomImageStyle"
-            @load="handleZoomImageLoad"
-          />
-
-          <!-- 最終フォールバック：元の画像を表示 -->
-          <img
-            v-else
-            ref="zoomImageRef"
-            :src="props.imageUrl"
-            :alt="title"
-            class="zoom-image"
-            :style="zoomImageStyle"
-            @load="handleZoomImageLoad"
-          />
-
-          <!-- オーバーレイコントロール -->
-          <div class="overlay-controls">
-            <!-- 左上: ズーム倍率変更 -->
-            <div class="zoom-level-controls">
-              <button class="zoom-btn" @click="zoomOut" :disabled="zoomLevel <= 0.5">
-                <span class="btn-icon">−</span>
-              </button>
-              <button class="zoom-btn" @click="zoomIn" :disabled="zoomLevel >= 5">
-                <span class="btn-icon">+</span>
-              </button>
-            </div>
-
-            <!-- 右上: 閉じるボタン -->
-            <button class="close-btn" @click="closeModal">&times;</button>
-          </div>
-        </div>
-
-        <!-- 下部: 小さな全体像とズーム先表示（オーバーレイ） -->
-        <div class="overview-container">
-        <div class="overview-image-wrapper">
-          <!-- 画像の代わりに適切な大きさのプレースホルダー -->
-          <div
-            class="overview-placeholder"
-            @mousedown="startTargetDrag"
-            title="クリックでズーム位置を移動"
-          ></div>
-          <!-- ズーム先表示枠 -->
-          <div
-            class="zoom-target-box"
-            :style="zoomTargetBoxStyle"
-            @mousedown="startTargetDrag"
-          ></div>
-        </div>
-        </div>
+          v-if="combinedSVGContent"
+          class="loupe-image svg-container"
+          v-html="combinedSVGContent"
+        ></div>
+        <!-- PNG画像の拡大表示 -->
+        <img
+          v-else-if="combinedImageUrl"
+          :src="combinedImageUrl"
+          :alt="title"
+          class="loupe-image"
+        />
+        <!-- フォールバック画像の拡大表示 -->
+        <img
+          v-else
+          :src="props.imageUrl"
+          :alt="title"
+          class="loupe-image"
+        />
       </div>
     </div>
+
+    <!-- 倍率変更ボタン（左上） -->
+    <div class="zoom-controls">
+      <button class="zoom-btn-control" @click="zoomOut" title="縮小">-</button>
+      <button class="zoom-btn-control" @click="zoomIn" title="拡大">+</button>
+    </div>
+
+    <!-- 閉じるボタン（右上に小さく半透明） -->
+    <button class="close-btn" @click="closeModal">&times;</button>
   </div>
 </template>
 
@@ -94,6 +60,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   close: []
+  gridSectionChange: [section: number]
 }>()
 
 // ストア
@@ -101,22 +68,20 @@ const imagesStore = useImagesStore()
 const settingsStore = useSettingsStore()
 const vialStore = useVialStore()
 
-// DOM参照
-const overviewImageRef = ref<HTMLImageElement>()
-const zoomImageRef = ref<HTMLImageElement>()
+// DOM参照（不要になったため削除）
+// const imageContainer = ref<HTMLElement>()
+// const baseImageRef = ref<HTMLImageElement>()
 
-// ズーム・パン状態
-const zoomLevel = ref(1) // デフォルトを1倍に設定（等倍表示）
-const panX = ref(0)
-const panY = ref(0)
-const targetX = ref(0.5) // 0-1の範囲でズーム先の位置
-const targetY = ref(0.5)
+// ルーペ状態
+const zoomLevel = ref(1) // 基本倍率（1倍から開始）
+const loupeX = ref(100) // ルーペのX座標（ピクセル）
+const loupeY = ref(100) // ルーペのY座標（ピクセル）
 
 // 画像サイズ
-const overviewImageSize = ref({ width: 0, height: 0 })
+const imageSize = ref({ width: 0, height: 0 })
+const containerSize = ref({ width: 0, height: 0 })
 const isDragging = ref(false)
-const isTargetDragging = ref(false)
-const dragStart = ref({ x: 0, y: 0, panX: 0, panY: 0 })
+const dragStart = ref({ x: 0, y: 0, loupeX: 0, loupeY: 0 })
 
 // 結合キャンバス状態
 const combinedImageUrl = ref('')
@@ -169,9 +134,6 @@ const updateCombinedImageUrl = async () => {
     // SVGコンテンツ更新後にサイズを再計算
     nextTick(() => {
       updateContainerSize()
-      handleZoomImageLoad()
-      // オーバービュー画像のサイズ調整も実行
-      setTimeout(() => handleOverviewImageLoad(), 100)
     })
     return
   }
@@ -189,9 +151,6 @@ const updateCombinedImageUrl = async () => {
     // 画像更新後にサイズを再計算
     nextTick(() => {
       updateContainerSize()
-      handleZoomImageLoad()
-      // オーバービュー画像のサイズ調整も実行
-      setTimeout(() => handleOverviewImageLoad(), 100)
     })
   } else {
     // 最終フォールバック：元の画像を使用
@@ -581,415 +540,211 @@ const loadSVGToCanvas = (svgUrl: string): Promise<HTMLCanvasElement | null> => {
   })
 }
 
-// ズーム対象ボックスのスタイル（実際のコンテナサイズを測定）
-const zoomTargetBoxStyle = computed(() => {
-  // モーダルが閉じている場合は何も表示しない
-  if (!props.isOpen) {
-    return { display: 'none' }
-  }
+// ルーペダイアログの位置とサイズ（レスポンシブ対応）
+const loupeDialogStyle = computed(() => {
+  // 画面サイズの30-80%を使用
+  const screenWidth = window.innerWidth
+  const screenHeight = window.innerHeight
 
-  // nextTickでDOM要素が利用可能になるまで待つ
-  const container = document.querySelector('.zoom-image-wrapper') as HTMLElement
-  const placeholder = document.querySelector('.overview-placeholder') as HTMLElement
+  // サイズをレスポンシブに計算
+  const minWidth = Math.max(200, screenWidth * 0.3)
+  const maxWidth = screenWidth * 0.8
+  const minHeight = Math.max(150, screenHeight * 0.3)
+  const maxHeight = screenHeight * 0.8
 
-  if (!container || !placeholder) {
-    // DOM要素がまだ利用可能でない場合のフォールバック
-    const boxSize = 15  // 15%固定
-    const left = Math.max(0, Math.min(100 - boxSize, targetX.value * 100 - boxSize / 2))
-    const top = Math.max(0, Math.min(100 - boxSize, targetY.value * 100 - boxSize / 2))
-    return {
-      left: `${left}%`,
-      top: `${top}%`,
-      width: `${boxSize}%`,
-      height: `${boxSize}%`,
-    }
-  }
-
-  const containerRect = container.getBoundingClientRect()
-  const placeholderRect = placeholder.getBoundingClientRect()
-
-
-  // 小さい正方形のボックス
-  const boxSize = 15  // 15%の固定サイズ
-  const boxWidthPercent = boxSize
-  const boxHeightPercent = boxSize
-
-  // 移動可能範囲を計算（ボックスが枠内に収まるように）
-  const maxCenterX = (100 - boxWidthPercent) / 100
-  const maxCenterY = (100 - boxHeightPercent) / 100
-  const minCenterX = boxWidthPercent / 200  // ボックス幅の半分をパーセントで
-  const minCenterY = boxHeightPercent / 200  // ボックス高さの半分をパーセントで
-
-  // targetX, targetYを移動可能範囲内に制限
-  const constrainedX = Math.max(minCenterX, Math.min(maxCenterX + minCenterX, targetX.value))
-  const constrainedY = Math.max(minCenterY, Math.min(maxCenterY + minCenterY, targetY.value))
-
-  // ボックスの左上角の位置を計算
-  const left = constrainedX * 100 - boxWidthPercent / 2
-  const top = constrainedY * 100 - boxHeightPercent / 2
-
+  // サイズを決定（中間値を使用）
+  const width = Math.min(maxWidth, Math.max(minWidth, screenWidth * 0.5))
+  const height = Math.min(maxHeight, Math.max(minHeight, screenHeight * 0.5))
 
   return {
-    left: `${left}%`,
-    top: `${top}%`,
-    width: `${boxWidthPercent}%`,
-    height: `${boxHeightPercent}%`,
+    position: 'fixed',
+    left: `${loupeX.value}px`,
+    top: `${loupeY.value}px`,
+    width: `${width}px`,
+    height: `${height}px`,
+    zIndex: 1000
   }
 })
 
-// 画像のサイズとコンテナのサイズ
-const imageSize = ref({ width: 0, height: 0 })
-const containerSize = ref({ width: 0, height: 0 })
+// ルーペの位置に対応する9分割グリッドのセクションを計算
+const getCurrentGridSection = () => {
+  const loupeStyle = loupeDialogStyle.value
+  const loupeWidth = parseFloat(loupeStyle.width as string)
+  const loupeHeight = parseFloat(loupeStyle.height as string)
 
-// パン制限を計算
-const getPanLimits = () => {
-  if (!imageSize.value.width || !imageSize.value.height || !containerSize.value.width || !containerSize.value.height) {
-    return { maxX: Infinity, maxY: Infinity, minX: -Infinity, minY: -Infinity }
-  }
+  const loupeCenterX = loupeX.value + loupeWidth / 2
+  const loupeCenterY = loupeY.value + loupeHeight / 2
 
-  const scaledImageWidth = imageSize.value.width * zoomLevel.value
-  const scaledImageHeight = imageSize.value.height * zoomLevel.value
+  const minCenterX = loupeWidth / 2
+  const maxCenterX = window.innerWidth - loupeWidth / 2
+  const minCenterY = loupeHeight / 2
+  const maxCenterY = window.innerHeight - loupeHeight / 2
 
-  // ズーム先位置を画像のピクセル座標に変換
-  const targetPixelX = targetX.value * imageSize.value.width
-  const targetPixelY = targetY.value * imageSize.value.height
+  const normalizedX = (loupeCenterX - minCenterX) / (maxCenterX - minCenterX)
+  const normalizedY = (loupeCenterY - minCenterY) / (maxCenterY - minCenterY)
 
-  // コンテナの中心座標
-  const containerCenterX = containerSize.value.width / 2
-  const containerCenterY = containerSize.value.height / 2
+  const clampedX = Math.max(0, Math.min(1, normalizedX))
+  const clampedY = Math.max(0, Math.min(1, normalizedY))
 
-  // ズーム先をコンテナ中心に持ってくるための基本移動量
-  const baseTranslateX = containerCenterX - (targetPixelX * zoomLevel.value)
-  const baseTranslateY = containerCenterY - (targetPixelY * zoomLevel.value)
+  // 3x3グリッドのセクションを計算 (0-8)
+  const gridX = Math.min(2, Math.max(0, Math.floor(clampedX * 3)))
+  const gridY = Math.min(2, Math.max(0, Math.floor(clampedY * 3)))
+  const gridSection = gridY * 3 + gridX
 
-  // 画像の端がコンテナ内に収まるパン制限を計算
-  const minTranslateX = containerSize.value.width - scaledImageWidth
-  const maxTranslateX = 0
-  const minTranslateY = containerSize.value.height - scaledImageHeight
-  const maxTranslateY = 0
-
-  // パンできる範囲を計算
-  const maxPanX = maxTranslateX - baseTranslateX
-  const minPanX = minTranslateX - baseTranslateX
-  const maxPanY = maxTranslateY - baseTranslateY
-  const minPanY = minTranslateY - baseTranslateY
-
-  return {
-    maxX: Math.max(maxPanX, minPanX),
-    minX: Math.min(maxPanX, minPanX),
-    maxY: Math.max(maxPanY, minPanY),
-    minY: Math.min(maxPanY, minPanY)
-  }
+  return gridSection
 }
 
-// ズーム画像のスタイル
-const zoomImageStyle = computed(() => {
-  // コンテナのサイズと画像サイズが分からない場合のフォールバック
-  if (!imageSize.value.width || !imageSize.value.height || !containerSize.value.width || !containerSize.value.height) {
+// 現在のグリッドセクション
+const currentGridSection = computed(() => getCurrentGridSection())
+
+// ルーペ内部コンテンツのスタイル（拡大表示の位置調整）
+const loupeContentStyle = computed(() => {
+  if (!imageSize.value.width || !imageSize.value.height) {
     return {
-      transform: `translate(-50%, -50%) scale(${zoomLevel.value})`,
-      transformOrigin: 'center',
-      position: 'absolute',
-      top: '50%',
-      left: '50%'
+      transform: `scale(${zoomLevel.value})`,
+      transformOrigin: '0 0'
     }
   }
 
-  // ズーム先位置を画像の実際のピクセル座標に変換
-  const targetPixelX = targetX.value * imageSize.value.width
-  const targetPixelY = targetY.value * imageSize.value.height
+  // ルーペのサイズを取得
+  const loupeStyle = loupeDialogStyle.value
+  const loupeWidth = parseFloat(loupeStyle.width as string)
+  const loupeHeight = parseFloat(loupeStyle.height as string)
 
-  // ズーム先をコンテナの中央に配置するための変換を計算
-  const centerX = containerSize.value.width / 2
-  const centerY = containerSize.value.height / 2
+  // ルーペの中心位置
+  const loupeCenterX = loupeX.value + loupeWidth / 2
+  const loupeCenterY = loupeY.value + loupeHeight / 2
 
-  // 変換の順序: 1) スケール 2) ズーム先を中央に移動 3) パン調整
-  const translateX = centerX - (targetPixelX * zoomLevel.value) + panX.value
-  const translateY = centerY - (targetPixelY * zoomLevel.value) + panY.value
+  // 画面全体でのルーペ移動可能範囲を計算
+  const maxLoupeX = window.innerWidth - loupeWidth
+  const maxLoupeY = window.innerHeight - loupeHeight
 
-  // デバッグ用（必要時のみ有効化）
-  //   targetX: targetX.value,
-  //   targetY: targetY.value,
-  //   targetPixelX,
-  //   targetPixelY,
-  //   centerX,
-  //   centerY,
-  //   translateX,
-  //   translateY,
-  //   zoomLevel: zoomLevel.value,
-  //   panX: panX.value,
-  //   panY: panY.value
-  // })
+  // ルーペ中心の移動可能範囲
+  const minCenterX = loupeWidth / 2
+  const maxCenterX = window.innerWidth - loupeWidth / 2
+  const minCenterY = loupeHeight / 2
+  const maxCenterY = window.innerHeight - loupeHeight / 2
+
+  // ルーペ中心位置を0-1の範囲に正規化（画像全体をカバーするように）
+  const normalizedX = (loupeCenterX - minCenterX) / (maxCenterX - minCenterX)
+  const normalizedY = (loupeCenterY - minCenterY) / (maxCenterY - minCenterY)
+
+  // 正規化された位置を0-1の範囲に制限
+  const clampedX = Math.max(0, Math.min(1, normalizedX))
+  const clampedY = Math.max(0, Math.min(1, normalizedY))
+
+  // 元画像の該当部分のピクセル座標
+  const sourcePixelX = clampedX * imageSize.value.width
+  const sourcePixelY = clampedY * imageSize.value.height
+
+  // ルーペ内でそのポイントを中心にするためのオフセット
+  const offsetX = (loupeWidth / 2) - (sourcePixelX * zoomLevel.value)
+  const offsetY = (loupeHeight / 2) - (sourcePixelY * zoomLevel.value)
 
   return {
-    transform: `translate(${translateX}px, ${translateY}px) scale(${zoomLevel.value})`,
-    transformOrigin: '0 0',
-    position: 'absolute',
-    top: '0',
-    left: '0'
+    transform: `translate(${offsetX}px, ${offsetY}px) scale(${zoomLevel.value})`,
+    transformOrigin: '0 0'
   }
 })
 
-// ズーム操作
+
+// ズーム操作（不要になったため削除）
+// const zoomIn = () => { ... }
+// const zoomOut = () => { ... }
+
+// ルーペ位置をリセット
+const resetLoupePosition = () => {
+  loupeX.value = 100
+  loupeY.value = 100
+}
+
+// 倍率変更（1.5倍単位）
 const zoomIn = () => {
-  if (zoomLevel.value < 5) {
-    zoomLevel.value = Math.min(5, zoomLevel.value + 0.25)
-  }
+  zoomLevel.value = zoomLevel.value * 1.5
 }
 
 const zoomOut = () => {
-  if (zoomLevel.value > 0.5) {
-    zoomLevel.value = Math.max(0.5, zoomLevel.value - 0.25)
-    // ズームアウト時はパン位置をリセット
-    if (zoomLevel.value <= 1) {
-      panX.value = 0
-      panY.value = 0
-    }
-  }
+  zoomLevel.value = zoomLevel.value / 1.5
 }
 
-// パン位置をリセット
-const resetPan = () => {
-  panX.value = 0
-  panY.value = 0
-  targetX.value = 0.5
-  targetY.value = 0.5
-}
+// ホイールズーム（不要になったため削除）
+// const handleWheel = (event: WheelEvent) => { ... }
 
-// ズームと位置をリセット
-const resetZoom = () => {
-  zoomLevel.value = 1
-  panX.value = 0
-  panY.value = 0
-  targetX.value = 0.5
-  targetY.value = 0.5
-}
-
-// ホイールズーム
-const handleWheel = (event: WheelEvent) => {
-  const delta = event.deltaY > 0 ? -0.1 : 0.1
-  const newZoom = Math.max(0.5, Math.min(5, zoomLevel.value + delta))
-  zoomLevel.value = newZoom
-}
-
-// ズーム先ボックスのドラッグ
-const startTargetDrag = (event: MouseEvent) => {
-  isTargetDragging.value = true
-
-  // 即座に位置を更新（クリック位置に移動）
-  const placeholder = document.querySelector('.overview-placeholder') as HTMLElement
-  const container = document.querySelector('.zoom-image-wrapper') as HTMLElement
-
-  if (placeholder && container) {
-    const placeholderRect = placeholder.getBoundingClientRect()
-    const containerRect = container.getBoundingClientRect()
-
-    let x = (event.clientX - placeholderRect.left) / placeholderRect.width
-    let y = (event.clientY - placeholderRect.top) / placeholderRect.height
-
-    // 小さい正方形ボックス
-    const boxSize = 0.15  // 15%
-    const boxWidthRatio = boxSize
-    const boxHeightRatio = boxSize
-
-    const marginX = boxWidthRatio / 2
-    const marginY = boxHeightRatio / 2
-
-    // 移動可能範囲内に制限
-    x = Math.max(marginX, Math.min(1 - marginX, x))
-    y = Math.max(marginY, Math.min(1 - marginY, y))
-
-    targetX.value = x
-    targetY.value = y
-    panX.value = 0
-    panY.value = 0
-
-  }
-
-  event.preventDefault()
-  event.stopPropagation()
-}
-
-// ズーム画像のドラッグ
-const startImageDrag = (event: MouseEvent) => {
-  if (zoomLevel.value <= 1) return
-
+// ルーペダイアログのドラッグ開始
+const startLoupeDrag = (event: MouseEvent) => {
   isDragging.value = true
   dragStart.value = {
     x: event.clientX,
     y: event.clientY,
-    panX: panX.value,
-    panY: panY.value
+    loupeX: loupeX.value,
+    loupeY: loupeY.value
   }
   event.preventDefault()
+  event.stopPropagation()
 }
+
 
 // マウス移動ハンドラ
 const handleMouseMove = (event: MouseEvent) => {
-  if (isTargetDragging.value) {
-    // プレースホルダー内でのドラッグ処理
-    const placeholder = document.querySelector('.overview-placeholder') as HTMLElement
-    if (placeholder) {
-      const rect = placeholder.getBoundingClientRect()
-
-      // マウス位置を0-1の範囲に正規化
-      let x = (event.clientX - rect.left) / rect.width
-      let y = (event.clientY - rect.top) / rect.height
-
-      // 小さい正方形ボックス
-      const boxSize = 0.15  // 15%
-      const marginX = boxSize / 2
-      const marginY = boxSize / 2
-
-      // 移動可能範囲内に制限
-      x = Math.max(marginX, Math.min(1 - marginX, x))
-      y = Math.max(marginY, Math.min(1 - marginY, y))
-
-      targetX.value = x
-      targetY.value = y
-
-
-      // パン位置をリセット（新しい位置の基準点として）
-      panX.value = 0
-      panY.value = 0
-    }
-  } else if (isDragging.value) {
-    // パン操作
+  if (isDragging.value) {
+    // ルーペダイアログの移動
     const deltaX = event.clientX - dragStart.value.x
     const deltaY = event.clientY - dragStart.value.y
-    const newPanX = dragStart.value.panX + deltaX
-    const newPanY = dragStart.value.panY + deltaY
 
-    // パン制限を適用
-    const limits = getPanLimits()
-    panX.value = Math.max(limits.minX, Math.min(limits.maxX, newPanX))
-    panY.value = Math.max(limits.minY, Math.min(limits.maxY, newPanY))
+    const newLoupeX = dragStart.value.loupeX + deltaX
+    const newLoupeY = dragStart.value.loupeY + deltaY
+
+    // ルーペの現在サイズを取得
+    const loupeStyle = loupeDialogStyle.value
+    const loupeWidth = parseFloat(loupeStyle.width as string)
+    const loupeHeight = parseFloat(loupeStyle.height as string)
+
+    // 画面内に収まるように制限
+    const maxX = window.innerWidth - loupeWidth
+    const maxY = window.innerHeight - loupeHeight
+
+    loupeX.value = Math.max(0, Math.min(maxX, newLoupeX))
+    loupeY.value = Math.max(0, Math.min(maxY, newLoupeY))
   }
 }
 
 // マウスアップハンドラ
 const handleMouseUp = () => {
-  if (isTargetDragging.value) {
-  }
   isDragging.value = false
-  isTargetDragging.value = false
 }
 
-// 画像読み込み完了
-const handleOverviewImageLoad = () => {
-  if (overviewImageRef.value) {
-    // 画像の実際のサイズを取得
-    let naturalWidth: number
-    let naturalHeight: number
-
-    if (combinedSVGContent.value && overviewImageRef.value.querySelector && overviewImageRef.value.querySelector('svg')) {
-      // SVGの場合
-      const svgElement = overviewImageRef.value.querySelector('svg') as SVGElement
-      naturalWidth = parseInt(svgElement.getAttribute('width') || '400')
-      naturalHeight = parseInt(svgElement.getAttribute('height') || '200')
-    } else if (overviewImageRef.value instanceof HTMLImageElement) {
-      // 通常の画像の場合
-      naturalWidth = overviewImageRef.value.naturalWidth
-      naturalHeight = overviewImageRef.value.naturalHeight
-    } else {
-      return
+// 画像サイズの初期化（combinedImageUrlが更新された時に呼ばれる）
+const initializeImageSize = () => {
+  if (combinedSVGContent.value) {
+    // SVGからサイズを抽出
+    const parser = new DOMParser()
+    const svgDoc = parser.parseFromString(combinedSVGContent.value, 'image/svg+xml')
+    const svgElement = svgDoc.documentElement
+    const width = parseInt(svgElement.getAttribute('width') || '400')
+    const height = parseInt(svgElement.getAttribute('height') || '200')
+    imageSize.value = { width, height }
+  } else if (combinedImageUrl.value) {
+    // 画像のサイズを取得
+    const img = new Image()
+    img.onload = () => {
+      imageSize.value = { width: img.naturalWidth, height: img.naturalHeight }
     }
-
-    overviewImageSize.value = { width: naturalWidth, height: naturalHeight }
-
-    // コンテナサイズを取得
-    const container = overviewImageRef.value.parentElement
-    if (!container) return
-
-    const containerWidth = container.clientWidth - 20 // padding考慮
-    const containerHeight = container.clientHeight - 20 // padding考慮
-
-
-    // 画像をコンテナに収めるための倍率を計算
-    const scaleX = containerWidth / naturalWidth
-    const scaleY = containerHeight / naturalHeight
-    const scale = Math.min(scaleX, scaleY, 1) // 1を超えて拡大はしない
-
-    // 計算された倍率を適用
-    if (combinedSVGContent.value && overviewImageRef.value.querySelector && overviewImageRef.value.querySelector('svg')) {
-      // SVGの場合、SVG要素に直接サイズを設定
-      const svgElement = overviewImageRef.value.querySelector('svg') as SVGElement
-      svgElement.style.width = `${naturalWidth * scale}px`
-      svgElement.style.height = `${naturalHeight * scale}px`
-
-      // コンテナ自体のサイズも設定
-      overviewImageRef.value.style.width = `${naturalWidth * scale}px`
-      overviewImageRef.value.style.height = `${naturalHeight * scale}px`
-    } else if (overviewImageRef.value instanceof HTMLImageElement) {
-      // 通常のimg要素の場合
-      overviewImageRef.value.style.width = `${naturalWidth * scale}px`
-      overviewImageRef.value.style.height = `${naturalHeight * scale}px`
-    }
+    img.src = combinedImageUrl.value
   }
 }
 
-// ズーム画像読み込み完了
-const handleZoomImageLoad = () => {
-  if (zoomImageRef.value) {
-    // SVGコンテナの場合
-    if (combinedSVGContent.value && zoomImageRef.value.querySelector && zoomImageRef.value.querySelector('svg')) {
-      const svgElement = zoomImageRef.value.querySelector('svg') as SVGElement
-      const width = parseInt(svgElement.getAttribute('width') || '400')
-      const height = parseInt(svgElement.getAttribute('height') || '200')
 
-      imageSize.value = { width, height }
-
-      //   width,
-      //   height,
-      //   containerSize: containerSize.value
-      // })
-    }
-    // 通常の画像の場合
-    else if (zoomImageRef.value instanceof HTMLImageElement) {
-      imageSize.value = {
-        width: zoomImageRef.value.naturalWidth,
-        height: zoomImageRef.value.naturalHeight
-      }
-
-      //   naturalWidth: zoomImageRef.value.naturalWidth,
-      //   naturalHeight: zoomImageRef.value.naturalHeight,
-      //   containerSize: containerSize.value
-      // })
-    }
-
-    // 画像読み込み後にコンテナサイズを更新
-    nextTick(() => {
-      updateContainerSize()
-      // 初期位置を確認用にログ出力
-      //   targetX: targetX.value,
-      //   targetY: targetY.value,
-      //   imageSize: imageSize.value,
-      //   containerSize: containerSize.value
-      // })
-    })
-  }
-}
-
-// コンテナサイズの更新
+// コンテナサイズの更新（画面サイズベース）
 const updateContainerSize = () => {
-  if (zoomImageRef.value?.parentElement) {
-    const container = zoomImageRef.value.parentElement
-    containerSize.value = {
-      width: container.clientWidth,
-      height: container.clientHeight
-    }
+  containerSize.value = {
+    width: window.innerWidth,
+    height: window.innerHeight
   }
 }
 
-// モーダルを閉じる
+// ルーペを閉じる
 const closeModal = () => {
   emit('close')
-  // 状態をリセット
-  zoomLevel.value = 1 // 等倍にリセット
-  panX.value = 0
-  panY.value = 0
-  targetX.value = 0.5
-  targetY.value = 0.5
 }
 
 // キーボードイベント
@@ -1021,34 +776,16 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
 })
 
-// DOM要素のサイズ測定を強制更新
-const updateElementSizes = () => {
-  const container = document.querySelector('.zoom-image-wrapper') as HTMLElement
-  const placeholder = document.querySelector('.overview-placeholder') as HTMLElement
 
-  if (container && placeholder) {
-    // computedを再実行させるためにtriggerRefを使う代わりに、値を変更する
-    targetX.value = targetX.value // 強制再計算
-  }
-}
-
-// モーダルが開かれた時の初期化
+// ルーペが開かれた時の初期化
 watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
-    zoomLevel.value = 1 // 等倍で開始
-    panX.value = 0
-    panY.value = 0
-    targetX.value = 0.5
-    targetY.value = 0.5
-
     // 結合画像を生成
     await updateCombinedImageUrl()
 
-    // コンテナサイズを更新
-    nextTick(() => {
-      updateContainerSize()
-      updateElementSizes()
-    })
+    // サイズを更新
+    updateContainerSize()
+    initializeImageSize()
   }
 })
 
@@ -1056,65 +793,32 @@ watch(() => props.isOpen, async (isOpen) => {
 watch(() => settingsStore.layerSelection, async () => {
   if (props.isOpen) {
     await updateCombinedImageUrl()
+    initializeImageSize()
   }
 }, { deep: true })
+
+// グリッドセクションが変わったときに親コンポーネントに通知
+watch(currentGridSection, (newSection) => {
+  if (props.isOpen) {
+    emit('gridSectionChange', newSection)
+  }
+})
 </script>
 
 <style scoped lang="scss">
-.zoom-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.9);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.zoom-modal-container {
-  width: 95vw;
-  height: 95vh;
-  background: white;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.zoom-main-area {
-  flex: 1;
-  position: relative; /* オーバーレイのため */
-}
-
-.zoom-image-wrapper {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+.image-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: #f8f9fa;
-  cursor: grab;
-
-  &:active {
-    cursor: grabbing;
-  }
 }
 
-.zoom-image {
-  position: absolute;
-  top: 0;
-  left: 0;
+.base-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transform-origin: 0 0;
-  transition: transform 0.1s ease-out;
-  max-width: none;
-  max-height: none;
+  display: block;
 
   &.svg-container {
     // SVGコンテナ用のスタイル
@@ -1126,197 +830,137 @@ watch(() => settingsStore.layerSelection, async () => {
   }
 }
 
-.overlay-controls {
+.loupe-dialog {
+  border: 1px solid #007bff;
+  background: white;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: move;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 100px;
+  min-height: 80px;
+  opacity: 0.85;
+
+  &:hover {
+    border-color: #0056b3;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.loupe-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.loupe-magnifier {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 16px;
-  pointer-events: none;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
-.zoom-level-controls {
+.loupe-image {
+  display: block;
+  transform-origin: 0 0;
+
+  &.svg-container {
+    svg {
+      display: block;
+    }
+  }
+}
+
+// 倍率変更コントロール
+.zoom-controls {
+  position: absolute;
+  top: 8px;
+  left: 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  pointer-events: all;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+  padding: 4px 6px;
+  z-index: 10;
+  backdrop-filter: blur(2px);
 }
 
-.zoom-btn {
-  background: rgba(0, 123, 255, 0.8);
+.zoom-btn-control {
+  background: transparent;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  &:active {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(220, 53, 69, 0.7);
   color: white;
   border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  backdrop-filter: blur(4px);
-
-  &:hover:not(:disabled) {
-    background: rgba(0, 123, 255, 1);
-    transform: scale(1.05);
-  }
-
-  &:disabled {
-    background: rgba(108, 117, 125, 0.8);
-    cursor: not-allowed;
-    transform: none;
-  }
-}
-
-.close-btn {
-  background: rgba(220, 53, 69, 0.8);
-  color: white;
-  border: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  backdrop-filter: blur(4px);
-  pointer-events: all;
+  z-index: 10;
+  backdrop-filter: blur(2px);
 
   &:hover {
-    background: rgba(220, 53, 69, 1);
-    transform: scale(1.05);
+    background: rgba(220, 53, 69, 0.9);
+    transform: scale(1.1);
   }
 }
 
-.overview-container {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 100px;
-  padding: 12px;
-  background: rgba(248, 249, 250, 0.95);
-  backdrop-filter: blur(4px);
-  border-top: 1px solid rgba(238, 238, 238, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.overview-image-wrapper {
-  position: relative;
-  width: 300px;
-  min-width: 300px;
-  height: 100%;
-  max-width: 90vw;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  border-radius: 4px;
-  overflow: visible;    /* 見切れを防ぐ */
-  border: 1px solid #ddd;
-}
-
-.overview-image {
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-
-  &.svg-container {
-    // SVGコンテナ用のスタイル
-    width: auto !important;
-    height: auto !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-
-    svg {
-      display: block;
-      width: auto !important;
-      height: auto !important;
-    }
-  }
-}
 
 .btn-icon {
   color: white !important;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
   display: block;
 }
 
-.overview-placeholder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: crosshair;
-  user-select: none;
-}
-
-.overview-placeholder:hover {
-  background: #e8e8e8;
-}
-
-.zoom-target-box {
-  position: absolute;
-  border: 2px solid #007bff;
-  background: rgba(0, 123, 255, 0.3);
-  cursor: move;
-  pointer-events: auto;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
-  z-index: 100;
-  min-width: 20px;
-  min-height: 20px;
-  aspect-ratio: 1;
-}
-
-.zoom-target-box:hover {
-  background: rgba(0, 123, 255, 0.4);
-  border-color: #0056b3;
-}
-
 @media (max-width: 768px) {
-  .zoom-modal-container {
-    width: 98vw;
-    height: 98vh;
-  }
-
-  .overlay-controls {
-    padding: 12px;
-  }
-
-  .zoom-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
+  .loupe-dialog {
+    border-width: 1px;
   }
 
   .close-btn {
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
-  }
-
-  .overview-container {
-    height: 80px;
-    padding: 8px;
-    background: rgba(248, 249, 250, 0.98);
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    top: 6px;
+    right: 6px;
   }
 }
 </style>
