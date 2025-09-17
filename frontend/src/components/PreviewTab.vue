@@ -9,7 +9,7 @@
       />
 
       <!-- Layers grid -->
-      <div :class="getLayersLayoutClass()">
+      <div :class="getLayersLayoutClass()" class="layers-container">
         <div
           v-for="layer in getOrderedLayers()"
           :key="layer"
@@ -50,6 +50,14 @@
         alt="Combo information"
         class="preview-combo-image"
       />
+
+      <!-- 画像範囲オーバーレイ -->
+      <div
+        v-if="highlightGridSection >= 0"
+        class="image-area-overlay"
+        :class="`highlight-grid-${highlightGridSection}`"
+        :style="imageOverlayStyle"
+      ></div>
     </div>
 
     <!-- ズームモーダル -->
@@ -58,6 +66,7 @@
       :image-url="zoomImageUrl"
       :title="zoomImageTitle"
       @close="closeZoomModal"
+      @grid-section-change="handleGridSectionChange"
     />
   </div>
 </template>
@@ -89,6 +98,7 @@ const imageLoadedStates = ref<{[key: number]: boolean}>({})
 const isZoomModalOpen = ref(false)
 const zoomImageUrl = ref('')
 const zoomImageTitle = ref('')
+const highlightGridSection = ref(-1) // -1は無効、0-8が有効なセクション
 
 // 画面幅の監視（separatedレイアウト用）
 const screenWidth = ref(window.innerWidth)
@@ -120,6 +130,79 @@ const closeZoomModal = () => {
   isZoomModalOpen.value = false
   zoomImageUrl.value = ''
   zoomImageTitle.value = ''
+  highlightGridSection.value = -1 // ハイライトをリセット
+}
+
+// 画像境界の計算
+const imageOverlayStyle = ref({})
+
+// 画像境界をキャッシュ
+let cachedImageBounds = null
+let lastCalculationTime = 0
+
+const updateImageOverlay = () => {
+  const now = Date.now()
+
+  // 100ms以内の連続呼び出しはキャッシュを使用
+  if (cachedImageBounds && (now - lastCalculationTime) < 100) {
+    imageOverlayStyle.value = cachedImageBounds
+    return
+  }
+
+  const container = document.querySelector('.preview-container')
+  if (!container) return
+
+  const images = container.querySelectorAll('img')
+  if (images.length === 0) return
+
+  let minTop = Infinity, maxBottom = -Infinity
+  let minLeft = Infinity, maxRight = -Infinity
+
+  images.forEach((img) => {
+    const isVisible = img.offsetWidth > 0 && img.offsetHeight > 0
+
+    if (isVisible) {
+      const top = img.offsetTop
+      const left = img.offsetLeft
+      const bottom = top + img.offsetHeight
+      const right = left + img.offsetWidth
+
+      // 重なった画像（offsetLeft: 0）を除外
+      if (left > 0 || (left === 0 && top > 0)) {
+        minTop = Math.min(minTop, top)
+        maxBottom = Math.max(maxBottom, bottom)
+        minLeft = Math.min(minLeft, left)
+        maxRight = Math.max(maxRight, right)
+      }
+    }
+  })
+
+  if (minTop !== Infinity) {
+    const bounds = {
+      position: 'absolute',
+      top: `${minTop}px`,
+      left: `${minLeft}px`,
+      width: `${maxRight - minLeft}px`,
+      height: `${maxBottom - minTop}px`,
+      pointerEvents: 'none',
+      zIndex: 5
+    }
+
+    cachedImageBounds = bounds
+    lastCalculationTime = now
+    imageOverlayStyle.value = bounds
+  }
+}
+
+// ルーペのグリッドセクション変更を処理
+const handleGridSectionChange = (section: number) => {
+  // ルーペのグリッドセクション表示は即座に更新
+  highlightGridSection.value = section
+
+  // 黄色ハイライトのみ非同期で更新（重い処理だけを遅延）
+  requestAnimationFrame(() => {
+    updateImageOverlay()
+  })
 }
 
 
@@ -197,6 +280,21 @@ $transition-duration: 0.2s;
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
+
+  // ハイライト用のオーバーレイ
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 5;
+    background: transparent;
+    transition: background 0.2s ease;
+  }
 }
 
 
@@ -420,17 +518,51 @@ $transition-duration: 0.2s;
 }
 
 
+// 画像ハイライト用オーバーレイ
+.image-highlight-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+// 画像範囲オーバーレイ
+.image-area-overlay {
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+// 画像範囲ハイライト（9分割）
+@for $i from 0 through 8 {
+  .image-area-overlay.highlight-grid-#{$i} {
+    $row: floor($i / 3);
+    $col: $i % 3;
+    $left: $col * 33.33%;
+    $top: $row * 33.33%;
+    $right: ($col + 1) * 33.33%;
+    $bottom: ($row + 1) * 33.33%;
+
+    background: rgba(255, 193, 7, 0.4);
+    clip-path: inset(#{$top} #{100% - $right} #{100% - $bottom} #{$left});
+  }
+}
+
 @media (max-width: 768px) {
   .preview-tab {
     padding: 10px;
   }
-  
+
   .preview-container {
     max-width: calc(100vw - 80px); // 折りたたみサイドバー40px + 余白40px
     align-items: center;
-    
+
   }
-  
-  
+
+
 }
 </style>
