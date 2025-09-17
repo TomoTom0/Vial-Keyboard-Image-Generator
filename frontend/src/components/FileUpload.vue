@@ -224,6 +224,11 @@ const handleYtvilPngFile = async (file: File) => {
   // VialStoreにVIL設定を保存
   const base64Content = `data:application/octet-stream;base64,${btoa(metadata.vilConfig)}`
   const newId = vialStore.addVialData(originalName, vilConfig, base64Content)
+
+  // 既存の画像をクリア（同名ファイル上書き対応）
+  const { useImagesStore } = await import('../stores/images')
+  const imagesStore = useImagesStore()
+  imagesStore.clearImages()
   
   // 埋め込まれた設定を復元
   if (metadata.settings) {
@@ -281,14 +286,19 @@ const parseAndSaveVilFile = async (file: File) => {
   try {
     const fileContent = await file.text()
     const vilConfig = JSON.parse(fileContent)
-    
+
     // VialStoreに保存（base64形式で統一）
     const base64Content = `data:application/octet-stream;base64,${btoa(fileContent)}`
     const newId = vialStore.addVialData(file.name, vilConfig, base64Content)
-    
+
+    // 既存の画像をクリア（同名ファイル上書き対応）
+    const { useImagesStore } = await import('../stores/images')
+    const imagesStore = useImagesStore()
+    imagesStore.clearImages()
+
     // 追加したファイルを自動選択
     vialStore.selectVial(newId)
-    
+
   } catch (error) {
     console.error('Failed to parse VIL file:', error)
     uiStore.showError('VILファイルの解析に失敗しました')
