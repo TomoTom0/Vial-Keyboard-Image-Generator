@@ -249,6 +249,7 @@ const handleImageError = (event: Event) => {
 
 <style scoped lang="scss">
 @use '../styles/layout.scss' as layout;
+@use 'sass:math';
 
 // Variables
 $primary-color: #007bff;
@@ -540,7 +541,7 @@ $transition-duration: 0.2s;
 // 画像範囲ハイライト（9分割）
 @for $i from 0 through 8 {
   .image-area-overlay.highlight-grid-#{$i} {
-    $row: floor($i / 3);
+    $row: math.floor(math.div($i, 3));
     $col: $i % 3;
     $left: $col * 33.33%;
     $top: $row * 33.33%;
