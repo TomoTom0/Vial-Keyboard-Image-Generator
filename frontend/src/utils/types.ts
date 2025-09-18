@@ -3,8 +3,13 @@ import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
 import { getFontConfig, getThemeColors } from './styleConfig.generated';
 import { SVGRenderer } from './svgRenderer';
 
-// サブテキストの種別に応じた色を取得
-function getSubTextColor(type: 'tap' | 'hold' | 'double' | 'taphold', theme: 'dark' | 'light'): string {
+// サブテキストの種別に応じた色を取得（ハイライトレベルがstrongの時のみ）
+function getSubTextColor(type: 'tap' | 'hold' | 'double' | 'taphold', theme: 'dark' | 'light', highlightLevel: number): string {
+  // ハイライトレベルがstrong(30)未満の場合は、通常の文字色を返す
+  if (highlightLevel < 30) {
+    return theme === 'dark' ? '#f0f6fc' : '#212529';
+  }
+
   if (theme === 'dark') {
     switch (type) {
       case 'tap': return '#f0f6fc'; // ほぼ白 - 通常
@@ -230,7 +235,7 @@ export class PhysicalButton {
           const availableWidth = width * 0.9; // 少し余裕を持つ
           const optimalFontSize = calculateOptimalFontSize(subTexts[0].text, availableWidth);
 
-          ctx.fillStyle = getSubTextColor(subTexts[0].type, options.theme);
+          ctx.fillStyle = getSubTextColor(subTexts[0].type, options.theme, options.highlightLevel || 30);
           ctx.font = `${optimalFontSize}px ${styleConfig.fontFamily}`;
           const subY = y + height * 0.75;
           ctx.fillText(subTexts[0].text, x + width / 2, subY);
@@ -243,7 +248,7 @@ export class PhysicalButton {
           
           for (let i = 0; i < subTexts.length; i++) {
             const optimalFontSize = calculateOptimalFontSize(subTexts[i].text, availableWidth);
-            ctx.fillStyle = getSubTextColor(subTexts[i].type, options.theme);
+            ctx.fillStyle = getSubTextColor(subTexts[i].type, options.theme, options.highlightLevel || 30);
             ctx.font = `${optimalFontSize}px ${styleConfig.fontFamily}`;
             const subY = startY + (i * lineHeight);
             ctx.fillText(subTexts[i].text, x + width / 2, subY);
@@ -272,36 +277,36 @@ export class PhysicalButton {
             // パターン1: [要素0, 要素1] / [要素2]
             // 1行目：左右に2個
             const leftFontSize = calculateOptimalFontSize(displayTexts[0].text, leftAvailableWidth);
-            ctx.fillStyle = getSubTextColor(displayTexts[0].type, options.theme);
+            ctx.fillStyle = getSubTextColor(displayTexts[0].type, options.theme, options.highlightLevel || 30);
             ctx.font = `${leftFontSize}px ${styleConfig.fontFamily}`;
             ctx.fillText(displayTexts[0].text, x + width * 0.25, startY);
 
             const rightFontSize = calculateOptimalFontSize(displayTexts[1].text, rightAvailableWidth);
-            ctx.fillStyle = getSubTextColor(displayTexts[1].type, options.theme);
+            ctx.fillStyle = getSubTextColor(displayTexts[1].type, options.theme, options.highlightLevel || 30);
             ctx.font = `${rightFontSize}px ${styleConfig.fontFamily}`;
             ctx.fillText(displayTexts[1].text, x + width * 0.75, startY);
 
             // 2行目：中央に1個
             const centerFontSize = calculateOptimalFontSize(displayTexts[2].text, centerAvailableWidth);
-            ctx.fillStyle = getSubTextColor(displayTexts[2].type, options.theme);
+            ctx.fillStyle = getSubTextColor(displayTexts[2].type, options.theme, options.highlightLevel || 30);
             ctx.font = `${centerFontSize}px ${styleConfig.fontFamily}`;
             ctx.fillText(displayTexts[2].text, x + width / 2, startY + lineHeight);
           } else {
             // パターン2: [要素0] / [要素1, 要素2]
             // 1行目：中央に1個
             const topCenterFontSize = calculateOptimalFontSize(displayTexts[0].text, centerAvailableWidth);
-            ctx.fillStyle = getSubTextColor(displayTexts[0].type, options.theme);
+            ctx.fillStyle = getSubTextColor(displayTexts[0].type, options.theme, options.highlightLevel || 30);
             ctx.font = `${topCenterFontSize}px ${styleConfig.fontFamily}`;
             ctx.fillText(displayTexts[0].text, x + width / 2, startY);
 
             // 2行目：左右に2個
             const bottomLeftFontSize = calculateOptimalFontSize(displayTexts[1].text, leftAvailableWidth);
-            ctx.fillStyle = getSubTextColor(displayTexts[1].type, options.theme);
+            ctx.fillStyle = getSubTextColor(displayTexts[1].type, options.theme, options.highlightLevel || 30);
             ctx.font = `${bottomLeftFontSize}px ${styleConfig.fontFamily}`;
             ctx.fillText(displayTexts[1].text, x + width * 0.25, startY + lineHeight);
 
             const bottomRightFontSize = calculateOptimalFontSize(displayTexts[2].text, rightAvailableWidth);
-            ctx.fillStyle = getSubTextColor(displayTexts[2].type, options.theme);
+            ctx.fillStyle = getSubTextColor(displayTexts[2].type, options.theme, options.highlightLevel || 30);
             ctx.font = `${bottomRightFontSize}px ${styleConfig.fontFamily}`;
             ctx.fillText(displayTexts[2].text, x + width * 0.75, startY + lineHeight);
           }
@@ -322,20 +327,20 @@ export class PhysicalButton {
               // 左側
               const leftX = x + width * 0.25;
               const leftFontSize = calculateOptimalFontSize(displayTexts[i].text, leftAvailableWidth);
-              ctx.fillStyle = getSubTextColor(displayTexts[i].type, options.theme);
+              ctx.fillStyle = getSubTextColor(displayTexts[i].type, options.theme, options.highlightLevel || 30);
               ctx.font = `${leftFontSize}px ${styleConfig.fontFamily}`;
               ctx.fillText(displayTexts[i].text, leftX, subY);
 
               // 右側
               const rightX = x + width * 0.75;
               const rightFontSize = calculateOptimalFontSize(displayTexts[i + 1].text, rightAvailableWidth);
-              ctx.fillStyle = getSubTextColor(displayTexts[i + 1].type, options.theme);
+              ctx.fillStyle = getSubTextColor(displayTexts[i + 1].type, options.theme, options.highlightLevel || 30);
               ctx.font = `${rightFontSize}px ${styleConfig.fontFamily}`;
               ctx.fillText(displayTexts[i + 1].text, rightX, subY);
             } else {
               // 中央（奇数の最後）- 通常は発生しない
               const centerFontSize = calculateOptimalFontSize(displayTexts[i].text, width * 0.9);
-              ctx.fillStyle = getSubTextColor(displayTexts[i].type, options.theme);
+              ctx.fillStyle = getSubTextColor(displayTexts[i].type, options.theme, options.highlightLevel || 30);
               ctx.font = `${centerFontSize}px ${styleConfig.fontFamily}`;
               ctx.fillText(displayTexts[i].text, x + width / 2, subY);
             }
@@ -417,7 +422,7 @@ export class PhysicalButton {
           const availableWidth = width * 0.9; // 少し余裕を持つ
           const optimalFontSize = calculateOptimalFontSize(subTexts[0].text, availableWidth);
 
-          renderer.fillStyle = getSubTextColor(subTexts[0].type, options.theme);
+          renderer.fillStyle = getSubTextColor(subTexts[0].type, options.theme, options.highlightLevel || 30);
           renderer.font = `${optimalFontSize}px ${styleConfig.fontFamily}`;
           const subY = y + height * 0.75;
           renderer.fillText(subTexts[0].text, x + width / 2, subY);
@@ -430,7 +435,7 @@ export class PhysicalButton {
 
           for (let i = 0; i < subTexts.length; i++) {
             const optimalFontSize = calculateOptimalFontSize(subTexts[i].text, availableWidth);
-            renderer.fillStyle = getSubTextColor(subTexts[i].type, options.theme);
+            renderer.fillStyle = getSubTextColor(subTexts[i].type, options.theme, options.highlightLevel || 30);
             renderer.font = `${optimalFontSize}px ${styleConfig.fontFamily}`;
             const subY = startY + (i * lineHeight);
             renderer.fillText(subTexts[i].text, x + width / 2, subY);
@@ -459,36 +464,36 @@ export class PhysicalButton {
             // パターン1: [要素0, 要素1] / [要素2]
             // 1行目：左右に2個
             const leftFontSize = calculateOptimalFontSize(displayTexts[0].text, leftAvailableWidth);
-            renderer.fillStyle = getSubTextColor(displayTexts[0].type, options.theme);
+            renderer.fillStyle = getSubTextColor(displayTexts[0].type, options.theme, options.highlightLevel || 30);
             renderer.font = `${leftFontSize}px ${styleConfig.fontFamily}`;
             renderer.fillText(displayTexts[0].text, x + width * 0.25, startY);
 
             const rightFontSize = calculateOptimalFontSize(displayTexts[1].text, rightAvailableWidth);
-            renderer.fillStyle = getSubTextColor(displayTexts[1].type, options.theme);
+            renderer.fillStyle = getSubTextColor(displayTexts[1].type, options.theme, options.highlightLevel || 30);
             renderer.font = `${rightFontSize}px ${styleConfig.fontFamily}`;
             renderer.fillText(displayTexts[1].text, x + width * 0.75, startY);
 
             // 2行目：中央に1個
             const centerFontSize = calculateOptimalFontSize(displayTexts[2].text, centerAvailableWidth);
-            renderer.fillStyle = getSubTextColor(displayTexts[2].type, options.theme);
+            renderer.fillStyle = getSubTextColor(displayTexts[2].type, options.theme, options.highlightLevel || 30);
             renderer.font = `${centerFontSize}px ${styleConfig.fontFamily}`;
             renderer.fillText(displayTexts[2].text, x + width / 2, startY + lineHeight);
           } else {
             // パターン2: [要素0] / [要素1, 要素2]
             // 1行目：中央に1個
             const topCenterFontSize = calculateOptimalFontSize(displayTexts[0].text, centerAvailableWidth);
-            renderer.fillStyle = getSubTextColor(displayTexts[0].type, options.theme);
+            renderer.fillStyle = getSubTextColor(displayTexts[0].type, options.theme, options.highlightLevel || 30);
             renderer.font = `${topCenterFontSize}px ${styleConfig.fontFamily}`;
             renderer.fillText(displayTexts[0].text, x + width / 2, startY);
 
             // 2行目：左右に2個
             const bottomLeftFontSize = calculateOptimalFontSize(displayTexts[1].text, leftAvailableWidth);
-            renderer.fillStyle = getSubTextColor(displayTexts[1].type, options.theme);
+            renderer.fillStyle = getSubTextColor(displayTexts[1].type, options.theme, options.highlightLevel || 30);
             renderer.font = `${bottomLeftFontSize}px ${styleConfig.fontFamily}`;
             renderer.fillText(displayTexts[1].text, x + width * 0.25, startY + lineHeight);
 
             const bottomRightFontSize = calculateOptimalFontSize(displayTexts[2].text, rightAvailableWidth);
-            renderer.fillStyle = getSubTextColor(displayTexts[2].type, options.theme);
+            renderer.fillStyle = getSubTextColor(displayTexts[2].type, options.theme, options.highlightLevel || 30);
             renderer.font = `${bottomRightFontSize}px ${styleConfig.fontFamily}`;
             renderer.fillText(displayTexts[2].text, x + width * 0.75, startY + lineHeight);
           }
@@ -509,20 +514,20 @@ export class PhysicalButton {
               // 左側
               const leftX = x + width * 0.25;
               const leftFontSize = calculateOptimalFontSize(displayTexts[i].text, leftAvailableWidth);
-              renderer.fillStyle = getSubTextColor(displayTexts[i].type, options.theme);
+              renderer.fillStyle = getSubTextColor(displayTexts[i].type, options.theme, options.highlightLevel || 30);
               renderer.font = `${leftFontSize}px ${styleConfig.fontFamily}`;
               renderer.fillText(displayTexts[i].text, leftX, subY);
 
               // 右側
               const rightX = x + width * 0.75;
               const rightFontSize = calculateOptimalFontSize(displayTexts[i + 1].text, rightAvailableWidth);
-              renderer.fillStyle = getSubTextColor(displayTexts[i + 1].type, options.theme);
+              renderer.fillStyle = getSubTextColor(displayTexts[i + 1].type, options.theme, options.highlightLevel || 30);
               renderer.font = `${rightFontSize}px ${styleConfig.fontFamily}`;
               renderer.fillText(displayTexts[i + 1].text, rightX, subY);
             } else {
               // 中央（奇数の最後）- 通常は発生しない
               const centerFontSize = calculateOptimalFontSize(displayTexts[i].text, width * 0.9);
-              renderer.fillStyle = getSubTextColor(displayTexts[i].type, options.theme);
+              renderer.fillStyle = getSubTextColor(displayTexts[i].type, options.theme, options.highlightLevel || 30);
               renderer.font = `${centerFontSize}px ${styleConfig.fontFamily}`;
               renderer.fillText(displayTexts[i].text, x + width / 2, subY);
             }
@@ -759,8 +764,10 @@ export class ParsedLayer {
     // レイヤー番号を描画（x, y パラメータは使用されない）
     this.drawLayerNumber(ctx, this.layerIndex, 0, 0, options, qualityScale);
 
-    // 色の説明ラベルを右下に追加
-    this.drawColorLegend(ctx, canvasSize, options, qualityScale);
+    // 色の説明ラベルを右下に追加（ハイライトレベルがstrong以上の時のみ）
+    if (options.highlightLevel >= 30) {
+      this.drawColorLegend(ctx, canvasSize, options, qualityScale);
+    }
   }
 
   drawSVG(renderer: SVGRenderer, options: RenderOptions, combos?: any[], qualityScale: number = 1.0): void {
@@ -779,8 +786,10 @@ export class ParsedLayer {
     // レイヤー番号を描画
     this.drawLayerNumberSVG(renderer, this.layerIndex, 0, 0, options, qualityScale);
 
-    // 色の説明ラベルを右下に追加
-    this.drawColorLegendSVG(renderer, canvasSize, options, qualityScale);
+    // 色の説明ラベルを右下に追加（ハイライトレベルがstrong以上の時のみ）
+    if (options.highlightLevel >= 30) {
+      this.drawColorLegendSVG(renderer, canvasSize, options, qualityScale);
+    }
   }
   
   calculateCanvasSize(): {width: number, height: number} {
@@ -801,6 +810,11 @@ export class ParsedLayer {
 
   // 色の説明ラベルを右下に描画
   drawColorLegend(ctx: CanvasRenderingContext2D, canvasSize: {width: number, height: number}, options: RenderOptions, qualityScale: number): void {
+    // ハイライトレベルがstrong未満の場合は何も描画しない
+    if (options.highlightLevel < 30) {
+      return;
+    }
+
     const styleConfig = getFontConfig();
     const fontSize = styleConfig.fontSizes.sub.small;
     const lineHeight = fontSize + 2;
@@ -830,6 +844,11 @@ export class ParsedLayer {
   }
 
   drawColorLegendSVG(renderer: SVGRenderer, canvasSize: {width: number, height: number}, options: RenderOptions, qualityScale: number): void {
+    // ハイライトレベルがstrong未満の場合は何も描画しない
+    if (options.highlightLevel < 30) {
+      return;
+    }
+
     const styleConfig = getFontConfig();
     const fontSize = styleConfig.fontSizes.sub.small;
     const lineHeight = fontSize + 2;
@@ -1274,5 +1293,6 @@ export interface RenderOptions {
     changeKeyColors?: boolean;         // キーの背景色を変更する (デフォルト: true)
     changeEmptyKeyColors?: boolean;    // 空白ボタンの背景色を変更する (デフォルト: true)
     theme?: 'dark' | 'light';         // テーマモード (デフォルト: 'dark')
+    highlightLevel?: number;           // ハイライトレベル 10=off, 20=weak, 30=strong (デフォルト: 30)
 }
 

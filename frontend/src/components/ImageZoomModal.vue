@@ -356,7 +356,8 @@ const generateSVGFromVialStore = async (): Promise<string | null> => {
       spacing: settingsStore.spacing,
       showLabels: settingsStore.showLabels,
       theme: settingsStore.enableDarkMode ? 'dark' : 'light', // サブテキスト色用
-      language: settingsStore.language
+      language: settingsStore.language,
+      highlightLevel: settingsStore.highlightLevel
     }
     const qualityScale = 1.0
 

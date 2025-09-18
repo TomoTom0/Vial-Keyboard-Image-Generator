@@ -6,6 +6,9 @@ import { useVialStore, type VialData } from './vial'
 import type { ParsedVial } from '../utils/types'
 import { embedMetadataToPng, type PngMetadata } from '../utils/pngMetadata'
 import { VialDataProcessor } from '../utils/vialDataProcessor'
+import { ParsedVialProcessor } from '../utils/parsedVialProcessor'
+import { KEYBOARD_CONSTANTS } from '../constants/keyboard'
+import JSZip from 'jszip'
 
 // 型定義
 interface GeneratedComponent {
@@ -187,7 +190,7 @@ export const useImagesStore = defineStore('images', () => {
           const vialStore = useVialStore()
           const currentVial = vialStore.currentVial
           if (currentVial?.config) {
-            const { ParsedVialProcessor } = await import('../utils/parsedVialProcessor')
+            // ParsedVialProcessor is now statically imported
             const properParsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, currentVial.name)
             await generateVialImagesFromParsed(properParsedVial, fileId)
           }
@@ -203,7 +206,7 @@ export const useImagesStore = defineStore('images', () => {
           const sampleConfig = JSON.parse(sampleFileContent)
           
           // サンプルファイルからもParsedVialを作成
-          const { ParsedVialProcessor } = await import('../utils/parsedVialProcessor')
+          // ParsedVialProcessor is now statically imported
           const sampleParsedVial = ParsedVialProcessor.parseVialConfig(sampleConfig, 'sample')
           
           // ParsedVialベース生成を使用
@@ -219,7 +222,7 @@ export const useImagesStore = defineStore('images', () => {
           const vialConfig = JSON.parse(fileContent)
           
           // その場でParsedVialを作成
-          const { ParsedVialProcessor } = await import('../utils/parsedVialProcessor')
+          // ParsedVialProcessor is now statically imported
           const onTheFlyParsedVial = ParsedVialProcessor.parseVialConfig(vialConfig, fileId)
           
           // ParsedVialベース生成を使用
@@ -261,7 +264,8 @@ export const useImagesStore = defineStore('images', () => {
         showTextColors: settingsStore.highlightLevel > 10,
         showComboInfo: settingsStore.showCombos,
         changeKeyColors: settingsStore.highlightLevel > 10,
-        changeEmptyKeyColors: true  // 空白ボタンの背景色は常に変更
+        changeEmptyKeyColors: true,  // 空白ボタンの背景色は常に変更
+        highlightLevel: settingsStore.highlightLevel
       }
       
       const qualityScale = quality === 'high' ? 1.0 : 0.5
@@ -484,8 +488,8 @@ export const useImagesStore = defineStore('images', () => {
     }
     
     // JSZipを使用してZIPファイルを作成
-    const JSZip = await import('jszip')
-    const zip = new JSZip.default()
+    // JSZip is now statically imported
+    const zip = new JSZip()
     
     for (const image of formatImages) {
       const response = await fetch(image.dataUrl)
@@ -813,7 +817,7 @@ ${combinedContent}
     comboComponent: {canvas: HTMLCanvasElement} | null,
     settings: {showHeader?: boolean, showCombos?: boolean, outputFormat?: string, enableDarkMode?: boolean}
   ): Promise<HTMLCanvasElement> => {
-    const { KEYBOARD_CONSTANTS } = await import('../constants/keyboard')
+    // KEYBOARD_CONSTANTS is now statically imported
     const margin = KEYBOARD_CONSTANTS.margin
     let totalWidth = 0
     let totalHeight = 0
@@ -963,7 +967,7 @@ ${combinedContent}
     outputFormat: string,
     enableDarkMode: boolean
   ): Promise<HTMLCanvasElement> => {
-    const { KEYBOARD_CONSTANTS } = await import('../constants/keyboard')
+    // KEYBOARD_CONSTANTS is now statically imported
     const margin = KEYBOARD_CONSTANTS.margin
     
     let totalWidth = 0
@@ -1056,7 +1060,7 @@ ${combinedContent}
     outputFormat: string,
     enableDarkMode: boolean
   ): Promise<HTMLCanvasElement> => {
-    const { KEYBOARD_CONSTANTS } = await import('../constants/keyboard')
+    // KEYBOARD_CONSTANTS is now statically imported
     const margin = KEYBOARD_CONSTANTS.margin
     
     let totalWidth = 0
@@ -1222,7 +1226,7 @@ ${combinedContent}
       
       if (currentVial) {
         // 現在のVialConfigからParsedVialを再作成（クラスメソッドを保持するため）
-        const { ParsedVialProcessor } = await import('../utils/parsedVialProcessor')
+        // ParsedVialProcessor is now statically imported
         const parsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, currentVial.name)
         await generateFinalOutputFromParsed(parsedVial)
       } else if (vialStore.selectedVialId === 'sample') {
@@ -1236,7 +1240,7 @@ ${combinedContent}
           const sampleConfig = JSON.parse(sampleFileContent)
           
           // サンプルファイルからもParsedVialを作成
-          const { ParsedVialProcessor } = await import('../utils/parsedVialProcessor')
+          // ParsedVialProcessor is now statically imported
           const sampleParsedVial = ParsedVialProcessor.parseVialConfig(sampleConfig, 'sample')
           
           // ParsedVialベース生成を使用
@@ -1252,7 +1256,7 @@ ${combinedContent}
           const vialConfig = JSON.parse(fileContent)
           
           // その場でParsedVialを作成
-          const { ParsedVialProcessor } = await import('../utils/parsedVialProcessor')
+          // ParsedVialProcessor is now statically imported
           const onTheFlyParsedVial = ParsedVialProcessor.parseVialConfig(vialConfig, vialStore.selectedFileName)
           
           // ParsedVialベース生成を使用
@@ -1298,7 +1302,8 @@ ${combinedContent}
       showTextColors: settingsStore.highlightLevel > 10,
       showComboInfo: settingsStore.showCombos,
       changeKeyColors: settingsStore.highlightLevel > 10,
-      changeEmptyKeyColors: true  // 空白ボタンの背景色は常に変更
+      changeEmptyKeyColors: true,  // 空白ボタンの背景色は常に変更
+      highlightLevel: settingsStore.highlightLevel
     }
 
     const qualityScale = 1.0 // 高品質固定

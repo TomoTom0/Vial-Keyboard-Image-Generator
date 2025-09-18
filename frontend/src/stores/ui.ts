@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { useImagesStore } from './images'
+import { useVialStore } from './vial'
 
 export interface ToastMessage {
   id: string
@@ -29,9 +31,7 @@ export const useUiStore = defineStore('ui', () => {
       clearTimeout(generateTimeout)
     }
     generateTimeout = setTimeout(async () => {
-      // imagesStoreを動的にインポート（循環依存回避）
-      const { useImagesStore } = await import('./images')
-      const { useVialStore } = await import('./vial')
+      // imagesStoreとvialStoreは静的にインポート済み
       const imagesStore = useImagesStore()
       const vialStore = useVialStore()
       
