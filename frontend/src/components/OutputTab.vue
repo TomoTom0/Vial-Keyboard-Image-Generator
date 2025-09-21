@@ -30,13 +30,13 @@
         
         <!-- separated以外の場合は画像のみ表示 -->
         <div v-else>
-          <div 
+          <div
             v-for="image in outputImages"
             :key="image.id"
             class="output-section"
           >
             <div class="image-container">
-              <img 
+              <img
                 :src="getImageUrl(image)"
                 :alt="getImageAlt(image)"
                 class="output-image"
@@ -44,7 +44,7 @@
               <div class="filename-overlay">{{ getDownloadFilename() }}</div>
               <button
                 class="download-overlay-btn"
-                @click="downloadAll"
+                @click="downloadSingle(image)"
                 :title="`Download ${settingsStore.imageFormat.toUpperCase()}`"
               >
                 ⬇️ {{ settingsStore.imageFormat.toUpperCase() }}

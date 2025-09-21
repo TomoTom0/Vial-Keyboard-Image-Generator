@@ -204,11 +204,11 @@ export const useImagesStore = defineStore('images', () => {
           }
           const sampleFileContent = await response.text()
           const sampleConfig = JSON.parse(sampleFileContent)
-          
+
           // サンプルファイルからもParsedVialを作成
           // ParsedVialProcessor is now statically imported
           const sampleParsedVial = ParsedVialProcessor.parseVialConfig(sampleConfig, 'sample')
-          
+
           // ParsedVialベース生成を使用
           await generateVialImagesFromParsed(sampleParsedVial, 'sample')
         } catch (error) {

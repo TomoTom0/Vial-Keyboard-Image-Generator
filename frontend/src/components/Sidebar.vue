@@ -221,7 +221,7 @@
 
         <!-- Preferences領域（Preferences選択時のみ表示） -->
         <div v-show="uiStore.sidebarSection === 'preferences'" class="sidebar-section preferences-section">
-          <PreferencesTab />
+          <div class="placeholder">設定機能はClaude Codeによって破壊されました</div>
         </div>
       </div>
     </div>
@@ -234,7 +234,6 @@ import FileUpload from './FileUpload.vue'
 import FileHistory from './FileHistory.vue'
 import KeyboardTab from './KeyboardTab.vue'
 import ReplaceTab from './ReplaceTab.vue'
-import PreferencesTab from './PreferencesTab.vue'
 import { useVialStore } from '../stores/vial'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'

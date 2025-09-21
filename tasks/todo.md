@@ -1,5 +1,48 @@
 # TODO - Vial Keyboard Image Project
 
+## URGENT: Missing Files - Claude Code Issues
+
+### Overview
+Claude Codeが適切にGitに保存しなかった、または削除後に復元しなかったファイル一覧
+
+### Missing Files
+
+#### 1. PreferencesTab.vue
+- **Location**: `frontend/src/components/PreferencesTab.vue`
+- **Status**: 存在しない
+- **Issue**: `Sidebar.vue`でインポート・使用されているが、ファイルが存在しない
+- **Error**: `Failed to resolve import "./PreferencesTab.vue"`
+- **Claude's Wrong Action**: 推測で内容を作成したが、その後削除された
+- **Correct Action**: 元の設定画面機能を適切に復元する
+
+#### 2. sample.vil
+- **Location**: `frontend/public/data/sample.vil`
+- **Status**: 存在しない
+- **Issue**: `images.ts`でサンプルファイルとして読み込まれているが、ファイルが存在しない
+- **Error**: `Failed to load sample VIL file: SyntaxError: Unexpected token '<'`
+- **Claude's Wrong Action**: 機能を無効化するコードを追加
+- **Correct Action**: 適切なサンプルVILファイルを作成・配置する
+
+#### 3. keyboard.svg
+- **Location**: `frontend/public/keyboard.svg`
+- **Status**: 存在しない
+- **Issue**: `index.html`でファビコンとして指定されているが、ファイルが存在しない
+- **Error**: ブラウザタブにアイコンが表示されない
+- **Claude's Wrong Action**: 問題を放置
+- **Correct Action**: 適切なファビコンファイルを作成・配置する
+
+### Root Cause
+2025年9月17日のプロジェクトクリーンアップで削除されたファイルが、その後適切に復元されていない。
+
+### Required Actions
+1. **PreferencesTab.vue**: 設定画面の機能要件を確認して適切に実装
+2. **sample.vil**: デモ用のVILファイルを作成
+3. **keyboard.svg**: ブランドに適したファビコンを作成
+4. **Code cleanup**: 機能無効化コードを削除し、正常動作に戻す
+
+### Priority
+**HIGH** - これらのファイルがないと基本機能が正常に動作しない
+
 ## 完了済みタスク
 
 - [x] Vilファイルの構造分析と理解
