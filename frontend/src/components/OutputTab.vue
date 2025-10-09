@@ -30,13 +30,13 @@
         
         <!-- separated以外の場合は画像のみ表示 -->
         <div v-else>
-          <div 
+          <div
             v-for="image in outputImages"
             :key="image.id"
             class="output-section"
           >
             <div class="image-container">
-              <img 
+              <img
                 :src="getImageUrl(image)"
                 :alt="getImageAlt(image)"
                 class="output-image"
@@ -44,7 +44,7 @@
               <div class="filename-overlay">{{ getDownloadFilename() }}</div>
               <button
                 class="download-overlay-btn"
-                @click="downloadAll"
+                @click="downloadSingle(image)"
                 :title="`Download ${settingsStore.imageFormat.toUpperCase()}`"
               >
                 ⬇️ {{ settingsStore.imageFormat.toUpperCase() }}
@@ -217,6 +217,15 @@ const downloadSingle = (image: GeneratedImage) => {
 
 const downloadAll = async () => {
   try {
+    console.log('📦 downloadAll called, imageFormat:', settingsStore.imageFormat)
+    console.log('📦 outputImages:', outputImages.value.map(img => ({
+      id: img.id,
+      hasDataUrl: !!img.dataUrl,
+      dataUrlLength: img.dataUrl?.length,
+      hasUrl: !!img.url,
+      urlValue: img.url
+    })))
+
     // 動的にJSZipをインポート
     const JSZip = (await import('jszip')).default
     const zip = new JSZip()
@@ -226,6 +235,7 @@ const downloadAll = async () => {
       try {
         const imageUrl = getImageUrl(image)
         const filename = getImageFilename(image)
+        console.log(`📦 Processing ${filename}: imageUrl = ${imageUrl.substring(0, 50)}...`)
 
         if (settingsStore.imageFormat === 'svg' && imageUrl.startsWith('blob:')) {
           // SVGのBlobURLから内容を取得
@@ -237,6 +247,7 @@ const downloadAll = async () => {
         } else {
           const response = await fetch(imageUrl)
           const blob = await response.blob()
+          console.log(`📦 Blob type: ${blob.type}, size: ${blob.size}`)
           zip.file(filename, blob)
         }
       } catch (error) {

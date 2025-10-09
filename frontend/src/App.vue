@@ -48,7 +48,7 @@ watch(() => vialStore.selectedVialId, (newId) => {
   if (newId) {
     uiStore.debouncedGeneratePreview()
   }
-})
+}, { immediate: true })
 
 
 
@@ -64,9 +64,12 @@ onMounted(async () => {
   // 言語情報を読み込み
   await settingsStore.loadLanguageInfos()
 
-  // 設定ロード後に適切な画像を生成
+  // migrateDataでsampleが設定されたかどうかに関わらず、
+  // selectedVialIdが空またはsampleの場合は画像生成を確実に実行
   nextTick(() => {
-    uiStore.debouncedGeneratePreview()
+    if (!vialStore.selectedVialId || vialStore.selectedVialId === 'sample') {
+      uiStore.debouncedGeneratePreview()
+    }
   })
 })
 

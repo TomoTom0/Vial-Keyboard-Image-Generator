@@ -969,6 +969,7 @@ export class ParsedVial {
       ctx.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
       ctx.fillStyle = colors.headerText;
       ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
       ctx.fillText('LAYOUTS', 15, 28);
 
       // キーボード構造名を「LAYOUTS」の右に描画
@@ -983,6 +984,7 @@ export class ParsedVial {
           ctx.font = `${styleConfig.fontSizes.header.subtitle}px ${styleConfig.headerFontFamily}`;
           ctx.fillStyle = colors.textSub;
           ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
           ctx.fillText(` - ${structureName}`, 15 + layoutsWidth + 5, 28);
         }
       }
@@ -993,6 +995,7 @@ export class ParsedVial {
         ctx.font = `${styleConfig.fontSizes.header.subtitle}px ${styleConfig.headerFontFamily}`;
         ctx.fillStyle = colors.textSub;
         ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
         ctx.fillText(displayLabel, width - 15, 28);
       }
 
@@ -1014,6 +1017,12 @@ export class ParsedVial {
     const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
     const baseContentWidth = unitX * 13.5 + keyWidth;
     const baseImageWidth = Math.ceil(baseContentWidth + margin * 2);
+
+    // 'LAYOUTS'テキストの正確な幅を測定（一時的なCanvasを使用）
+    const measureCanvas = document.createElement('canvas');
+    const measureCtx = measureCanvas.getContext('2d')!;
+    measureCtx.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
+    const layoutsWidth = measureCtx.measureText('LAYOUTS').width;
 
     // 1x, 2x, 3x の3つの幅倍率で生成
     for (let widthScale = 1; widthScale <= 3; widthScale++) {
@@ -1037,6 +1046,7 @@ export class ParsedVial {
       renderer.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
       renderer.fillStyle = colors.headerText;
       renderer.textAlign = 'left';
+      renderer.textBaseline = 'middle';
       renderer.fillText('LAYOUTS', 15, 28);
 
       // キーボード構造名を「LAYOUTS」の右に描画
@@ -1044,11 +1054,11 @@ export class ParsedVial {
         const structure = keyboardStructures.find(s => s.id === this.keyboardStructureId);
         if (structure) {
           const structureName = structure.displayName;
-          // SVGではmeasureTextが使えないため推定値を使用（'LAYOUTS'のboldフォントでの幅は約95px）
-          const layoutsWidth = 95;
+          // Canvas測定で得た正確な幅を使用
           renderer.font = `${styleConfig.fontSizes.header.subtitle}px ${styleConfig.headerFontFamily}`;
           renderer.fillStyle = colors.textSub;
           renderer.textAlign = 'left';
+          renderer.textBaseline = 'middle';
           renderer.fillText(` - ${structureName}`, 15 + layoutsWidth + 5, 28);
         }
       }
@@ -1059,6 +1069,7 @@ export class ParsedVial {
         renderer.font = `${styleConfig.fontSizes.header.subtitle}px ${styleConfig.headerFontFamily}`;
         renderer.fillStyle = colors.textSub;
         renderer.textAlign = 'right';
+        renderer.textBaseline = 'middle';
         renderer.fillText(displayLabel, width - 15, 28);
       }
 

@@ -10,7 +10,7 @@
     "generate-mappings": "node scripts/generate-keyboard-mappings.cjs",
     "generate-styles": "node scripts/generate-styles.cjs",
     "deploy": "wrangler pages deploy dist",
-    "deploy:prod": "npm run build && wrangler pages deploy dist"
+    "deploy:prod": "npm run build && set -a && . ../.env && set +a && wrangler pages deploy dist --commit-dirty=true --commit-message='Deploy production build'"
   },
   "dependencies": {
     "@pinia/nuxt": "^0.11.2",

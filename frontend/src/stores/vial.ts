@@ -26,13 +26,13 @@ export const useVialStore = defineStore('vial', () => {
       }
       return true
     })
-    
+
     if (selectedVialId.value && !vialFiles.value.find(v => v.id === selectedVialId.value)) {
       selectedVialId.value = ''
     }
 
-    // ファイルが何もなく、何も選択されていない場合はsampleを選択
-    if (vialFiles.value.length === 0 && !selectedVialId.value) {
+    // 選択されていない場合は常にsampleを選択
+    if (!selectedVialId.value) {
       selectedVialId.value = 'sample'
     }
   }
@@ -50,6 +50,28 @@ export const useVialStore = defineStore('vial', () => {
     const selectedFile = vialFiles.value.find(f => f.id === selectedVialId.value)
     return selectedFile?.name || 'sample'
   })
+
+  // キーボード構造に応じたサンプルファイルパスを取得
+  const getSampleFilePath = (keyboardStructure: string): string => {
+    return `/data/sample_${keyboardStructure}.vil`
+  }
+
+  // サンプルファイルを読み込む
+  const loadSampleFile = async (keyboardStructure: string): Promise<VialConfig | null> => {
+    try {
+      const filePath = getSampleFilePath(keyboardStructure)
+      const response = await fetch(filePath)
+      if (!response.ok) {
+        console.warn(`Sample file not found: ${filePath}`)
+        return null
+      }
+      const config = await response.json()
+      return config
+    } catch (error) {
+      console.error(`Failed to load sample file for ${keyboardStructure}:`, error)
+      return null
+    }
+  }
 
   // VILデータを追加
   const addVialData = (name: string, config: VialConfig, content: string) => {
@@ -86,9 +108,7 @@ export const useVialStore = defineStore('vial', () => {
 
   // VILファイルを選択
   const selectVial = (id: string) => {
-    console.log('🎯 VialStore: selectVial called with:', id)
     selectedVialId.value = id
-    console.log('✅ VialStore: selectedVialId updated to:', selectedVialId.value)
   }
 
   // 言語変換を実行
@@ -178,7 +198,8 @@ export const useVialStore = defineStore('vial', () => {
     convertLanguage,
     migrateData,
     getCurrentConfig,
-    downloadConfig
+    downloadConfig,
+    loadSampleFile
   }
 }, {
   persist: {

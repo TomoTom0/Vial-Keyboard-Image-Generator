@@ -199,17 +199,16 @@ export const useImagesStore = defineStore('images', () => {
       } else if (fileId === 'sample') {
         // サンプルファイルの場合のみ従来処理（ParsedVialを作成してから新方式を使用）
         try {
-          const response = await fetch('/data/sample.vil')
-          if (!response.ok) {
-            throw new Error(`Failed to load sample file: ${response.status}`)
+          // キーボード構造に応じたサンプルファイルを読み込む
+          const sampleConfig = await vialStore.loadSampleFile(settingsStore.keyboardStructure)
+          if (!sampleConfig) {
+            throw new Error(`Sample file not found for keyboard structure: ${settingsStore.keyboardStructure}`)
           }
-          const sampleFileContent = await response.text()
-          const sampleConfig = JSON.parse(sampleFileContent)
-          
+
           // サンプルファイルからもParsedVialを作成
           // ParsedVialProcessor is now statically imported
           const sampleParsedVial = ParsedVialProcessor.parseVialConfig(sampleConfig, settingsStore.keyboardStructure, 'sample')
-          
+
           // ParsedVialベース生成を使用
           await generateVialImagesFromParsed(sampleParsedVial, 'sample')
         } catch (error) {
@@ -472,9 +471,25 @@ export const useImagesStore = defineStore('images', () => {
     if (!image) {
       throw new Error('画像が見つかりません')
     }
-    
+
+    // 画像フォーマットに応じて適切なURLを取得
+    let imageUrl: string
+    if (settingsStore.imageFormat === 'svg') {
+      // SVGの場合はBlob URL (url)を使用
+      if (!image.url) {
+        throw new Error('SVG画像のURLが見つかりません')
+      }
+      imageUrl = image.url
+    } else {
+      // PNGの場合はdata URL (dataUrl)を使用
+      if (!image.dataUrl) {
+        throw new Error('PNG画像のdata URLが見つかりません')
+      }
+      imageUrl = image.dataUrl
+    }
+
     const link = document.createElement('a')
-    link.href = image.dataUrl
+    link.href = imageUrl
     link.download = filename || `keyboard_layer${image.layer}_${image.format}_ytvil.png`
     document.body.appendChild(link)
     link.click()
@@ -487,13 +502,31 @@ export const useImagesStore = defineStore('images', () => {
     if (formatImages.length === 0) {
       throw new Error('ダウンロード可能な画像がありません')
     }
-    
+
     // JSZipを使用してZIPファイルを作成
     // JSZip is now statically imported
     const zip = new JSZip()
-    
+
     for (const image of formatImages) {
-      const response = await fetch(image.dataUrl)
+      // 画像フォーマットに応じて適切なURLを取得
+      let imageUrl: string
+      if (settingsStore.imageFormat === 'svg') {
+        // SVGの場合はBlob URL (url)を使用
+        if (!image.url) {
+          console.warn(`SVG画像のURLが見つかりません: ${image.id}`)
+          continue
+        }
+        imageUrl = image.url
+      } else {
+        // PNGの場合はdata URL (dataUrl)を使用
+        if (!image.dataUrl) {
+          console.warn(`PNG画像のdata URLが見つかりません: ${image.id}`)
+          continue
+        }
+        imageUrl = image.dataUrl
+      }
+
+      const response = await fetch(imageUrl)
       const blob = await response.blob()
       zip.file(`layer${image.layer}_${format}_ytvil.png`, blob)
     }
@@ -607,12 +640,13 @@ export const useImagesStore = defineStore('images', () => {
     }
   }
 
-  // 圧縮タイムスタンプ生成（36進数）
+  // 日付タイムスタンプ生成（yymmdd形式）
   const generateCompactTimestamp = (): string => {
     const now = new Date()
-    // Unix timestampを36進数に変換（秒単位）
-    const unixTimestamp = Math.floor(now.getTime() / 1000)
-    return unixTimestamp.toString(36).toUpperCase()
+    const year = now.getFullYear().toString().slice(-2)
+    const month = (now.getMonth() + 1).toString().padStart(2, '0')
+    const day = now.getDate().toString().padStart(2, '0')
+    return `${year}${month}${day}`
   }
 
   // SVG結合関数
@@ -787,27 +821,30 @@ ${combinedContent}
     const vialStore = useVialStore()
     const settingsStore = useSettingsStore()
 
-    let originalName: string
+    let origName: string
     if (vialStore.selectedVialId === 'sample') {
-      originalName = 'sample'
+      origName = 'sample'
     } else if (vialStore.currentVial?.name) {
-      originalName = vialStore.currentVial.name.replace(/\.vil$/, '')
+      origName = vialStore.currentVial.name.replace(/\.vil$/, '')
     } else if (vialStore.selectedVialId) {
-      originalName = vialStore.selectedVialId.replace(/\.vil$/, '')
+      origName = vialStore.selectedVialId.replace(/\.vil$/, '')
     } else {
-      originalName = 'keyboard'
+      origName = 'keyboard'
     }
 
-    const shortName = originalName.slice(0, 10) // 最大10文字
-    const timestamp = generateCompactTimestamp() // 圧縮されたタイムスタンプ
-    const extension = settingsStore.imageFormat === 'svg' ? '.svg' : '.png'
+    const timestamp = generateCompactTimestamp() // yymmdd形式
+    const ext = settingsStore.imageFormat === 'svg' ? 'svg' : 'png'
 
     if (layerIndex !== undefined) {
-      return `ytomo-vial-kb-${shortName}-L${layerIndex}-${timestamp}_ytvil${extension}`
-    } else if (type.includes('combined') || type.includes('vertical') || type.includes('rectangular')) {
-      return `ytomo-vial-kb-${shortName}-${timestamp}_ytvil${extension}`
+      return `${origName}_${timestamp}_L${layerIndex}.${ext}`
+    } else if (type.includes('vertical')) {
+      return `${origName}_${timestamp}_vertical.${ext}`
+    } else if (type.includes('rectangular')) {
+      return `${origName}_${timestamp}_rectangular.${ext}`
+    } else if (type.includes('combined')) {
+      return `${origName}_${timestamp}_combined.${ext}`
     } else {
-      return `ytomo-vial-kb-${shortName}-${type}-${timestamp}_ytvil${extension}`
+      return `${origName}_${timestamp}_${type}.${ext}`
     }
   }
 
@@ -1233,17 +1270,16 @@ ${combinedContent}
       } else if (vialStore.selectedVialId === 'sample') {
         // サンプルファイルの場合のみ、ParsedVialを作成してから新方式を使用
         try {
-          const response = await fetch('/data/sample.vil')
-          if (!response.ok) {
-            throw new Error(`Failed to load sample file: ${response.status}`)
+          // キーボード構造に応じたサンプルファイルを読み込む
+          const sampleConfig = await vialStore.loadSampleFile(settingsStore.keyboardStructure)
+          if (!sampleConfig) {
+            throw new Error(`Sample file not found for keyboard structure: ${settingsStore.keyboardStructure}`)
           }
-          const sampleFileContent = await response.text()
-          const sampleConfig = JSON.parse(sampleFileContent)
-          
+
           // サンプルファイルからもParsedVialを作成
           // ParsedVialProcessor is now statically imported
           const sampleParsedVial = ParsedVialProcessor.parseVialConfig(sampleConfig, settingsStore.keyboardStructure, 'sample')
-          
+
           // ParsedVialベース生成を使用
           await generateFinalOutputFromParsed(sampleParsedVial)
         } catch (error) {
@@ -1426,13 +1462,15 @@ ${combinedContent}
       selectedCanvases.forEach((canvas, index) => {
         const layerIndex = selectedLayerIndices[index]
         const filename = generateFileName('layer', layerIndex)
+        const dataUrl = canvas.toDataURL('image/png')
+        console.log(`🖼️ PNG separated layer ${layerIndex}: dataUrl length = ${dataUrl.length}`)
         finalOutputImages.push({
           id: `final-parsed-layer-${layerIndex}`,
           filename,
           type: 'layer',
           layer: layerIndex,
           format: settingsStore.outputFormat,
-          url: canvas.toDataURL('image/png'),
+          dataUrl: dataUrl,
           size: canvas.width * canvas.height * 4,
           timestamp: new Date(),
           canvas: canvas
@@ -1503,13 +1541,15 @@ ${combinedContent}
     const fileContent = vialStore.currentVial?.content ? decodeVialContent(vialStore.currentVial.content) : ''
     const filename = generateFileName(`${settingsStore.outputFormat}-combined`)
 
+    const dataUrl = await createMetadataEmbeddedDataUrl(combinedCanvas, fileContent)
+    console.log(`🖼️ PNG combined: dataUrl length = ${dataUrl.length}`)
     finalOutputImages.push({
       id: 'final-parsed-combined',
       filename,
       type: 'combined',
       layer: 0,
       format: settingsStore.outputFormat,
-      url: await createMetadataEmbeddedDataUrl(combinedCanvas, fileContent),
+      dataUrl: dataUrl,
       size: combinedCanvas.width * combinedCanvas.height * 4,
       timestamp: new Date(),
       canvas: combinedCanvas
