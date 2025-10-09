@@ -35,6 +35,6 @@ vial_row	vial_col	layout_row	layout_col	canvas_x	canvas_y	canvas_width	canvas_he
 2	5	3	10	847.0	212.0	78	60	0.0	R Thumb 1
 1	5	3	9	765.0	212.0	78	60	0.0	R Thumb 2
 0	5	3	8	683.0	212.0	78	60	0.0	R Thumb 3
-3	0	4	5	591.0	84.0	78	60	0.0	Center TO(0)
-100	0	4	3	550.0	20.0	78	60	0.0	Encoder 0 CW (Mouse Wheel Up)
-100	1	4	4	632.0	20.0	78	60	0.0	Encoder 0 CCW (Mouse Wheel Down)
+3	0	4	5	673.0	84.0	78	60	0.0	Center TO(0)
+100	0	4	3	632.0	20.0	78	60	0.0	Encoder 0 CW (Mouse Wheel Up)
+100	1	4	4	714.0	20.0	78	60	0.0	Encoder 0 CCW (Mouse Wheel Down)
