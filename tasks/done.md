@@ -51,3 +51,36 @@
 3. **レスポンシブ最適化**:
    - ページヘッダー: 768px以下で右寄せ、文字サイズ段階的調整
    - ヘッダー高さ: padding調整で一定高さ維持
+
+## 2025-10-09 10:15
+
+### ✅ モディファイア統一処理の実装完了
+- **新規ファイル作成**: `frontend/src/utils/modifierParser.ts`
+- **全モディファイア対応**: LSFT/RSFT/LCTL/RCTL/LALT/RALT/LGUI/RGUI
+- **逆変換のデフォルト**: L（左）に統一（shiftMappingの制限による）
+
+### 主要な修正
+1. **modifierParser.ts**:
+   - `parseModifier()`: Modifier Tap/Direct Modifier形式を解析
+   - `getModifierDisplayText()`: 表示テキスト生成
+   - `buildModifierKeycode()`: モディファイアキーコード構築
+   - `getModifierName()`: モディファイア名取得
+
+2. **keyboardConfig.ts**:
+   - `getCharacterFromKeycode()`: 全モディファイアパターン対応
+   - `getKeycodeForCharacter()`: 逆変換時は常にL使用
+
+3. **vialDataProcessor.ts**:
+   - `parseKeyCodeText()`: 全モディファイア対応
+   - `createPhysicalButton()`: Modifier Tap処理を全モディファイア対応
+
+4. **vilConverter.ts**:
+   - `parseComplexKeycode()`: 全モディファイアパターン解析
+   - `reconstructComplexKeycode()`: モディファイア情報を保持して再構築
+
+### 技術的詳細
+- 対応パターン:
+  - Modifier Tap: `(L|R)(SFT|CTL|ALT|GUI)_T(KC_XXX)`
+  - Direct Modifier: `(L|R)(SFT|CTL|ALT|GUI)(KC_XXX)`
+- shiftMappingの制約により逆変換時はL/R判別不可→常にLを使用
+- RSFT, RCTL, RALT, RGUI が実際のVIALファイルで使用されていることを確認

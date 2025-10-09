@@ -2,6 +2,7 @@
 import type { VialConfig, VirtualButton, TapDance, ReplaceRule } from './types';
 import { PhysicalButton, Combo } from './types';
 import { getCurrentKeyboardLanguage, getKeyMapping } from './keyboardConfig';
+import { parseModifier, getModifierDisplayText } from './modifierParser';
 
 /**
  * VIALデータを統一的な構造体に変換する処理クラス
@@ -103,48 +104,43 @@ export class VialDataProcessor {
       const match = keycode.match(/TD\((\d+)\)/);
       return match ? `TD(${match[1]})` : keycode;
     }
-    
-    // Modifier Tap (LSFT, LCTL等)
-    if (keycode.includes('_T(')) {
-      const modMatch = keycode.match(/^(L[A-Z]+)_T\(/);
-      return modMatch ? modMatch[1] : keycode;
-    }
-    
-    // Shift組み合わせ (実際のshift文字を表示)
-    if (keycode.startsWith('LSFT(')) {
-      const match = keycode.match(/LSFT\((.+)\)/);
-      if (match) {
-        const baseKeycode = match[1];
+
+    // 全モディファイアパターンの処理（LSFT/RSFT/LCTL/RCTL/LALT/RALT/LGUI/RGUI）
+    const modifierInfo = parseModifier(keycode);
+    if (modifierInfo) {
+      if (modifierInfo.format === 'modifier_tap') {
+        // Modifier Tap形式: モディファイア名を返す
+        return `${modifierInfo.side}${modifierInfo.mod}`;
+      } else {
+        // Direct Modifier形式: 実際の表示文字を返す
         const language = getCurrentKeyboardLanguage();
-        const shiftChar = language.shiftMapping[baseKeycode];
-        
-        if (shiftChar) {
-          return shiftChar;
-        } else {
-          const baseText = keyMapping[baseKeycode] || baseKeycode;
+        const result = getModifierDisplayText(
+          modifierInfo,
+          language.shiftMapping,
+          (innerKeycode) => keyMapping[innerKeycode] || innerKeycode.replace('KC_', '')
+        );
+
+        // SFTでshiftMappingがない場合は「S+base」形式
+        if (modifierInfo.mod === 'SFT' && !language.shiftMapping[modifierInfo.innerKeycode]) {
+          const baseText = keyMapping[modifierInfo.innerKeycode] || modifierInfo.innerKeycode.replace('KC_', '');
           return `S+${baseText}`;
         }
-      }
-    }
-    
-    // 他のModifier組み合わせ
-    const modifierMap: { [key: string]: string } = {
-      'LCTL(': 'C+',
-      'LALT(': 'A+',
-      'LGUI(': 'G+'
-    };
-    
-    for (const [prefix, displayPrefix] of Object.entries(modifierMap)) {
-      if (keycode.startsWith(prefix)) {
-        const match = keycode.match(new RegExp(`${prefix.replace('(', '\\(')}(.+)\\)`));
-        if (match) {
-          const baseKeycode = match[1];
-          const baseText = keyMapping[baseKeycode] || baseKeycode.replace('KC_', '');
-          return `${displayPrefix}${baseText}`;
+
+        // CTL/ALT/GUIは「C+」「A+」「G+」形式
+        if (modifierInfo.mod === 'CTL') {
+          return `C+${result}`;
         }
+        if (modifierInfo.mod === 'ALT') {
+          return `A+${result}`;
+        }
+        if (modifierInfo.mod === 'GUI') {
+          return `G+${result}`;
+        }
+
+        return result;
       }
     }
-    
+
     // その他のケース
     return keycode;
   }
@@ -251,18 +247,20 @@ export class VialDataProcessor {
       }
     }
     
-    // Modifier Tap処理
+    // Modifier Tap処理（全モディファイア対応）
     if (rawKeycode.includes('_T(')) {
-      const match = rawKeycode.match(/^(L[A-Z]+)_T\(KC_(.+)\)$/);
-      if (match) {
-        const modifier = match[1];
-        const baseKey = `KC_${match[2]}`;
-        
+      const modifierInfo = parseModifier(rawKeycode);
+      if (modifierInfo && modifierInfo.format === 'modifier_tap') {
+        // 内部キーコードを取得
+        const baseKey = modifierInfo.innerKeycode;
+        // モディファイア名
+        const modifierName = `${modifierInfo.side}${modifierInfo.mod}`;
+
         return new PhysicalButton(
           rawKeycode,
           this.createVirtualButton(baseKey),
           {
-            hold: this.createVirtualButton(modifier)
+            hold: this.createVirtualButton(modifierName)
           }
         );
       }
