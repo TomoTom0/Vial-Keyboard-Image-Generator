@@ -12,7 +12,7 @@ export class ParsedVialProcessor {
   /**
    * VIALConfigからParsedVialを生成
    */
-  static parseVialConfig(config: VialConfig, keyboardName?: string, vilContent?: string): ParsedVial {
+  static parseVialConfig(config: VialConfig, keyboardStructureId: string, keyboardName?: string, vilContent?: string): ParsedVial {
 
     // VialDataProcessorにconfigを設定
     VialDataProcessor.setConfig(config);
@@ -22,7 +22,7 @@ export class ParsedVialProcessor {
     const combos = VialDataProcessor.getCombos(config);
 
     // レイヤー情報を解析
-    const layers = ParsedVialProcessor.parseLayers(config);
+    const layers = ParsedVialProcessor.parseLayers(config, keyboardStructureId);
 
     return new ParsedVial(
       config,
@@ -34,19 +34,20 @@ export class ParsedVialProcessor {
         generatedAt: new Date(),
         version: '1.0.0'
       },
-      vilContent
+      vilContent,
+      keyboardStructureId
     );
   }
   
   /**
    * レイヤー情報を解析して配置・描画座標を計算
    */
-  private static parseLayers(config: VialConfig): ParsedLayer[] {
+  private static parseLayers(config: VialConfig, keyboardStructureId: string): ParsedLayer[] {
     
     if (!config.layout) return [];
     
     const result = config.layout.map((layer, layerIndex) => {
-      const buttons = ParsedVialProcessor.parseLayerButtons(layer, config);
+      const buttons = ParsedVialProcessor.parseLayerButtons(layer, config, keyboardStructureId);
       
       return new ParsedLayer(
         layerIndex,
@@ -63,40 +64,41 @@ export class ParsedVialProcessor {
    * レイヤー内のボタンを解析して位置情報付きボタンを生成
    */
   private static parseLayerButtons(
-    layer: KeymapLayer, 
-    config: VialConfig
+    layer: KeymapLayer,
+    config: VialConfig,
+    keyboardStructureId: string
   ): PositionedPhysicalButton[] {
     const buttons: PositionedPhysicalButton[] = [];
-    
+
     // キーボードレイアウトの位置情報を取得（TSV生成データを使用）
-    const keyPositions = KEYBOARD_LAYOUTS.corne_v4.positions;
-    
+    const keyPositions = KEYBOARD_LAYOUTS[keyboardStructureId]?.positions || KEYBOARD_LAYOUTS.corne_v4.positions;
+
+    // レイヤーインデックスを取得（encoder_layout用）
+    const layerIndex = config.layout.indexOf(layer);
+
     // 実際のVialデータはKeymapLayerインデックス付きオブジェクトとして来る
     for (const [rowIndexStr, row] of Object.entries(layer)) {
       const rowIndex = parseInt(rowIndexStr);
       if (!row || !Array.isArray(row)) continue;
-      
+
       for (let colIndex = 0; colIndex < row.length; colIndex++) {
         const keycode = row[colIndex];
-        
+
         // 配置位置の取得
         const layoutPosition = keyPositions[rowIndex]?.[colIndex];
         if (!layoutPosition) {
           continue;
         }
-        
+
         // 空きボタン（KC_NO、-1、null、undefined）の正規化
         const normalizedKeycode = (!keycode || keycode === -1) ? 'KC_NO' : keycode;
-        // if (normalizedKeycode === 'KC_NO') {
-        //   console.log(`🔧 Empty button at [${rowIndex}, ${colIndex}]: "${keycode}" → "${normalizedKeycode}"`);
-        // }
-        
+
         // 物理ボタンの生成（空きボタンも含める）
         const physicalButton = VialDataProcessor.createPhysicalButton(normalizedKeycode);
-        
+
         // 描画位置の計算（配置位置から実際の描画座標を計算）
         const drawPosition = ParsedVialProcessor.calculateDrawPosition(layoutPosition);
-        
+
         buttons.push(new PositionedPhysicalButton(
           physicalButton,
           layoutPosition,
@@ -106,7 +108,51 @@ export class ParsedVialProcessor {
         ));
       }
     }
-    
+
+    // エンコーダーの処理（vial_row 100-109に対応）
+    if (config.encoder_layout && config.encoder_layout[layerIndex]) {
+      const encoderLayer = config.encoder_layout[layerIndex];
+
+      for (let encoderIndex = 0; encoderIndex < encoderLayer.length && encoderIndex < 10; encoderIndex++) {
+        const encoderData = encoderLayer[encoderIndex];
+        if (!encoderData || encoderData.length < 2) continue;
+
+        const vialRow = 100 + encoderIndex;
+
+        // CW (Clockwise / 時計回り) - vial_col = 0
+        const cwPosition = keyPositions[vialRow]?.[0];
+        if (cwPosition) {
+          const cwKeycode = encoderData[0] || 'KC_NO';
+          const cwButton = VialDataProcessor.createPhysicalButton(cwKeycode);
+          const cwDrawPosition = ParsedVialProcessor.calculateDrawPosition(cwPosition);
+
+          buttons.push(new PositionedPhysicalButton(
+            cwButton,
+            cwPosition,
+            cwDrawPosition,
+            vialRow,
+            0
+          ));
+        }
+
+        // CCW (Counter-Clockwise / 反時計回り) - vial_col = 1
+        const ccwPosition = keyPositions[vialRow]?.[1];
+        if (ccwPosition) {
+          const ccwKeycode = encoderData[1] || 'KC_NO';
+          const ccwButton = VialDataProcessor.createPhysicalButton(ccwKeycode);
+          const ccwDrawPosition = ParsedVialProcessor.calculateDrawPosition(ccwPosition);
+
+          buttons.push(new PositionedPhysicalButton(
+            ccwButton,
+            ccwPosition,
+            ccwDrawPosition,
+            vialRow,
+            1
+          ));
+        }
+      }
+    }
+
     return buttons;
   }
   

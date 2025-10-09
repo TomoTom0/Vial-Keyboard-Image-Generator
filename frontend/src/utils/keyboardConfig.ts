@@ -28,6 +28,11 @@ export const keyboardStructures: KeyboardStructure[] = [
     id: 'corne_v4',
     name: 'corne_v4',
     displayName: 'Corne v4'
+  },
+  {
+    id: 'cheapiano_v2',
+    name: 'cheapiano_v2',
+    displayName: 'Cheapiano v2'
   }
 ];
 

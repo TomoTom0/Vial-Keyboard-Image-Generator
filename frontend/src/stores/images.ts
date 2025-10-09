@@ -46,6 +46,7 @@ export interface GeneratedImage {
 }
 
 export const useImagesStore = defineStore('images', () => {
+  const settingsStore = useSettingsStore()
   const previewImages = ref<GeneratedImage[]>([])  // 現在表示中の画像
   const nextPreviewImages = ref<GeneratedImage[]>([])  // 生成中の次世代画像
   const outputImages = ref<GeneratedImage[]>([])   // 最終出力用画像
@@ -191,7 +192,7 @@ export const useImagesStore = defineStore('images', () => {
           const currentVial = vialStore.currentVial
           if (currentVial?.config) {
             // ParsedVialProcessor is now statically imported
-            const properParsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, currentVial.name)
+            const properParsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, settingsStore.keyboardStructure, currentVial.name)
             await generateVialImagesFromParsed(properParsedVial, fileId)
           }
         }
@@ -207,7 +208,7 @@ export const useImagesStore = defineStore('images', () => {
           
           // サンプルファイルからもParsedVialを作成
           // ParsedVialProcessor is now statically imported
-          const sampleParsedVial = ParsedVialProcessor.parseVialConfig(sampleConfig, 'sample')
+          const sampleParsedVial = ParsedVialProcessor.parseVialConfig(sampleConfig, settingsStore.keyboardStructure, 'sample')
           
           // ParsedVialベース生成を使用
           await generateVialImagesFromParsed(sampleParsedVial, 'sample')
@@ -223,7 +224,7 @@ export const useImagesStore = defineStore('images', () => {
           
           // その場でParsedVialを作成
           // ParsedVialProcessor is now statically imported
-          const onTheFlyParsedVial = ParsedVialProcessor.parseVialConfig(vialConfig, fileId)
+          const onTheFlyParsedVial = ParsedVialProcessor.parseVialConfig(vialConfig, settingsStore.keyboardStructure, fileId)
           
           // ParsedVialベース生成を使用
           await generateVialImagesFromParsed(onTheFlyParsedVial, fileId)
@@ -1227,7 +1228,7 @@ ${combinedContent}
       if (currentVial) {
         // 現在のVialConfigからParsedVialを再作成（クラスメソッドを保持するため）
         // ParsedVialProcessor is now statically imported
-        const parsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, currentVial.name)
+        const parsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, settingsStore.keyboardStructure, currentVial.name)
         await generateFinalOutputFromParsed(parsedVial)
       } else if (vialStore.selectedVialId === 'sample') {
         // サンプルファイルの場合のみ、ParsedVialを作成してから新方式を使用
@@ -1241,7 +1242,7 @@ ${combinedContent}
           
           // サンプルファイルからもParsedVialを作成
           // ParsedVialProcessor is now statically imported
-          const sampleParsedVial = ParsedVialProcessor.parseVialConfig(sampleConfig, 'sample')
+          const sampleParsedVial = ParsedVialProcessor.parseVialConfig(sampleConfig, settingsStore.keyboardStructure, 'sample')
           
           // ParsedVialベース生成を使用
           await generateFinalOutputFromParsed(sampleParsedVial)
@@ -1257,7 +1258,7 @@ ${combinedContent}
           
           // その場でParsedVialを作成
           // ParsedVialProcessor is now statically imported
-          const onTheFlyParsedVial = ParsedVialProcessor.parseVialConfig(vialConfig, vialStore.selectedFileName)
+          const onTheFlyParsedVial = ParsedVialProcessor.parseVialConfig(vialConfig, settingsStore.keyboardStructure, vialStore.selectedFileName)
           
           // ParsedVialベース生成を使用
           await generateFinalOutputFromParsed(onTheFlyParsedVial)

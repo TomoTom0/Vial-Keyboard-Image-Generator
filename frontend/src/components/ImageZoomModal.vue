@@ -339,7 +339,7 @@ const generateSVGFromVialStore = async (): Promise<string | null> => {
 
     // VialConfigからParsedVialを動的に生成
     const { ParsedVialProcessor } = await import('../utils/parsedVialProcessor')
-    const parsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, currentVial.name)
+    const parsedVial = ParsedVialProcessor.parseVialConfig(currentVial.config, settingsStore.keyboardStructure, currentVial.name)
 
     if (!parsedVial) {
       return null
