@@ -101,9 +101,7 @@ frontend/node_modules/
 # Unused directories (project root only)
 /backend/
 /ref/
-/scripts/
 /shared/
-/tests/
 /tmp/
 /assets/
 
