@@ -98,20 +98,20 @@ frontend/.wrangler/
 frontend/node_modules/
 *.generated.ts
 
-# Unused directories
-backend/
-ref/
-src/
-scripts/
-shared/
-dist/
-output/
-target/
-tests/
-tmp/
-assets/
-.wrangler/
-node_modules/
+# Unused directories (project root only)
+/backend/
+/ref/
+/src/
+/scripts/
+/shared/
+/dist/
+/output/
+/target/
+/tests/
+/tmp/
+/assets/
+/.wrangler/
+/node_modules/
 
 # OS generated files
 .DS_Store
