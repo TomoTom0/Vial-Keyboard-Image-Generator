@@ -103,7 +103,6 @@ frontend/node_modules/
 /ref/
 /shared/
 /tmp/
-/assets/
 
 # OS generated files
 .DS_Store
