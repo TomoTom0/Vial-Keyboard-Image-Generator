@@ -13,8 +13,10 @@
     "deploy:prod": "npm run build && set -a && . ../.env && set +a && wrangler pages deploy dist --commit-dirty=true --commit-message='Deploy production build'"
   },
   "dependencies": {
+    "@babel/runtime": "^7.28.4",
     "@pinia/nuxt": "^0.11.2",
     "@types/uuid": "^10.0.0",
+    "@uivjs/vue-markdown-preview": "^1.0.5",
     "jszip": "^3.10.1",
     "pinia": "^3.0.3",
     "pinia-plugin-persistedstate": "^4.5.0",

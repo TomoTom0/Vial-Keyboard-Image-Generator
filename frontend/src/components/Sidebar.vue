@@ -284,6 +284,7 @@
         <div v-show="uiStore.sidebarSection === 'preferences'" class="sidebar-section preferences-section">
           <PreferencesTab />
         </div>
+
       </div>
     </div>
   </aside>

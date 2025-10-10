@@ -4,8 +4,10 @@ import Sidebar from './components/Sidebar.vue'
 import SelectTab from './components/SelectTab.vue'
 import PreviewTab from './components/PreviewTab.vue'
 import OutputTab from './components/OutputTab.vue'
+import DocsTab from './components/DocsTab.vue'
 import Toast from './components/Toast.vue'
 import AppFooter from './components/AppFooter.vue'
+import HeaderMenu from './components/HeaderMenu.vue'
 import { useVialStore } from './stores/vial'
 import { useSettingsStore } from './stores/settings'
 import { useUiStore } from './stores/ui'
@@ -42,6 +44,12 @@ const imagesStore = useImagesStore()
 
 // Initialization
 
+// ドキュメントモードかどうかを判定
+const isDocsMode = computed(() => {
+  if (typeof window === 'undefined') return false
+  const hash = window.location.hash
+  return hash === '#/docs'
+})
 
 // 選択されたVILファイルの変更時に画像を再生成
 watch(() => vialStore.selectedVialId, (newId) => {
@@ -82,84 +90,92 @@ onUnmounted(() => {
 
 <template>
   <div class="app">
-    <!-- ページヘッダー -->
-    <header class="page-header" :class="{ 'sample-mode': !vialStore.selectedVialId || vialStore.selectedVialId === 'sample' }">
-      <div class="header-filename">
-        <span class="language-abbreviation">{{ settingsStore.currentLanguageAbbreviation }}</span>
-        <span class="filename-text">{{ vialStore.selectedFileName || 'sample' }}</span>
-      </div>
-      <h1 class="page-title">YTomo Vial Keyboard Image Generator</h1>
-      <div class="header-spacer"></div>
-    </header>
-    
-    <!-- メインレイアウトエリア -->
-    <div class="main-layout">
-      <!-- サイドバー -->
-      <Sidebar />
-    
-    
-      <!-- メインコンテンツエリア -->
-      <div class="main-content">
-        <!-- メインワークエリア -->
-        <main class="workspace">
-      
-      <div class="workspace-content">
-        <div v-if="uiStore.error" class="error-toast">
-          {{ uiStore.error }}
-          <button @click="uiStore.error = null" class="error-close">&times;</button>
-        </div>
-        
-        <!-- ワークスペース上部のコントロール -->
-        <div class="workspace-controls">
-          <!-- タブ選択 -->
-          <div class="workspace-tab-selector">
-            <button 
-              class="workspace-tab-btn" 
-              :class="{ active: uiStore.activeTab === 'select' }"
-              @click="uiStore.setActiveTab('select')"
-            >
-              Select
-            </button>
-            <button 
-              class="workspace-tab-btn" 
-              :class="{ active: uiStore.activeTab === 'preview' }"
-              @click="uiStore.setActiveTab('preview')"
-            >
-              Preview
-            </button>
-          </div>
-          
-          <!-- Generateボタン -->
-          <div class="workspace-generate">
-            <button 
-              class="workspace-generate-btn"
-              :disabled="vialStore.selectedVialId === 'sample'"
-              @click="imagesStore.generateFinalOutputImages"
-            >
-              Generate
-            </button>
-          </div>
-        </div>
-        
-        <SelectTab
-          v-show="uiStore.activeTab === 'select'"
-        />
-        
-        <PreviewTab
-          v-show="uiStore.activeTab === 'preview'"
-        />
-        
-        <OutputTab
-          v-show="uiStore.activeTab === 'output'"
-        />
-      </div>
-      
-        </main>
-      </div> <!-- main-content end -->
-    </div> <!-- main-layout end -->
+    <!-- ドキュメント全画面表示モード -->
+    <div v-if="isDocsMode" class="docs-fullscreen">
+      <DocsTab />
+    </div>
 
-    <!-- フッター -->
-    <AppFooter />
+    <!-- 通常モード -->
+    <template v-else>
+      <!-- ページヘッダー -->
+      <header class="page-header" :class="{ 'sample-mode': !vialStore.selectedVialId || vialStore.selectedVialId === 'sample' }">
+        <div class="header-filename">
+          <span class="language-abbreviation">{{ settingsStore.currentLanguageAbbreviation }}</span>
+          <span class="filename-text">{{ vialStore.selectedFileName || 'sample' }}</span>
+        </div>
+        <h1 class="page-title">YTomo Vial Keyboard Image Generator</h1>
+        <HeaderMenu />
+      </header>
+
+      <!-- メインレイアウトエリア -->
+      <div class="main-layout">
+        <!-- サイドバー -->
+        <Sidebar />
+
+
+        <!-- メインコンテンツエリア -->
+        <div class="main-content">
+          <!-- メインワークエリア -->
+          <main class="workspace">
+
+        <div class="workspace-content">
+          <div v-if="uiStore.error" class="error-toast">
+            {{ uiStore.error }}
+            <button @click="uiStore.error = null" class="error-close">&times;</button>
+          </div>
+
+          <!-- ワークスペース上部のコントロール -->
+          <div class="workspace-controls">
+            <!-- タブ選択 -->
+            <div class="workspace-tab-selector">
+              <button
+                class="workspace-tab-btn"
+                :class="{ active: uiStore.activeTab === 'select' }"
+                @click="uiStore.setActiveTab('select')"
+              >
+                Select
+              </button>
+              <button
+                class="workspace-tab-btn"
+                :class="{ active: uiStore.activeTab === 'preview' }"
+                @click="uiStore.setActiveTab('preview')"
+              >
+                Preview
+              </button>
+            </div>
+
+            <!-- Generateボタン -->
+            <div class="workspace-generate">
+              <button
+                class="workspace-generate-btn"
+                :disabled="vialStore.selectedVialId === 'sample'"
+                @click="imagesStore.generateFinalOutputImages"
+              >
+                Generate
+              </button>
+            </div>
+          </div>
+
+          <SelectTab
+            v-show="uiStore.activeTab === 'select'"
+          />
+
+          <PreviewTab
+            v-show="uiStore.activeTab === 'preview'"
+          />
+
+          <OutputTab
+            v-show="uiStore.activeTab === 'output'"
+          />
+        </div>
+
+          </main>
+        </div> <!-- main-content end -->
+      </div> <!-- main-layout end -->
+
+      <!-- フッター -->
+      <AppFooter />
+    </template>
   </div> <!-- app end -->
 
   <!-- トースト通知 -->
@@ -725,6 +741,14 @@ onUnmounted(() => {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ドキュメント全画面表示 */
+.docs-fullscreen {
+  width: 100%;
+  height: 100vh;
+  overflow: auto;
+  background: #ffffff;
 }
 
 </style>
