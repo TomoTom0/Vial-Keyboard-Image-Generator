@@ -107,7 +107,6 @@ shared/
 dist/
 output/
 target/
-tests/
 tmp/
 assets/
 .wrangler/
@@ -135,5 +134,5 @@ Thumbs.db
 .stylelintcache
 
 # Test files and directories
-tests/
 test_*.js
+# Note: frontend/tests/ is now tracked for Vitest unit tests

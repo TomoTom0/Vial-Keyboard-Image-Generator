@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "npm run generate-mappings && npm run generate-styles && vite build",
     "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
     "generate-mappings": "node scripts/generate-keyboard-mappings.cjs",
     "generate-styles": "node scripts/generate-styles.cjs",
     "deploy": "wrangler pages deploy dist",
@@ -23,13 +26,19 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
+    "@pinia/testing": "^1.0.2",
     "@types/js-yaml": "^4.0.9",
     "@vitejs/plugin-vue": "^6.0.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.7.0",
+    "happy-dom": "^20.0.2",
     "js-yaml": "^4.1.0",
     "sass-embedded": "^1.92.1",
     "typescript": "~5.8.3",
     "vite": "^7.1.2",
+    "vitest": "^3.2.4",
     "vue-tsc": "^3.0.5"
   }
 }
