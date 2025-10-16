@@ -107,7 +107,95 @@
 - **メタデータ読み取り**: PNG画像からVial設定を復元
 - **設定の再利用**: 過去の設定を簡単に呼び出し
 
+## 💻 開発環境のセットアップ
 
+### 前提条件
+- Node.js 18以上
+- npm または yarn
+
+### ローカル開発
+
+```bash
+# リポジトリをクローン
+git clone https://github.com/TomoTom0/Vial-Keyboard-Image-Generator.git
+cd Vial-Keyboard-Image-Generator
+
+# frontendディレクトリに移動
+cd frontend
+
+# 依存関係をインストール
+npm install
+
+# 開発サーバーを起動
+npm run dev
+```
+
+開発サーバーは `http://localhost:5173` で起動します。
+
+### テストの実行
+
+```bash
+# ユニットテストを実行
+npm test
+
+# テストをウォッチモードで実行
+npm run test:ui
+
+# カバレッジレポートを生成
+npm run test:coverage
+```
+
+**テストスイート統計:**
+- 9テストファイル
+- 166テスト
+- 100%成功率
+- カバレッジ: 75-90% (モジュールによる)
+
+### ビルド
+
+```bash
+# プロダクションビルド
+npm run build
+
+# ビルド結果をプレビュー
+npm run preview
+```
+
+## 🚢 デプロイ
+
+### Cloudflare Pagesへのデプロイ
+
+#### 方法1: GitHub連携（推奨）
+
+1. Cloudflare Pagesダッシュボードにログイン
+2. 「Create a project」を選択
+3. GitHubリポジトリを接続
+4. ビルド設定:
+   - **Build command**: `npm run build`
+   - **Build output directory**: `frontend/dist`
+   - **Root directory**: `frontend`
+
+#### 方法2: コマンドラインからデプロイ
+
+```bash
+# .env.sampleをコピーして設定
+cp .env.sample .env
+
+# .envファイルを編集
+# CLOUDFLARE_API_TOKEN: https://dash.cloudflare.com/profile/api-tokens から取得
+# CLOUDFLARE_PAGES_PROJECT_NAME: プロジェクト名を設定
+
+# デプロイスクリプトを実行
+./deploy.sh
+```
+
+または手動でwranglerを使用:
+
+```bash
+cd frontend
+npm run build
+npx wrangler pages deploy dist --project-name=your-project-name
+```
 
 ## 🤝 コントリビューション
 
