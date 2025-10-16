@@ -61,12 +61,16 @@ import { ref, computed } from 'vue'
 import { useVialStore } from '../stores/vial'
 import { useSettingsStore } from '../stores/settings'
 import { useImagesStore } from '../stores/images'
+import { keyboardStructures } from '../utils/keyboardConfig'
 
 const props = defineProps<{
   selectedFile?: string | null
 }>()
 
-const selectedKeyboard = ref<string>('Corne v4')
+const settingsStore = useSettingsStore()
+const vialStore = useVialStore()
+const imagesStore = useImagesStore()
+
 const isConverting = ref(false)
 const convertStatus = ref<{type: 'success' | 'error', message: string} | null>(null)
 
@@ -74,16 +78,16 @@ const convertStatus = ref<{type: 'success' | 'error', message: string} | null>(n
 const selectedLayout = computed(() => settingsStore.keyboardLanguage)
 const targetLanguage = computed(() => settingsStore.keyboardLanguage === 'japanese' ? 'english' : 'japanese')
 
+const selectedKeyboard = computed(() => {
+  const structure = keyboardStructures.find(s => s.id === settingsStore.keyboardStructure)
+  return structure ? structure.displayName : ''
+})
 
 const canConvert = computed(() => {
   return vialStore.currentVial && 
          settingsStore.keyboardLanguage !== targetLanguage.value && 
          !isConverting.value
 })
-
-const vialStore = useVialStore()
-const settingsStore = useSettingsStore()
-const imagesStore = useImagesStore()
 
 const handleLayoutChange = () => {
   console.log('Keyboard layout changed to:', selectedLayout.value)
@@ -107,12 +111,12 @@ const getLanguageName = (languageId: string) => {
 
 // キーボードレイアウトを循環切り替え
 const cycleKeyboard = (direction: number) => {
-  const keyboards = ['Corne v4']
-  const currentIndex = keyboards.indexOf(selectedKeyboard.value)
-  let newIndex = (currentIndex + direction) % keyboards.length
-  if (newIndex < 0) newIndex = keyboards.length - 1
-  selectedKeyboard.value = keyboards[newIndex]
-  // 将来的にキーボードタイプが変更された際の処理をここに追加
+  const keyboards = keyboardStructures
+  const currentIndex = keyboards.findIndex(k => k.id === settingsStore.keyboardStructure)
+  let newIndex = (currentIndex + direction + keyboards.length) % keyboards.length
+  settingsStore.setKeyboardStructure(keyboards[newIndex].id)
+  // キーボード構造が変更されたので画像を再生成
+  imagesStore.generatePreviewImages()
 }
 
 // レイアウト言語を循環切り替え

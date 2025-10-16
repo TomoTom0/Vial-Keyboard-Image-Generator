@@ -16,7 +16,7 @@ export const useUiStore = defineStore('ui', () => {
   const isGenerated = ref(false)
   const activeTab = ref('preview')
   const controlPanelTab = ref<'layout' | 'upload' | 'format'>('upload')
-  const sidebarSection = ref<'files' | 'generate' | 'settings'>('files')
+  const sidebarSection = ref<'files' | 'generate' | 'settings' | 'preferences'>('files')
   const sidebarCollapsed = ref(false)
   const toasts = ref<ToastMessage[]>([])
   const error = ref<string | null>(null)
@@ -51,7 +51,7 @@ export const useUiStore = defineStore('ui', () => {
     }
     return 'preview'
   }
-  
+
   const updateHash = (tab: 'select' | 'preview' | 'output') => {
     if (typeof window !== 'undefined') {
       window.location.hash = `#/${tab}`

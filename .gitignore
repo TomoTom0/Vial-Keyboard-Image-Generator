@@ -98,19 +98,11 @@ frontend/.wrangler/
 frontend/node_modules/
 *.generated.ts
 
-# Unused directories
-backend/
-ref/
-src/
-scripts/
-shared/
-dist/
-output/
-target/
-tmp/
-assets/
-.wrangler/
-node_modules/
+# Unused directories (project root only)
+/backend/
+/ref/
+/shared/
+/tmp/
 
 # OS generated files
 .DS_Store
@@ -134,5 +126,5 @@ Thumbs.db
 .stylelintcache
 
 # Test files and directories
+tests/
 test_*.js
-# Note: frontend/tests/ is now tracked for Vitest unit tests

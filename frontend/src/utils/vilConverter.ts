@@ -1,6 +1,7 @@
 // VILファイル変換ユーティリティ
 import { getCharacterFromKeycode, getKeycodeForCharacter } from './keyboardConfig'
 import type { VialConfig, ReplaceRule, TapDanceInfo } from './types'
+import { parseModifier, type ModifierInfo } from './modifierParser'
 
 export interface ComboInfo {
   keys: (string | number)[]
@@ -166,37 +167,54 @@ export function downloadConvertedVilFile(config: VialConfig, originalFilename: s
 /**
  * 複合キーコードの解析と再構築
  */
-function parseComplexKeycode(keycode: string): { type: string; innerKeycode?: string; params?: string[] } {
-  // LSFT_T(KC_XXX) 形式
-  const lsftTMatch = keycode.match(/^(L[A-Z]+)_T\((.+)\)$/)
-  if (lsftTMatch) {
-    return { type: 'modifier_tap', innerKeycode: lsftTMatch[2], params: [lsftTMatch[1]] }
+function parseComplexKeycode(keycode: string): { type: string; innerKeycode?: string; params?: string[]; modifierInfo?: ModifierInfo } {
+  // 全モディファイアパターン（LSFT/RSFT/LCTL/RCTL/LALT/RALT/LGUI/RGUI）
+  const modifierInfo = parseModifier(keycode);
+  if (modifierInfo) {
+    if (modifierInfo.format === 'modifier_tap') {
+      return {
+        type: 'modifier_tap',
+        innerKeycode: modifierInfo.innerKeycode,
+        modifierInfo: modifierInfo
+      };
+    } else {
+      // Direct Modifier形式
+      return {
+        type: 'direct_modifier',
+        innerKeycode: modifierInfo.innerKeycode,
+        modifierInfo: modifierInfo
+      };
+    }
   }
-  
+
   // LT(layer, KC_XXX) 形式
   const ltMatch = keycode.match(/^LT(\d+)\((.+)\)$/)
   if (ltMatch) {
     return { type: 'layer_tap', innerKeycode: ltMatch[2], params: [ltMatch[1]] }
   }
-  
-  // LSFT(KC_XXX) 形式（直接shift組み合わせ）
-  const lsftMatch = keycode.match(/^LSFT\((.+)\)$/)
-  if (lsftMatch) {
-    return { type: 'direct_shift', innerKeycode: lsftMatch[1] }
-  }
-  
+
   // 単純なキーコード
   return { type: 'simple' }
 }
 
-function reconstructComplexKeycode(parsed: { type: string; innerKeycode?: string; params?: string[] }, newInnerKeycode: string): string {
+function reconstructComplexKeycode(parsed: { type: string; innerKeycode?: string; params?: string[]; modifierInfo?: ModifierInfo }, newInnerKeycode: string): string {
   switch (parsed.type) {
     case 'modifier_tap':
-      return `${parsed.params![0]}_T(${newInnerKeycode})`
+      // モディファイアTap形式を再構築
+      if (parsed.modifierInfo) {
+        const { side, mod } = parsed.modifierInfo;
+        return `${side}${mod}_T(${newInnerKeycode})`;
+      }
+      return newInnerKeycode;
+    case 'direct_modifier':
+      // 直接モディファイア形式を再構築
+      if (parsed.modifierInfo) {
+        const { side, mod } = parsed.modifierInfo;
+        return `${side}${mod}(${newInnerKeycode})`;
+      }
+      return newInnerKeycode;
     case 'layer_tap':
       return `LT${parsed.params![0]}(${newInnerKeycode})`
-    case 'direct_shift':
-      return `LSFT(${newInnerKeycode})`
     default:
       return newInnerKeycode
   }
@@ -222,32 +240,32 @@ function applyReplaceRulesToKeycode(keycode: string | number, replaceRules: Repl
     if (!character) {
       return keycode
     }
-    
+
     return applyReplaceRulesToCharacter(character, keycodeStr, replaceRules, languageId)
-  } else if (parsed.type === 'direct_shift') {
-    // LSFT(KC_XXX)の場合、shift組み合わせ全体で置換
+  } else if (parsed.type === 'direct_modifier') {
+    // 直接モディファイア形式（全モディファイア対応）
     const character = getCharacterFromKeycode(keycodeStr, languageId)
     if (!character) {
       return keycode
     }
-    
+
     return applyReplaceRulesToCharacter(character, keycodeStr, replaceRules, languageId)
   } else {
     // modifier_tap, layer_tapの場合、内部キーコードのみ置換
     if (!parsed.innerKeycode) {
       return keycode
     }
-    
+
     const innerCharacter = getCharacterFromKeycode(parsed.innerKeycode, languageId)
     if (!innerCharacter) {
       return keycode
     }
-    
+
     const newInnerKeycode = applyReplaceRulesToCharacter(innerCharacter, parsed.innerKeycode, replaceRules, languageId)
     if (newInnerKeycode === parsed.innerKeycode) {
       return keycode // 変更なし
     }
-    
+
     const result = reconstructComplexKeycode(parsed, newInnerKeycode.toString())
     return result
   }

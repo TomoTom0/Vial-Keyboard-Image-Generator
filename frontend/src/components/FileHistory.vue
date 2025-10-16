@@ -54,7 +54,7 @@ const deleteFile = (file: VialData) => {
 
 <style scoped lang="scss">
 .file-history {
-  display: contents;
+  margin-top: 15px;
 }
 
 
@@ -69,7 +69,29 @@ const deleteFile = (file: VialData) => {
 }
 
 .file-list {
-  display: contents;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+
+  /* スクロールバーのスタイリング */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+
+    &:hover {
+      background: #555;
+    }
+  }
 }
 
 .file-item {

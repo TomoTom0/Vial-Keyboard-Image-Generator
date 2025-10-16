@@ -3,8 +3,8 @@
     <!-- 細長い左側領域 -->
     <div class="sidebar-narrow">
       <div class="nav-items">
-        <div 
-          :class="['nav-item', { active: uiStore.sidebarSection === 'files' }]" 
+        <div
+          :class="['nav-item', { active: uiStore.sidebarSection === 'files' }]"
           title="Files"
           @click="switchNavSection('files')"
         >
@@ -53,175 +53,18 @@
     <!-- メインサイドバーコンテンツ -->
     <div class="sidebar-main" v-show="!uiStore.sidebarCollapsed">
       <div class="sidebar-content">
-        
         <!-- ファイル選択領域（Files選択時のみ表示） -->
-        <div v-show="uiStore.sidebarSection === 'files'" class="sidebar-section files-section">
-          <div class="file-header">
-            <h3 class="sidebar-section-title">Files</h3>
-          </div>
-          
-          <div class="file-content">
-            <div class="file-upload-section">
-              <FileUpload ref="fileUpload" />
-              <div class="file-quick-actions">
-                <button 
-                  class="action-btn download-btn" 
-                  :disabled="!hasSelectedFile"
-                  @click="downloadSelectedFile"
-                  title="Download selected file"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7,10 12,15 17,10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                  </svg>
-                </button>
-                <button 
-                  class="action-btn delete-btn" 
-                  :disabled="!hasSelectedFile"
-                  @click="deleteSelectedFile"
-                  title="Delete selected file"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3,6 5,6 21,6"/>
-                    <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
-                    <line x1="10" y1="11" x2="10" y2="17"/>
-                    <line x1="14" y1="11" x2="14" y2="17"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <FileHistory />
-          </div>
-        </div>
-        
+        <FilesSection v-show="uiStore.sidebarSection === 'files'" />
+
         <!-- 画像生成・設定領域（Generate選択時のみ表示） -->
-        <div v-show="uiStore.sidebarSection === 'generate'" class="sidebar-section generate-section">
-          <div class="generate-header">
-            <h3 class="sidebar-section-title">Generate</h3>
-          </div>
-          <div class="generate-controls">
-          <!-- フォーマット選択 -->
-          <div class="format-selector">
-            <div class="format-group">
-              <label class="format-label">Output Format</label>
-              <div class="format-nav">
-                <button class="format-nav-btn" @click="cycleFormat(-1)">‹</button>
-                <div class="format-current">
-                  <span class="format-name">{{ formatDisplayName }}</span>
-                </div>
-                <button class="format-nav-btn" @click="cycleFormat(1)">›</button>
-              </div>
-            </div>
-          </div>
+        <GenerateSection v-show="uiStore.sidebarSection === 'generate'" />
 
-          <!-- ハイライト設定 -->
-          <div class="format-selector">
-            <div class="format-group">
-              <label class="format-label">Highlight</label>
-              <div class="format-nav">
-                <button class="format-nav-btn" @click="cycleHighlight(-1)">‹</button>
-                <div class="format-current">
-                  <span class="format-name">{{ highlightDisplayName }}</span>
-                </div>
-                <button class="format-nav-btn" @click="cycleHighlight(1)">›</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- ダークモード設定 -->
-          <div class="format-selector">
-            <div class="format-group">
-              <label class="format-label">Color Mode</label>
-              <div class="format-nav">
-                <button class="format-nav-btn" @click="cycleDarkMode(-1)">‹</button>
-                <div class="format-current">
-                  <span class="format-name">{{ darkModeDisplayName }}</span>
-                </div>
-                <button class="format-nav-btn" @click="cycleDarkMode(1)">›</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- イメージフォーマット設定 -->
-          <div class="format-selector">
-            <div class="format-group">
-              <label class="format-label">Image Format</label>
-              <div class="format-nav">
-                <button class="format-nav-btn" @click="cycleImageFormat(-1)">‹</button>
-                <div class="format-current">
-                  <span class="format-name">{{ imageFormatDisplayName }}</span>
-                </div>
-                <button class="format-nav-btn" @click="cycleImageFormat(1)">›</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Label入力欄 -->
-          <div class="label-input-container">
-            <label class="label-input-label">Label</label>
-            <input 
-              type="text"
-              class="label-input"
-              v-model="settingsStore.outputLabel"
-              :placeholder="vialStore.selectedFileName || 'sample'"
-            />
-          </div>
-          
-          <!-- タブ選択 -->
-          <div class="format-selector">
-            <button 
-              class="format-nav-btn tab-button" 
-              :class="{ active: uiStore.activeTab === 'select' }"
-              @click="uiStore.setActiveTab('select')"
-            >
-              Select
-            </button>
-            <button 
-              class="format-nav-btn tab-button" 
-              :class="{ active: uiStore.activeTab === 'preview' }"
-              @click="uiStore.setActiveTab('preview')"
-            >
-              Preview
-            </button>
-          </div>
-          
-          <!-- Generateボタン -->
-          <div class="generate-button-container">
-            <button 
-              class="generate-btn-full"
-              :disabled="selectedFile === 'sample'"
-              @click="imagesStore.generateFinalOutputImages"
-            >
-              Generate
-            </button>
-          </div>
-          </div>
-        </div>
-        
         <!-- 詳細設定領域（Settings選択時のみ表示） -->
-        <div v-show="uiStore.sidebarSection === 'settings'" class="sidebar-section settings-section">
-          <div class="settings-header">
-            <h3 class="sidebar-section-title">Settings</h3>
-          </div>
-          <div class="settings-content">
-            <!-- Layout設定 -->
-            <div class="settings-group">
-              <h4 class="settings-group-title">Layout</h4>
-              <KeyboardTab :selected-file="vialStore.selectedVialId" />
-            </div>
-
-            <!-- Replace設定 -->
-            <div class="settings-group">
-              <h4 class="settings-group-title">Replace Rules</h4>
-              <ReplaceTab />
-            </div>
-          </div>
-        </div>
+        <SettingsSection v-show="uiStore.sidebarSection === 'settings'" />
 
         <!-- Preferences領域（Preferences選択時のみ表示） -->
         <div v-show="uiStore.sidebarSection === 'preferences'" class="sidebar-section preferences-section">
-          <div class="placeholder">設定機能はClaude Codeによって破壊されました</div>
+          <PreferencesTab />
         </div>
       </div>
     </div>
@@ -229,70 +72,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import FileUpload from './FileUpload.vue'
-import FileHistory from './FileHistory.vue'
-import KeyboardTab from './KeyboardTab.vue'
-import ReplaceTab from './ReplaceTab.vue'
-import { useVialStore } from '../stores/vial'
-import { useSettingsStore } from '../stores/settings'
+import { computed, onMounted } from 'vue'
+import FilesSection from './FilesSection.vue'
+import GenerateSection from './GenerateSection.vue'
+import SettingsSection from './SettingsSection.vue'
+import PreferencesTab from './PreferencesTab.vue'
 import { useUiStore } from '../stores/ui'
-import { useImagesStore } from '../stores/images'
-// VilConverterのimportは削除（VialStoreで処理）
-import type { ReplaceRule } from '../utils/types'
 
-const vialStore = useVialStore()
-const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
-const imagesStore = useImagesStore()
 
-
-// Debounced preview generation
-let generateTimeout: NodeJS.Timeout | null = null
-const debouncedGeneratePreview = () => {
-  console.log('🔄 Setting changed, regenerating in 100ms...')
-  if (generateTimeout) {
-    clearTimeout(generateTimeout)
-  }
-  generateTimeout = setTimeout(() => {
-    console.log('⏰ Timeout reached, starting generation')
-    generatePreviewImages()
-  }, 100) // 100ms delay
-}
-
-// Preview generation
-const generatePreviewImages = async () => {
-  await imagesStore.generatePreviewImages()
-}
-
-// Computed properties
-const selectedFile = computed(() => vialStore.selectedVialId || 'sample')
-const hasSelectedFile = computed(() => vialStore.selectedVialId && vialStore.selectedVialId !== 'sample')
-
-const formatDisplayName = computed(() => {
-  const formats = {
-    separated: 'Separated',
-    vertical: 'Vertical',
-    rectangular: 'Rectangular'
-  }
-  return formats[settingsStore.outputFormat] || 'Separated'
-})
-
-const highlightDisplayName = computed(() => {
-  const levels = {
-    10: 'OFF',
-    20: 'WEAK',
-    30: 'STRONG'
-  }
-  return levels[settingsStore.highlightLevel] || 'STRONG'
-})
-
-const darkModeDisplayName = computed(() => {
-  return settingsStore.enableDarkMode ? 'Dark' : 'Light'
-})
-
-const imageFormatDisplayName = computed(() => {
-  return settingsStore.imageFormat.toUpperCase()
+// 小画面かどうかを判定
+const isSmallScreen = computed(() => {
+  if (typeof window === 'undefined') return false
+  return window.innerWidth < 768
 })
 
 // Methods
@@ -306,62 +98,6 @@ const switchNavSection = (section: 'files' | 'generate' | 'settings' | 'preferen
     uiStore.sidebarSection = section
   }
 }
-
-const cycleFormat = (direction: number) => {
-  const formats = ['separated', 'vertical', 'rectangular'] as const
-  const currentIndex = formats.indexOf(settingsStore.outputFormat)
-  const newIndex = (currentIndex + direction + formats.length) % formats.length
-  settingsStore.outputFormat = formats[newIndex]
-  debouncedGeneratePreview()
-}
-
-const cycleHighlight = (direction: number) => {
-  const levels = [10, 20, 30] as const
-  const currentIndex = levels.indexOf(settingsStore.highlightLevel)
-  const newIndex = (currentIndex + direction + levels.length) % levels.length
-  settingsStore.highlightLevel = levels[newIndex]
-  debouncedGeneratePreview()
-}
-
-const cycleDarkMode = (direction: number) => {
-  settingsStore.enableDarkMode = !settingsStore.enableDarkMode
-  debouncedGeneratePreview()
-}
-
-const cycleImageFormat = (direction: number) => {
-  settingsStore.cycleImageFormat(direction)
-  debouncedGeneratePreview()
-}
-
-
-
-const downloadSelectedFile = async () => {
-  if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {
-    try {
-      vialStore.downloadConfig() // Store経由で自動判断
-    } catch (error) {
-      console.error('Failed to download file:', error)
-    }
-  }
-}
-
-const deleteSelectedFile = async () => {
-  if (vialStore.selectedVialId && vialStore.selectedVialId !== 'sample') {
-    try {
-      await vialStore.removeVialData(vialStore.selectedVialId)
-    } catch (error) {
-      console.error('Failed to delete file:', error)
-    }
-  }
-}
-
-// 小画面かどうかを判定
-const isSmallScreen = computed(() => {
-  // window.innerWidth が 768px 以下の場合は小画面として扱う
-  if (typeof window === 'undefined') return false
-  return window.innerWidth < 768
-})
-
 
 // 小画面での初期状態設定
 onMounted(() => {
@@ -379,7 +115,7 @@ onMounted(() => {
   background: #ffffff;
   border-right: 1px solid #e0e0e0;
   box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-  flex-shrink: 0; /* サイドバーの幅を固定 */
+  flex-shrink: 0;
   display: flex;
   flex-direction: row;
   transition: width 0.3s ease;
@@ -392,7 +128,7 @@ onMounted(() => {
 /* 細長い左側領域 */
 .sidebar-narrow {
   width: 40px;
-  height: 100%; /* サイドバー全体の高さを使用 */
+  height: 100%;
   background: #f8f9fa;
   border-right: 1px solid #e9ecef;
   flex-shrink: 0;
@@ -453,7 +189,6 @@ onMounted(() => {
   }
 }
 
-
 /* メインサイドバーコンテンツ */
 .sidebar-main {
   flex: 1;
@@ -468,342 +203,4 @@ onMounted(() => {
 .sidebar-section {
   margin-bottom: 30px;
 }
-
-.file-header,
-.generate-header,
-.settings-header {
-  background: #f8f9fa;
-  margin: -20px -20px 15px -20px;
-  padding: 12px 20px;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.sidebar-section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-  padding-bottom: 0;
-  border-bottom: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.file-header .sidebar-section-title,
-.generate-header .sidebar-section-title,
-.settings-header .sidebar-section-title {
-  border-bottom: 2px solid #007bff;
-  padding-bottom: 8px;
-}
-
-.selected-file-name {
-  font-size: 14px;
-  font-weight: 400;
-  color: #666;
-  background: #f8f9fa;
-  padding: 2px 8px;
-  border-radius: 12px;
-  border: 1px solid #e9ecef;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 120px;
-}
-
-.file-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.file-actions-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.action-btn {
-  padding: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: #ffffff;
-  color: #333;
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover:not(:disabled) {
-    background: #f8f9fa;
-    border-color: #007bff;
-    color: #007bff;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: #f8f9fa;
-    color: #999;
-  }
-
-  &.download-btn:hover:not(:disabled) {
-    background: #e3f2fd;
-    border-color: #2196f3;
-    color: #2196f3;
-  }
-
-  &.delete-btn:hover:not(:disabled) {
-    background: #ffebee;
-    border-color: #f44336;
-    color: #f44336;
-  }
-}
-
-/* Generate section styles */
-.generate-section {
-  margin-bottom: 0;
-}
-
-/* Settings section styles */
-.settings-section {
-  margin-bottom: 0;
-}
-
-.settings-header {
-  background: #f8f9fa;
-  margin: -20px -20px 15px -20px;
-  padding: 12px 20px;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.settings-content {
-  padding: 0;
-  max-width: 170px; /* ナビ部分40px + サイドバーパディング左右40px(20px×2)を除いた実際の利用可能幅 */
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.settings-group {
-  margin-bottom: 15px;
-  padding: 0;
-  box-sizing: border-box;
-  max-width: 170px;
-  overflow: hidden;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
-
-.settings-group-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 8px 0;
-  padding: 6px 0 3px 0;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.generate-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: -20px -20px 0 -20px;
-  padding: 10px 8px;
-  box-sizing: border-box;
-  overflow: hidden;
-  max-width: 210px; /* ナビ部分40pxを除いた実際の利用可能幅 */
-}
-
-/* Format selector */
-.format-selector {
-  display: flex;
-  align-items: center;
-  background: #f8f9fa;
-  border-radius: 3px;
-  padding: 3px;
-  gap: 1px;
-  box-sizing: border-box;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.format-nav-btn {
-  background: none;
-  border: none;
-  font-size: 14px;
-  font-weight: bold;
-  color: #495057;
-  cursor: pointer;
-  padding: 1px;
-  border-radius: 2px;
-  transition: background 0.2s;
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #e9ecef;
-  }
-
-  &.active {
-    background: #007bff;
-    color: white;
-  }
-
-  // タブボタンの場合は幅を自動調整
-  &.tab-button {
-    width: auto;
-    padding: 8px 12px;
-    min-width: 50px;
-    height: 32px;
-    flex: 1;
-  }
-}
-
-.format-current {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex: 1;
-  justify-content: center;
-  min-width: 0;
-}
-
-.format-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-
-.format-label {
-  font-size: 11px;
-  color: #666;
-  font-weight: 500;
-}
-
-.format-nav {
-  display: flex;
-  align-items: center;
-  background: #f8f9fa;
-  border-radius: 3px;
-  padding: 3px;
-  gap: 1px;
-  box-sizing: border-box;
-}
-
-.format-icon {
-  color: #007bff;
-  flex-shrink: 0;
-
-  svg {
-    width: 12px;
-    height: 12px;
-  }
-}
-
-.format-name {
-  font-weight: 500;
-  font-size: 12px;
-  color: #495057;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Label input container */
-.label-input-container {
-  margin-top: 15px;
-  max-width: 210px;
-  position: relative;
-}
-
-.label-input-label {
-  display: block;
-  font-size: 11px;
-  color: #666;
-  margin-bottom: 4px;
-  font-weight: 500;
-}
-
-.label-input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 13px;
-  background: white;
-  color: black;
-  transition: border-color 0.15s;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
-  }
-
-  &::placeholder {
-    color: #9ca3af;
-  }
-}
-
-/* File upload section */
-.file-upload-section {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 15px;
-}
-
-.file-quick-actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-/* Generate button container */
-.generate-button-container {
-  display: flex;
-  width: 100%;
-  max-width: 210px;
-  box-sizing: border-box;
-}
-
-.generate-btn-full {
-  width: 100%;
-  padding: 8px 12px;
-  background: #28a745;
-  border: none;
-  border-radius: 3px;
-  color: white;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  box-sizing: border-box;
-  text-align: center;
-
-  &:hover:not(:disabled) {
-    background: #218838;
-  }
-
-  &:disabled {
-    background: #6c757d;
-    cursor: not-allowed;
-  }
-}
-
 </style>

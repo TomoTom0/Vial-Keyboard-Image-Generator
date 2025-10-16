@@ -95,6 +95,21 @@ Vial-Keyboard-Image-Generator/
 
 ## よくある開発タスク
 
+### データファイル編集時の重要な手順
+
+**`data/keymaps/*.tsv` または `data/layouts/*.tsv` を編集した場合**、必ず以下のコマンドを実行してください：
+
+```bash
+cd frontend
+npm run generate-mappings
+```
+
+このコマンドを実行しないと、TSVファイルへの変更がアプリケーションに反映されません。
+
+- **編集対象**: `common.tsv`, `english.tsv`, `japanese.tsv`, `corne_v4.tsv`, `cheapiano_v2.tsv` など
+- **生成ファイル**: `src/utils/keyboardConfig.generated.ts`
+- **自動実行**: `npm run build` 実行時には自動的に生成されます
+
 ### 新しいキーボードレイアウト追加
 
 #### 1. レイアウト定義ファイル作成

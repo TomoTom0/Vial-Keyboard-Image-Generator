@@ -10,6 +10,7 @@ import {
   getShiftMapping as getGeneratedShiftMapping,
   type KeyboardLanguage
 } from './keyboardConfig.generated';
+import { parseModifier, getModifierDisplayText } from './modifierParser';
 
 export type { KeyboardLanguage };
 
@@ -28,6 +29,11 @@ export const keyboardStructures: KeyboardStructure[] = [
     id: 'corne_v4',
     name: 'corne_v4',
     displayName: 'Corne v4'
+  },
+  {
+    id: 'cheapiano_v2',
+    name: 'cheapiano_v2',
+    displayName: 'Cheapiano v2'
   }
 ];
 
@@ -62,12 +68,14 @@ export function getCharacterFromKeycode(keycode: string, languageId: string): st
   const keyMapping = getGeneratedKeyMapping(languageId);
   const shiftMapping = getGeneratedShiftMapping(languageId);
 
-  // LSFT(KC_XXX)の処理
-  if (keycode.startsWith('LSFT(KC_')) {
-    const match = keycode.match(/LSFT\(KC_(.+)\)/);
-    if (match) {
-      return shiftMapping[`KC_${match[1]}`] || null;
-    }
+  // モディファイアパターンの処理（全モディファイア対応）
+  const modifierInfo = parseModifier(keycode);
+  if (modifierInfo) {
+    return getModifierDisplayText(
+      modifierInfo,
+      shiftMapping,
+      (innerKeycode) => getCharacterFromKeycode(innerKeycode, languageId) || innerKeycode
+    );
   }
 
   // KC_プレフィックス付きの場合 - 直接keyMappingから検索
@@ -88,24 +96,25 @@ export function compareKeycodeResult(keycode: string, languageId1: string, langu
 }
 
 // 文字からキーコード逆引き：特定の文字を入力するのに必要なキーコードを取得
+// 注意: L/Rの区別は逆変換時には判断できないため、常にL（左）を使用する
 export function getKeycodeForCharacter(character: string, languageId: string): string | null {
   const keyMapping = getGeneratedKeyMapping(languageId);
   const shiftMapping = getGeneratedShiftMapping(languageId);
-  
+
   // KC_付きキーマッピングから逆引き
   for (const [keycode, mappedChar] of Object.entries(keyMapping)) {
     if (mappedChar === character) {
       return keycode; // 既にKC_付きなのでそのまま返す
     }
   }
-  
-  // Shiftキー組み合わせから逆引き
+
+  // Shiftキー組み合わせから逆引き（常にLSFTを使用）
   for (const [keycode, shiftChar] of Object.entries(shiftMapping)) {
     if (shiftChar === character) {
       return `LSFT(${keycode})`;
     }
   }
-  
+
   return null; // 見つからなかった場合
 }
 
