@@ -54,8 +54,17 @@ export function setCurrentKeyboardLanguage(languageId: string): void {
 }
 
 export function getCurrentStructure(): KeyboardStructure {
-  // 現在はCorne v4固定
-  return keyboardStructures.find(structure => structure.id === 'corne_v4') || keyboardStructures[0];
+  const savedStructureId = typeof window !== 'undefined' ?
+    localStorage.getItem('vial-keyboard-structure') || 'corne_v4' : 'corne_v4';
+
+  return keyboardStructures.find(structure => structure.id === savedStructureId) || keyboardStructures[0];
+}
+
+// キーボード構造設定を保存
+export function setCurrentKeyboardStructure(structureId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('vial-keyboard-structure', structureId);
+  }
 }
 
 // 設定に基づいてキーマッピングを取得（generated関数を直接エクスポート）

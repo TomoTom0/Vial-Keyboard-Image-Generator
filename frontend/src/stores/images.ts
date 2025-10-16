@@ -549,9 +549,6 @@ export const useImagesStore = defineStore('images', () => {
     const layerImage = previewImages.value.find(img => 
       img.layer === layer && img.type === 'layer'
     )
-    if (!layerImage) {
-      console.log(`Layer ${layer} not found. previewImages:`, previewImages.value.map(img => ({ id: img.id, layer: img.layer, type: img.type })))
-    }
     return layerImage ? (layerImage.dataUrl || layerImage.url || '') : ''
   }
   
@@ -1463,7 +1460,6 @@ ${combinedContent}
         const layerIndex = selectedLayerIndices[index]
         const filename = generateFileName('layer', layerIndex)
         const dataUrl = canvas.toDataURL('image/png')
-        console.log(`🖼️ PNG separated layer ${layerIndex}: dataUrl length = ${dataUrl.length}`)
         finalOutputImages.push({
           id: `final-parsed-layer-${layerIndex}`,
           filename,
@@ -1542,7 +1538,6 @@ ${combinedContent}
     const filename = generateFileName(`${settingsStore.outputFormat}-combined`)
 
     const dataUrl = await createMetadataEmbeddedDataUrl(combinedCanvas, fileContent)
-    console.log(`🖼️ PNG combined: dataUrl length = ${dataUrl.length}`)
     finalOutputImages.push({
       id: 'final-parsed-combined',
       filename,

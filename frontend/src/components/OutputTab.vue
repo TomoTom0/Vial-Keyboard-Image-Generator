@@ -103,10 +103,6 @@ const uiStore = useUiStore()
 // Store から取得するcomputed値 - generateFinalOutputImagesが設定したoutputImagesを使用
 const outputImages = computed(() => {
   const images = imagesStore.outputImages
-  console.log('🖼️ OutputTab received:', images.length, 'images')
-  images.forEach((img, i) => {
-    console.log(`  ${i}: ${img.type} - ${img.filename} (${img.format})`)
-  })
   return images
 })
 
@@ -217,15 +213,6 @@ const downloadSingle = (image: GeneratedImage) => {
 
 const downloadAll = async () => {
   try {
-    console.log('📦 downloadAll called, imageFormat:', settingsStore.imageFormat)
-    console.log('📦 outputImages:', outputImages.value.map(img => ({
-      id: img.id,
-      hasDataUrl: !!img.dataUrl,
-      dataUrlLength: img.dataUrl?.length,
-      hasUrl: !!img.url,
-      urlValue: img.url
-    })))
-
     // 動的にJSZipをインポート
     const JSZip = (await import('jszip')).default
     const zip = new JSZip()
@@ -235,7 +222,6 @@ const downloadAll = async () => {
       try {
         const imageUrl = getImageUrl(image)
         const filename = getImageFilename(image)
-        console.log(`📦 Processing ${filename}: imageUrl = ${imageUrl.substring(0, 50)}...`)
 
         if (settingsStore.imageFormat === 'svg' && imageUrl.startsWith('blob:')) {
           // SVGのBlobURLから内容を取得
@@ -247,7 +233,6 @@ const downloadAll = async () => {
         } else {
           const response = await fetch(imageUrl)
           const blob = await response.blob()
-          console.log(`📦 Blob type: ${blob.type}, size: ${blob.size}`)
           zip.file(filename, blob)
         }
       } catch (error) {
@@ -278,8 +263,6 @@ const downloadAll = async () => {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(link.href)
-
-    console.log(`${settingsStore.imageFormat.toUpperCase()} ZIP download completed`)
   } catch (error) {
     console.error(`${settingsStore.imageFormat.toUpperCase()} ZIP download failed:`, error)
   }

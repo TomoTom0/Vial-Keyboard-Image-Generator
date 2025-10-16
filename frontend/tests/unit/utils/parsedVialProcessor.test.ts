@@ -59,7 +59,7 @@ describe('ParsedVialProcessor', () => {
 
   describe('parseVialConfig', () => {
     it('VialConfigからParsedVialを生成できる', () => {
-      const result = ParsedVialProcessor.parseVialConfig(mockConfig, 'Test Keyboard')
+      const result = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4', 'Test Keyboard')
 
       expect(result.original).toBe(mockConfig)
       expect(result.keyboardName).toBe('Test Keyboard')
@@ -69,7 +69,7 @@ describe('ParsedVialProcessor', () => {
     })
 
     it('レイヤー情報が正しく解析される', () => {
-      const result = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const result = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
 
       // レイヤー0
       expect(result.layers[0].layerIndex).toBe(0)
@@ -82,7 +82,7 @@ describe('ParsedVialProcessor', () => {
     })
 
     it('ボタン数が正しく解析される', () => {
-      const result = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const result = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
 
       // レイヤー0: 行0に3個、行1に2個 = 合計5個
       expect(result.layers[0].buttons).toHaveLength(5)
@@ -97,7 +97,7 @@ describe('ParsedVialProcessor', () => {
         layout: []
       }
 
-      const result = ParsedVialProcessor.parseVialConfig(emptyConfig)
+      const result = ParsedVialProcessor.parseVialConfig(emptyConfig, 'corne_v4')
 
       expect(result.layers).toHaveLength(0)
     })
@@ -114,7 +114,7 @@ describe('ParsedVialProcessor', () => {
       }
 
       // privateメソッドなので、ParsedVialを通してテスト
-      const result = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const result = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const firstButton = result.layers[0].buttons[0]
 
       // 描画位置が設定されている
@@ -126,7 +126,7 @@ describe('ParsedVialProcessor', () => {
     })
 
     it('rotation が設定されている', () => {
-      const result = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const result = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const firstButton = result.layers[0].buttons[0]
 
       expect(firstButton.drawPosition.rotation).toBeDefined()
@@ -136,7 +136,7 @@ describe('ParsedVialProcessor', () => {
 
   describe('getLayerButtons', () => {
     it('指定レイヤーのボタンを取得できる', () => {
-      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const buttons = ParsedVialProcessor.getLayerButtons(parsedVial, 0)
 
       expect(buttons).toHaveLength(5)
@@ -144,7 +144,7 @@ describe('ParsedVialProcessor', () => {
     })
 
     it('存在しないレイヤーで空配列を返す', () => {
-      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const buttons = ParsedVialProcessor.getLayerButtons(parsedVial, 99)
 
       expect(buttons).toHaveLength(0)
@@ -153,7 +153,7 @@ describe('ParsedVialProcessor', () => {
 
   describe('getButtonAt', () => {
     it('指定位置のボタンを取得できる', () => {
-      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const button = ParsedVialProcessor.getButtonAt(parsedVial, 0, 0, 0)
 
       expect(button).not.toBeNull()
@@ -163,7 +163,7 @@ describe('ParsedVialProcessor', () => {
     })
 
     it('行1列1のボタンを取得できる', () => {
-      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const button = ParsedVialProcessor.getButtonAt(parsedVial, 0, 1, 1)
 
       expect(button).not.toBeNull()
@@ -173,14 +173,14 @@ describe('ParsedVialProcessor', () => {
     })
 
     it('存在しない位置でnullを返す', () => {
-      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const button = ParsedVialProcessor.getButtonAt(parsedVial, 0, 99, 99)
 
       expect(button).toBeNull()
     })
 
     it('存在しないレイヤーでnullを返す', () => {
-      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const button = ParsedVialProcessor.getButtonAt(parsedVial, 99, 0, 0)
 
       expect(button).toBeNull()
@@ -189,7 +189,7 @@ describe('ParsedVialProcessor', () => {
 
   describe('calculateCanvasSize', () => {
     it('キャンバスサイズを計算できる', () => {
-      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const size = ParsedVialProcessor.calculateCanvasSize(parsedVial)
 
       // ボタン位置からサイズが計算されている
@@ -206,7 +206,7 @@ describe('ParsedVialProcessor', () => {
         name: 'Empty',
         layout: []
       }
-      const parsedVial = ParsedVialProcessor.parseVialConfig(emptyConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(emptyConfig, 'corne_v4')
       const size = ParsedVialProcessor.calculateCanvasSize(parsedVial)
 
       // ボタンがない場合はマージンのみ
@@ -217,7 +217,7 @@ describe('ParsedVialProcessor', () => {
 
   describe('ボタン位置情報', () => {
     it('各ボタンに layoutPosition が設定されている', () => {
-      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const button = parsedVial.layers[0].buttons[0]
 
       expect(button.layoutPosition).toBeDefined()
@@ -228,7 +228,7 @@ describe('ParsedVialProcessor', () => {
     })
 
     it('各ボタンに drawPosition が設定されている', () => {
-      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       const button = parsedVial.layers[0].buttons[0]
 
       expect(button.drawPosition).toBeDefined()
@@ -239,7 +239,7 @@ describe('ParsedVialProcessor', () => {
     })
 
     it('行・列インデックスが正しく設定されている', () => {
-      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig)
+      const parsedVial = ParsedVialProcessor.parseVialConfig(mockConfig, 'corne_v4')
       
       // 行0列0
       const button00 = parsedVial.layers[0].buttons[0]

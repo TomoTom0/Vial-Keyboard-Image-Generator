@@ -37,11 +37,11 @@
         <div class="format-group">
           <label class="format-label">Color Mode</label>
           <div class="format-nav">
-            <button class="format-nav-btn" @click="cycleDarkMode(-1)">‹</button>
+            <button class="format-nav-btn" @click="cycleDarkMode()">‹</button>
             <div class="format-current">
               <span class="format-name">{{ darkModeDisplayName }}</span>
             </div>
-            <button class="format-nav-btn" @click="cycleDarkMode(1)">›</button>
+            <button class="format-nav-btn" @click="cycleDarkMode()">›</button>
           </div>
         </div>
       </div>
@@ -118,12 +118,10 @@ const imagesStore = useImagesStore()
 // Debounced preview generation
 let generateTimeout: NodeJS.Timeout | null = null
 const debouncedGeneratePreview = () => {
-  console.log('🔄 Setting changed, regenerating in 100ms...')
   if (generateTimeout) {
     clearTimeout(generateTimeout)
   }
   generateTimeout = setTimeout(() => {
-    console.log('⏰ Timeout reached, starting generation')
     generatePreviewImages()
   }, 100)
 }
@@ -178,7 +176,7 @@ const cycleHighlight = (direction: number) => {
   debouncedGeneratePreview()
 }
 
-const cycleDarkMode = (direction: number) => {
+const cycleDarkMode = () => {
   settingsStore.enableDarkMode = !settingsStore.enableDarkMode
   debouncedGeneratePreview()
 }

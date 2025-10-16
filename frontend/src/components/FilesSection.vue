@@ -153,8 +153,7 @@ const cycleKeyboard = (direction: number) => {
 const cycleLanguage = (direction: number) => {
   const languages = ['japanese', 'english']
   const currentIndex = languages.indexOf(settingsStore.keyboardLanguage)
-  let newIndex = (currentIndex + direction) % languages.length
-  if (newIndex < 0) newIndex = languages.length - 1
+  const newIndex = (currentIndex + direction + languages.length) % languages.length
   settingsStore.setKeyboardLanguage(languages[newIndex])
   imagesStore.generatePreviewImages()
 }
@@ -162,8 +161,7 @@ const cycleLanguage = (direction: number) => {
 const cycleTargetLanguage = (direction: number) => {
   const languages = ['japanese', 'english']
   const currentIndex = languages.indexOf(targetLanguage.value)
-  let newIndex = (currentIndex + direction) % languages.length
-  if (newIndex < 0) newIndex = languages.length - 1
+  const newIndex = (currentIndex + direction + languages.length) % languages.length
   targetLanguage.value = languages[newIndex]
 }
 
