@@ -1,29 +1,31 @@
 # TODO - Vial Keyboard Image Project
 
-## Gemini Code Review対応 第2ラウンド (PR #1)
+## Gemini Code Review対応 第2ラウンド - 完了 ✅
 
 ### High Priority
 
-#### 1. ファイル拡張子のバグ修正
+#### 1. ファイル拡張子のバグ修正 ✅
 - **Location**: `frontend/src/stores/images.ts:493`
-- **Issue**: フォールバックファイル名が`.png`をハードコードしているため、SVG画像をダウンロードする際に拡張子が間違う
-- **Action**:
-  - [ ] `settingsStore.imageFormat`に基づいて動的に拡張子を決定
-  - [ ] SVGとPNGの両方で正しい拡張子が使用されることを確認
+- **完了**: `settingsStore.imageFormat`に基づいて動的に拡張子を決定
+- **実装**: SVG/PNG両方に対応した動的拡張子決定を追加
 
 ### Medium Priority
 
-#### 2. uiStore.debouncedGeneratePreviewの確認
-- **Location**: `frontend/src/components/GenerateSection.vue:127`
-- **Issue**: Geminiが再度コードの重複を指摘
-- **Action**:
-  - [ ] `uiStore`に`debouncedGeneratePreview`が存在するか確認
-  - [ ] 存在する場合は使用、存在しない場合は現状維持を説明
+#### 2. コードの重複削除 ✅
+- **Location**: `frontend/src/components/GenerateSection.vue`
+- **完了**: GenerateSection.vueの独自debouncedGeneratePreview実装を削除
+- **実装**: `uiStore.debouncedGeneratePreview()`を使用するようリファクタリング
+- **追加修正**: `ui.ts:29`のデバッグ用console.logを削除
 
 #### 3. タイムスタンプ形式（対応不要） ✅
 - **Location**: `frontend/src/stores/images.ts:647`
-- **あなたの判断**: `yymmdd`形式で問題ない
+- **判断**: `yymmdd`形式で問題ない
 - **理由**: ユーザーが手動でファイル名を管理することを想定
+
+### テスト結果
+- **すべてのテスト**: ✅ 166 passed (166)
+- **テストファイル**: ✅ 9 passed (9)
+- **Commit**: `5e011bd` - Gemini第2ラウンドレビュー指摘事項の修正
 
 ---
 

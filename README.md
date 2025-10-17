@@ -1,9 +1,11 @@
 # 🎹 Vial Keyboard Image Generator
 
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/TomoTom0/Vial-Keyboard-Image-Generator/releases/tag/v1.0.0)
 [![Deploy to Cloudflare Pages](https://img.shields.io/badge/deploy-Cloudflare%20Pages-orange)](https://ytomo-vial-kb-to-image.pages.dev)
 [![Vue.js](https://img.shields.io/badge/Vue.js-3.5-4FC08D?logo=vue.js)](https://vuejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare)](https://pages.cloudflare.com/)
+[![Tests](https://img.shields.io/badge/tests-166%20passed-success)](frontend/tests)
 
 **vial.rocks設定ファイルから美しいキーボードレイアウト画像を自動生成するWebアプリケーション**
 
@@ -57,6 +59,7 @@
 </table>
 
 ### 対応するキーボード
+- **Cheapiano v2**: カスタムレイアウト
 - **Corne v4**: 42キー分割キーボード
 - その他のVial対応キーボード（順次追加予定）
 
@@ -206,6 +209,10 @@ npx wrangler pages deploy dist --project-name=your-project-name
 3. 変更をコミット (`git commit -m 'Add some AmazingFeature'`)
 4. ブランチにプッシュ (`git push origin feature/AmazingFeature`)
 5. プルリクエストを作成
+
+## 📝 変更履歴
+
+プロジェクトの変更履歴は[CHANGELOG.md](CHANGELOG.md)をご覧ください。
 
 ## 📄 ライセンス
 
