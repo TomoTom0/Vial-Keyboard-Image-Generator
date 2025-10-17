@@ -189,7 +189,7 @@ cp .env.sample .env
 # CLOUDFLARE_PAGES_PROJECT_NAME: プロジェクト名を設定
 
 # デプロイスクリプトを実行
-./deploy.sh
+./scripts/deploy.sh
 ```
 
 または手動でwranglerを使用:
@@ -210,9 +210,13 @@ npx wrangler pages deploy dist --project-name=your-project-name
 4. ブランチにプッシュ (`git push origin feature/AmazingFeature`)
 5. プルリクエストを作成
 
-## 📝 変更履歴
+## 📚 ドキュメント
 
-プロジェクトの変更履歴は[CHANGELOG.md](CHANGELOG.md)をご覧ください。
+- **[変更履歴](docs/CHANGELOG.md)** - バージョンごとの変更内容
+- **[デプロイメントガイド](docs/dev/deployment.md)** - Cloudflare Pagesへのデプロイ手順
+- **[開発者向けドキュメント](docs/dev/)** - アーキテクチャ、セットアップガイド
+- **[統合ガイド](docs/integration/)** - 新しいキーボード追加方法
+- **[ユーザーガイド](docs/user/)** - 詳しい使い方
 
 ## 📄 ライセンス
 

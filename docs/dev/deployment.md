@@ -36,7 +36,7 @@ NODE_ENV=development
 プロジェクトルートで以下のコマンドを実行：
 
 ```bash
-./deploy.sh
+./scripts/deploy.sh
 ```
 
 このスクリプトは以下を自動実行します：
@@ -186,7 +186,7 @@ npm audit
 - `.env` - 環境変数設定
 - `wrangler.toml` - Cloudflare設定
 - `frontend/package.json` - 依存関係
-- `deploy.sh` - デプロイスクリプト
+- `scripts/deploy.sh` - デプロイスクリプト
 
 ## 環境別設定
 
