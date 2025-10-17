@@ -1,11 +1,14 @@
 #!/bin/bash
 
 # Cloudflare Pages自動デプロイスクリプト
-# Usage: ./deploy.sh
+# Usage: ./scripts/deploy.sh
 
 set -e
 
 echo "🚀 Starting deployment process..."
+
+# プロジェクトルートに移動（スクリプトがscripts/配下にあるため）
+cd "$(dirname "$0")/.."
 
 # 環境変数読み込み
 if [ -f ".env" ]; then

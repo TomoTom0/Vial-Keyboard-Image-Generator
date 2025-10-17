@@ -46,8 +46,8 @@ npm run dev
 
 ### 3. ビルド・デプロイ
 ```bash
-npm run build  # ビルド
-./deploy.sh    # デプロイ（プロジェクトルートで実行）
+npm run build        # ビルド
+./scripts/deploy.sh  # デプロイ（プロジェクトルートで実行）
 ```
 
 ## 主要技術
