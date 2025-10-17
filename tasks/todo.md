@@ -1,5 +1,20 @@
 # TODO - Vial Keyboard Image Project
 
+## リポジトリ設定
+
+### mainブランチ保護ルール - 完了 ✅
+- **設定日**: 2025-10-17
+- **有効なルール**:
+  - ✅ プルリクエスト必須（required_pull_request_reviews）
+  - ✅ 管理者にもルール適用（enforce_admins）
+  - ✅ Force push禁止（allow_force_pushes: false）
+  - ✅ ブランチ削除禁止（allow_deletions: false）
+- **今後追加予定**:
+  - [ ] CI/CD設定後にステータスチェック必須化
+  - [ ] レビュー承認数を1名以上に変更（必要に応じて）
+
+---
+
 ## 今後の改善事項
 
 ### CI/CD整備（Gemini提案）
