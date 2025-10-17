@@ -214,9 +214,9 @@ npx wrangler pages deploy dist --project-name=your-project-name
 
 - **[変更履歴](docs/CHANGELOG.md)** - バージョンごとの変更内容
 - **[デプロイメントガイド](docs/dev/deployment.md)** - Cloudflare Pagesへのデプロイ手順
-- **[開発者向けドキュメント](docs/dev/)** - アーキテクチャ、セットアップガイド
-- **[統合ガイド](docs/integration/)** - 新しいキーボード追加方法
-- **[ユーザーガイド](docs/user/)** - 詳しい使い方
+- **[開発者向けドキュメント](docs/dev/README.md)** - アーキテクチャ、セットアップガイド
+- **[統合ガイド](docs/integration/index.md)** - 新しいキーボード追加方法
+- **[ユーザーガイド](docs/user/index.md)** - 詳しい使い方
 
 ## 📄 ライセンス
 
