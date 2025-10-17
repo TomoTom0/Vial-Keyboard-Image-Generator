@@ -1,5 +1,78 @@
 # TODO - Vial Keyboard Image Project
 
+## Gemini Code Review対応 第2ラウンド (PR #1)
+
+### High Priority
+
+#### 1. ファイル拡張子のバグ修正
+- **Location**: `frontend/src/stores/images.ts:493`
+- **Issue**: フォールバックファイル名が`.png`をハードコードしているため、SVG画像をダウンロードする際に拡張子が間違う
+- **Action**:
+  - [ ] `settingsStore.imageFormat`に基づいて動的に拡張子を決定
+  - [ ] SVGとPNGの両方で正しい拡張子が使用されることを確認
+
+### Medium Priority
+
+#### 2. uiStore.debouncedGeneratePreviewの確認
+- **Location**: `frontend/src/components/GenerateSection.vue:127`
+- **Issue**: Geminiが再度コードの重複を指摘
+- **Action**:
+  - [ ] `uiStore`に`debouncedGeneratePreview`が存在するか確認
+  - [ ] 存在する場合は使用、存在しない場合は現状維持を説明
+
+#### 3. タイムスタンプ形式（対応不要） ✅
+- **Location**: `frontend/src/stores/images.ts:647`
+- **あなたの判断**: `yymmdd`形式で問題ない
+- **理由**: ユーザーが手動でファイル名を管理することを想定
+
+---
+
+## Gemini Code Review対応 第1ラウンド - 完了
+
+### High Priority
+
+#### 1. .gitignoreの不適切な設定を修正 ✅
+- **Location**: `.gitignore:129`
+- **完了**: `tests/`と`test_*.js`の設定を削除
+- **結果**: `frontend/tests/`が正常に追跡される
+
+#### 2. タイムスタンプフォーマットの検討（対応不要と判断） ✅
+- **Location**: `frontend/src/stores/images.ts:649`
+- **判断**: ユーザーが保存するファイルなので、OS側の調整や手動renameで対応可能。対応不要。
+
+### Medium Priority
+
+#### 3. デバッグ用console.logの削除 ✅
+- **完了**: すべてのconsole.logを削除
+  - ✅ `frontend/src/components/OutputTab.vue:227`
+  - ✅ `frontend/src/components/OutputTab.vue:238`
+  - ✅ `frontend/src/components/OutputTab.vue:250`
+  - ✅ `frontend/src/components/GenerateSection.vue:129`
+  - ✅ `frontend/src/stores/images.ts:1466`
+  - ✅ `frontend/src/stores/images.ts:1545`
+  - ✅ `frontend/src/stores/images.ts:553`
+
+#### 4. クロスプラットフォーム対応: dotenv-cli導入 ✅
+- **完了**: `dotenv-cli`を開発依存関係に追加
+- **完了**: `deploy:prod`スクリプトを`dotenv -e ../.env --`に修正
+
+#### 5. インデックス計算ロジックの統一 ✅
+- **完了**: `cycleLanguage`と`cycleTargetLanguage`を統一パターンに修正
+- **パターン**: `(currentIndex + direction + array.length) % array.length`
+
+#### 6. コードの重複削除 ⚠️
+- **Location**: `frontend/src/components/GenerateSection.vue:133`
+- **状況**: Geminiの指摘を確認したが、`uiStore.debouncedGeneratePreview`は存在しないため、現状の実装を維持
+- **理由**: 各コンポーネントで独自のdebounce実装が必要
+
+#### 7. 未使用パラメータの削除 ✅
+- **完了**: `cycleDarkMode`の`direction`パラメータを削除
+- **完了**: テンプレート側の呼び出しも修正
+
+### テスト結果
+- **すべてのテスト**: ✅ 166 passed (166)
+- **テストファイル**: ✅ 9 passed (9)
+
 ## URGENT: Missing Files - Claude Code Issues
 
 ### Overview
@@ -45,6 +118,9 @@ Claude Codeが適切にGitに保存しなかった、または削除後に復元
 
 ## 完了済みタスク
 
+- [x] Cheapiano v2キーボード構造の追加
+- [x] エンコーダー対応実装（vial_row 100-109）
+- [x] キーボード構造名のヘッダー表示
 - [x] Vilファイルの構造分析と理解
 - [x] サンプル画像からキーレイアウト情報の抽出
 - [x] キーコードとラベル表示の対応関係調査
@@ -100,7 +176,7 @@ Claude Codeが適切にGitに保存しなかった、または削除後に復元
 - [ ] レスポンシブ対応（タブレット・スマホサイズ）
 - [ ] 必要に応じてResizeObserverによる高度制御追加
 
-## 現在のタスク：Webフロントエンド開発
+## Webフロントエンド開発（保留中）
 
 ### Phase 1: プロジェクト基盤構築
 

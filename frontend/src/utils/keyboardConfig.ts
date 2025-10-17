@@ -10,6 +10,7 @@ import {
   getShiftMapping as getGeneratedShiftMapping,
   type KeyboardLanguage
 } from './keyboardConfig.generated';
+import { parseModifier, getModifierDisplayText } from './modifierParser';
 
 export type { KeyboardLanguage };
 
@@ -28,6 +29,11 @@ export const keyboardStructures: KeyboardStructure[] = [
     id: 'corne_v4',
     name: 'corne_v4',
     displayName: 'Corne v4'
+  },
+  {
+    id: 'cheapiano_v2',
+    name: 'cheapiano_v2',
+    displayName: 'Cheapiano v2'
   }
 ];
 
@@ -48,8 +54,17 @@ export function setCurrentKeyboardLanguage(languageId: string): void {
 }
 
 export function getCurrentStructure(): KeyboardStructure {
-  // 現在はCorne v4固定
-  return keyboardStructures.find(structure => structure.id === 'corne_v4') || keyboardStructures[0];
+  const savedStructureId = typeof window !== 'undefined' ?
+    localStorage.getItem('vial-keyboard-structure') || 'corne_v4' : 'corne_v4';
+
+  return keyboardStructures.find(structure => structure.id === savedStructureId) || keyboardStructures[0];
+}
+
+// キーボード構造設定を保存
+export function setCurrentKeyboardStructure(structureId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('vial-keyboard-structure', structureId);
+  }
 }
 
 // 設定に基づいてキーマッピングを取得（generated関数を直接エクスポート）
@@ -62,12 +77,14 @@ export function getCharacterFromKeycode(keycode: string, languageId: string): st
   const keyMapping = getGeneratedKeyMapping(languageId);
   const shiftMapping = getGeneratedShiftMapping(languageId);
 
-  // LSFT(KC_XXX)の処理
-  if (keycode.startsWith('LSFT(KC_')) {
-    const match = keycode.match(/LSFT\(KC_(.+)\)/);
-    if (match) {
-      return shiftMapping[`KC_${match[1]}`] || null;
-    }
+  // モディファイアパターンの処理（全モディファイア対応）
+  const modifierInfo = parseModifier(keycode);
+  if (modifierInfo) {
+    return getModifierDisplayText(
+      modifierInfo,
+      shiftMapping,
+      (innerKeycode) => getCharacterFromKeycode(innerKeycode, languageId) || innerKeycode
+    );
   }
 
   // KC_プレフィックス付きの場合 - 直接keyMappingから検索
@@ -88,24 +105,25 @@ export function compareKeycodeResult(keycode: string, languageId1: string, langu
 }
 
 // 文字からキーコード逆引き：特定の文字を入力するのに必要なキーコードを取得
+// 注意: L/Rの区別は逆変換時には判断できないため、常にL（左）を使用する
 export function getKeycodeForCharacter(character: string, languageId: string): string | null {
   const keyMapping = getGeneratedKeyMapping(languageId);
   const shiftMapping = getGeneratedShiftMapping(languageId);
-  
+
   // KC_付きキーマッピングから逆引き
   for (const [keycode, mappedChar] of Object.entries(keyMapping)) {
     if (mappedChar === character) {
       return keycode; // 既にKC_付きなのでそのまま返す
     }
   }
-  
-  // Shiftキー組み合わせから逆引き
+
+  // Shiftキー組み合わせから逆引き（常にLSFTを使用）
   for (const [keycode, shiftChar] of Object.entries(shiftMapping)) {
     if (shiftChar === character) {
       return `LSFT(${keycode})`;
     }
   }
-  
+
   return null; // 見つからなかった場合
 }
 

@@ -11,6 +11,7 @@ interface LanguageInfo {
 
 export const useSettingsStore = defineStore('settings', () => {
   const keyboardLanguage = ref(getCurrentKeyboardLanguage().id)
+  const keyboardStructure = ref('corne_v4') // Add keyboardStructure state
   const replaceRules = ref<ReplaceRule[]>([])
   const languageInfos = ref<LanguageInfo[]>([])
   const outputFormat = ref<'separated' | 'vertical' | 'rectangular'>('vertical')
@@ -45,6 +46,10 @@ export const useSettingsStore = defineStore('settings', () => {
     
     // 言語変更時にバリデーション状態を更新
     updateReplaceRulesValidation()
+  }
+
+  const setKeyboardStructure = (structureId: string) => {
+    keyboardStructure.value = structureId
   }
   
   // 置換ルールを設定（全体更新）
@@ -273,6 +278,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   return {
     keyboardLanguage,
+    keyboardStructure, // Export new state
+    setKeyboardStructure, // Export new action
     replaceRules,
     outputFormat,
     showLabels,

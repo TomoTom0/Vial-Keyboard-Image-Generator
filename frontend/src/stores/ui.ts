@@ -16,7 +16,7 @@ export const useUiStore = defineStore('ui', () => {
   const isGenerated = ref(false)
   const activeTab = ref('preview')
   const controlPanelTab = ref<'layout' | 'upload' | 'format'>('upload')
-  const sidebarSection = ref<'files' | 'generate' | 'settings'>('files')
+  const sidebarSection = ref<'files' | 'generate' | 'settings' | 'preferences'>('files')
   const sidebarCollapsed = ref(false)
   const toasts = ref<ToastMessage[]>([])
   const error = ref<string | null>(null)
@@ -26,7 +26,6 @@ export const useUiStore = defineStore('ui', () => {
   
   // Debounced画像生成（imagesStoreとの連携）
   const debouncedGeneratePreview = () => {
-    console.log('🔄 Setting changed, regenerating in 100ms...')
     if (generateTimeout) {
       clearTimeout(generateTimeout)
     }
@@ -34,7 +33,7 @@ export const useUiStore = defineStore('ui', () => {
       // imagesStoreとvialStoreは静的にインポート済み
       const imagesStore = useImagesStore()
       const vialStore = useVialStore()
-      
+
       await imagesStore.generatePreviewImages()
     }, 100)
   }
@@ -51,7 +50,7 @@ export const useUiStore = defineStore('ui', () => {
     }
     return 'preview'
   }
-  
+
   const updateHash = (tab: 'select' | 'preview' | 'output') => {
     if (typeof window !== 'undefined') {
       window.location.hash = `#/${tab}`

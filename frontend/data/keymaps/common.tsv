@@ -113,3 +113,28 @@ KC_LANG1	LANG1		Language switch key 1
 KC_LANG2	LANG2		Language switch key 2
 KC_NO			Empty key
 KC_TRNS	▽		Transparent key
+KC_MS_UP	M↑		Mouse cursor up
+KC_MS_DOWN	M↓		Mouse cursor down
+KC_MS_LEFT	M←		Mouse cursor left
+KC_MS_RIGHT	M→		Mouse cursor right
+KC_MS_BTN1	MB1		Mouse button 1
+KC_MS_BTN2	MB2		Mouse button 2
+KC_MS_BTN3	MB3		Mouse button 3
+KC_MS_BTN4	MB4		Mouse button 4
+KC_MS_BTN5	MB5		Mouse button 5
+KC_MS_WH_UP	Wh↑		Mouse wheel up
+KC_MS_WH_DOWN	Wh↓		Mouse wheel down
+KC_MS_WH_LEFT	Wh←		Mouse wheel left
+KC_MS_WH_RIGHT	Wh→		Mouse wheel right
+KC_MS_ACCEL0	MA0		Mouse acceleration 0
+KC_MS_ACCEL1	MA1		Mouse acceleration 1
+KC_MS_ACCEL2	MA2		Mouse acceleration 2
+KC_WH_U	Wh↑		Mouse wheel up (alias)
+KC_WH_D	Wh↓		Mouse wheel down (alias)
+KC_WH_L	Wh←		Mouse wheel left (alias)
+KC_WH_R	Wh→		Mouse wheel right (alias)
+KC_BTN1	MB1		Mouse button 1 (alias)
+KC_BTN2	MB2		Mouse button 2 (alias)
+KC_BTN3	MB3		Mouse button 3 (alias)
+KC_BTN4	MB4		Mouse button 4 (alias)
+KC_BTN5	MB5		Mouse button 5 (alias)

@@ -2,6 +2,7 @@
 import { KEYBOARD_CONSTANTS } from '../constants/keyboard';
 import { getFontConfig, getThemeColors } from './styleConfig.generated';
 import { SVGRenderer } from './svgRenderer';
+import { keyboardStructures } from './keyboardConfig';
 
 // サブテキストの種別に応じた色を取得（ハイライトレベルがstrongの時のみ）
 function getSubTextColor(type: 'tap' | 'hold' | 'double' | 'taphold', theme: 'dark' | 'light', highlightLevel: number): string {
@@ -891,7 +892,8 @@ export class ParsedVial {
       generatedAt: Date;
       version?: string;
     },
-    public vilContent?: string              // 元のVILファイルの内容（JSON文字列）
+    public vilContent?: string,             // 元のVILファイルの内容（JSON文字列）
+    public keyboardStructureId?: string     // キーボード構造ID（オプション）
   ) {}
   
   generateLayerCanvas(layerIndex: number, options: RenderOptions, qualityScale: number): HTMLCanvasElement {
@@ -938,50 +940,69 @@ export class ParsedVial {
   generateLayoutHeaderCanvas(options: RenderOptions, qualityScale: number, label?: string): HTMLCanvasElement[] {
     const canvases: HTMLCanvasElement[] = [];
     const styleConfig = getFontConfig();
-    
+
     // KEYBOARD_CONSTANTSを使用した統一計算式
     const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
     const baseContentWidth = unitX * 13.5 + keyWidth;
     const baseImageWidth = Math.ceil(baseContentWidth + margin * 2);
-    
+
     // 1x, 2x, 3x の3つの幅倍率で生成
     for (let widthScale = 1; widthScale <= 3; widthScale++) {
       const width = baseImageWidth * widthScale;
       const height = 45; // 古い実装の高さに合わせる
-      
+
       const canvas = document.createElement('canvas');
       canvas.width = Math.floor(width * qualityScale);
       canvas.height = Math.floor(height * qualityScale);
       const ctx = canvas.getContext('2d')!;
-      
+
       // 品質スケールを適用
       ctx.scale(qualityScale, qualityScale);
-      
+
       const colors = getThemeColors(options.theme);
-      
+
       // 背景色を描画
       ctx.fillStyle = colors.headerBackground;
       ctx.fillRect(0, 0, width, 37);
-      
+
       // ヘッダーテキストを描画（左側）
       ctx.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
       ctx.fillStyle = colors.headerText;
       ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
       ctx.fillText('LAYOUTS', 15, 28);
-      
+
+      // キーボード構造名を「LAYOUTS」の右に描画
+      if (this.keyboardStructureId) {
+        const structure = keyboardStructures.find(s => s.id === this.keyboardStructureId);
+        if (structure) {
+          const structureName = structure.displayName;
+          // LAYOUTSの幅を測定（タイトルフォントで）
+          ctx.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
+          const layoutsWidth = ctx.measureText('LAYOUTS').width;
+          // サブタイトルフォントに変更して描画
+          ctx.font = `${styleConfig.fontSizes.header.subtitle}px ${styleConfig.headerFontFamily}`;
+          ctx.fillStyle = colors.textSub;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(` - ${structureName}`, 15 + layoutsWidth + 5, 28);
+        }
+      }
+
       // ラベル（ファイル名など）を右側に描画
       if (label || this.keyboardName) {
         const displayLabel = label || this.keyboardName || '';
         ctx.font = `${styleConfig.fontSizes.header.subtitle}px ${styleConfig.headerFontFamily}`;
         ctx.fillStyle = colors.textSub;
         ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
         ctx.fillText(displayLabel, width - 15, 28);
       }
-      
+
       // 区切り線を描画
       ctx.fillStyle = colors.borderNormal;
       ctx.fillRect(0, 37, width, 1);
-      
+
       canvases.push(canvas);
     }
 
@@ -996,6 +1017,12 @@ export class ParsedVial {
     const { keyWidth, keyHeight, keyGap, margin, unitX, unitY } = KEYBOARD_CONSTANTS;
     const baseContentWidth = unitX * 13.5 + keyWidth;
     const baseImageWidth = Math.ceil(baseContentWidth + margin * 2);
+
+    // 'LAYOUTS'テキストの正確な幅を測定（一時的なCanvasを使用）
+    const measureCanvas = document.createElement('canvas');
+    const measureCtx = measureCanvas.getContext('2d')!;
+    measureCtx.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
+    const layoutsWidth = measureCtx.measureText('LAYOUTS').width;
 
     // 1x, 2x, 3x の3つの幅倍率で生成
     for (let widthScale = 1; widthScale <= 3; widthScale++) {
@@ -1019,7 +1046,22 @@ export class ParsedVial {
       renderer.font = `bold ${styleConfig.fontSizes.header.title}px ${styleConfig.headerFontFamily}`;
       renderer.fillStyle = colors.headerText;
       renderer.textAlign = 'left';
+      renderer.textBaseline = 'middle';
       renderer.fillText('LAYOUTS', 15, 28);
+
+      // キーボード構造名を「LAYOUTS」の右に描画
+      if (this.keyboardStructureId) {
+        const structure = keyboardStructures.find(s => s.id === this.keyboardStructureId);
+        if (structure) {
+          const structureName = structure.displayName;
+          // Canvas測定で得た正確な幅を使用
+          renderer.font = `${styleConfig.fontSizes.header.subtitle}px ${styleConfig.headerFontFamily}`;
+          renderer.fillStyle = colors.textSub;
+          renderer.textAlign = 'left';
+          renderer.textBaseline = 'middle';
+          renderer.fillText(` - ${structureName}`, 15 + layoutsWidth + 5, 28);
+        }
+      }
 
       // ラベル（ファイル名など）を右側に描画
       if (label || this.keyboardName) {
@@ -1027,6 +1069,7 @@ export class ParsedVial {
         renderer.font = `${styleConfig.fontSizes.header.subtitle}px ${styleConfig.headerFontFamily}`;
         renderer.fillStyle = colors.textSub;
         renderer.textAlign = 'right';
+        renderer.textBaseline = 'middle';
         renderer.fillText(displayLabel, width - 15, 28);
       }
 

@@ -127,12 +127,12 @@ describe('keyboardConfig', () => {
 
   describe('getCurrentStructure', () => {
     it('localStorageからキーボード構造設定を取得する', () => {
-      localStorageMock['vial-keyboard-structure'] = 'chepiano_v2'
+      localStorageMock['vial-keyboard-structure'] = 'cheapiano_v2'
 
       const structure = getCurrentStructure()
 
       expect(structure).toBeDefined()
-      expect(structure.id).toBe('chepiano_v2')
+      expect(structure.id).toBe('cheapiano_v2')
       expect(localStorage.getItem).toHaveBeenCalledWith('vial-keyboard-structure')
     })
 
@@ -154,9 +154,9 @@ describe('keyboardConfig', () => {
 
   describe('setCurrentKeyboardStructure', () => {
     it('キーボード構造設定をlocalStorageに保存する', () => {
-      setCurrentKeyboardStructure('chepiano_v2')
+      setCurrentKeyboardStructure('cheapiano_v2')
 
-      expect(localStorage.setItem).toHaveBeenCalledWith('vial-keyboard-structure', 'chepiano_v2')
+      expect(localStorage.setItem).toHaveBeenCalledWith('vial-keyboard-structure', 'cheapiano_v2')
     })
   })
 

@@ -11,7 +11,6 @@ export interface VialData {
   config: VialConfig
   content: string
   timestamp: number
-  parsedVial?: ParsedVial  // 新しいParsedVial構造体
 }
 
 export const useVialStore = defineStore('vial', () => {
@@ -27,15 +26,13 @@ export const useVialStore = defineStore('vial', () => {
       }
       return true
     })
-    
-    // ParsedVialは画像作成時に必要に応じて計算する（事前計算はしない）
-    
+
     if (selectedVialId.value && !vialFiles.value.find(v => v.id === selectedVialId.value)) {
       selectedVialId.value = ''
     }
 
-    // ファイルが何もなく、何も選択されていない場合はsampleを選択
-    if (vialFiles.value.length === 0 && !selectedVialId.value) {
+    // 選択されていない場合は常にsampleを選択
+    if (!selectedVialId.value) {
       selectedVialId.value = 'sample'
     }
   }
@@ -43,11 +40,6 @@ export const useVialStore = defineStore('vial', () => {
   // 現在選択されているVILデータ
   const currentVial = computed(() => {
     return vialFiles.value.find(v => v.id === selectedVialId.value)
-  })
-
-  // 現在のParsedVial
-  const currentParsedVial = computed(() => {
-    return currentVial.value?.parsedVial
   })
 
   // 選択されているファイル名
@@ -59,18 +51,38 @@ export const useVialStore = defineStore('vial', () => {
     return selectedFile?.name || 'sample'
   })
 
+  // キーボード構造に応じたサンプルファイルパスを取得
+  const getSampleFilePath = (keyboardStructure: string): string => {
+    return `/data/sample_${keyboardStructure}.vil`
+  }
+
+  // サンプルファイルを読み込む
+  const loadSampleFile = async (keyboardStructure: string): Promise<VialConfig | null> => {
+    try {
+      const filePath = getSampleFilePath(keyboardStructure)
+      const response = await fetch(filePath)
+      if (!response.ok) {
+        console.warn(`Sample file not found: ${filePath}`)
+        return null
+      }
+      const config = await response.json()
+      return config
+    } catch (error) {
+      console.error(`Failed to load sample file for ${keyboardStructure}:`, error)
+      return null
+    }
+  }
+
   // VILデータを追加
   const addVialData = (name: string, config: VialConfig, content: string) => {
     const id = uuidv4()
     
-    // アップロード時はVialConfigのみ保存（ParsedVialは必要時に生成）
     const vialData: VialData = {
       id,
       name,
       config,
       content,
       timestamp: Date.now(), // unixtime (number)
-      // parsedVial: undefined  // 必要時に生成
     }
     
     // 同名ファイルがあれば削除
@@ -96,10 +108,7 @@ export const useVialStore = defineStore('vial', () => {
 
   // VILファイルを選択
   const selectVial = (id: string) => {
-    console.log('🎯 VialStore: selectVial called with:', id)
     selectedVialId.value = id
-    console.log('✅ VialStore: selectedVialId updated to:', selectedVialId.value)
-    // ParsedVialは画像作成時に必要に応じて計算する
   }
 
   // 言語変換を実行
@@ -182,7 +191,6 @@ export const useVialStore = defineStore('vial', () => {
     vialFiles,
     selectedVialId,
     currentVial,
-    currentParsedVial,
     selectedFileName,
     addVialData,
     removeVialData,
@@ -190,7 +198,8 @@ export const useVialStore = defineStore('vial', () => {
     convertLanguage,
     migrateData,
     getCurrentConfig,
-    downloadConfig
+    downloadConfig,
+    loadSampleFile
   }
 }, {
   persist: {

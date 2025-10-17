@@ -1,0 +1,40 @@
+vial_row	vial_col	layout_row	layout_col	canvas_x	canvas_y	canvas_width	canvas_height	canvas_rotation	description
+0	1	0	0	20.0	20.0	78	60	0.0	Left top row - Q
+0	2	0	1	102.0	20.0	78	60	0.0	Left top row - W
+0	3	0	2	184.0	20.0	78	60	0.0	Left top row - E
+0	4	0	3	266.0	20.0	78	60	0.0	Left top row - R
+0	5	0	4	348.0	20.0	78	60	0.0	Left top row - T
+1	1	1	0	20.0	84.0	78	60	0.0	Left home row - A
+1	2	1	1	102.0	84.0	78	60	0.0	Left home row - S
+1	3	1	2	184.0	84.0	78	60	0.0	Left home row - D
+1	4	1	3	266.0	84.0	78	60	0.0	Left home row - F
+1	5	1	4	348.0	84.0	78	60	0.0	Left home row - G
+2	1	2	0	20.0	148.0	78	60	0.0	Left bottom row - Z
+2	2	2	1	102.0	148.0	78	60	0.0	Left bottom row - X
+2	3	2	2	184.0	148.0	78	60	0.0	Left bottom row - C
+2	4	2	3	266.0	148.0	78	60	0.0	Left bottom row - V
+2	5	2	4	348.0	148.0	78	60	0.0	Left bottom row - B
+3	3	3	2	184.0	212.0	78	60	0.0	Left thumb cluster - MHEN
+3	4	3	3	266.0	212.0	78	60	0.0	Left thumb cluster - LT1 Space
+3	5	3	4	348.0	212.0	78	60	0.0	Left thumb cluster - LCtrl
+4	0	0	9	594.0	20.0	78	60	0.0	Right extra top - Extra1
+4	1	1	9	594.0	84.0	78	60	0.0	Right extra mid - Extra2
+4	2	2	9	594.0	148.0	78	60	0.0	Right extra bot - Extra3
+4	3	0	8	676.0	20.0	78	60	0.0	Right top row - Y
+4	4	0	7	758.0	20.0	78	60	0.0	Right top row - U
+4	5	0	6	840.0	20.0	78	60	0.0	Right top row - I
+4	6	0	5	922.0	20.0	78	60	0.0	Right top row - O
+4	7	0	4	1004.0	20.0	78	60	0.0	Right top row - P
+5	3	1	8	676.0	84.0	78	60	0.0	Right home row - H
+5	4	1	7	758.0	84.0	78	60	0.0	Right home row - J
+5	5	1	6	840.0	84.0	78	60	0.0	Right home row - K
+5	6	1	5	922.0	84.0	78	60	0.0	Right home row - L
+5	7	1	4	1004.0	84.0	78	60	0.0	Right home row - ;
+6	3	2	8	676.0	148.0	78	60	0.0	Right bottom row - N
+6	4	2	7	758.0	148.0	78	60	0.0	Right bottom row - M
+6	5	2	6	840.0	148.0	78	60	0.0	Right bottom row - ,
+6	6	2	5	922.0	148.0	78	60	0.0	Right bottom row - .
+6	7	2	4	1004.0	148.0	78	60	0.0	Right bottom row - /
+7	3	3	8	676.0	212.0	78	60	0.0	Right thumb cluster - RGui
+7	4	3	7	758.0	212.0	78	60	0.0	Right thumb cluster - LT2 Space
+7	5	3	6	840.0	212.0	78	60	0.0	Right thumb cluster - LT3 Tab

@@ -103,10 +103,6 @@ const uiStore = useUiStore()
 // Store から取得するcomputed値 - generateFinalOutputImagesが設定したoutputImagesを使用
 const outputImages = computed(() => {
   const images = imagesStore.outputImages
-  console.log('🖼️ OutputTab received:', images.length, 'images')
-  images.forEach((img, i) => {
-    console.log(`  ${i}: ${img.type} - ${img.filename} (${img.format})`)
-  })
   return images
 })
 
@@ -267,8 +263,6 @@ const downloadAll = async () => {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(link.href)
-
-    console.log(`${settingsStore.imageFormat.toUpperCase()} ZIP download completed`)
   } catch (error) {
     console.error(`${settingsStore.imageFormat.toUpperCase()} ZIP download failed:`, error)
   }
