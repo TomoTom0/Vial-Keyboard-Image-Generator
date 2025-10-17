@@ -1,5 +1,34 @@
 # TODO - Vial Keyboard Image Project
 
+## v1.0.0 リリース - 完了 ✅
+
+### リリース準備作業
+
+#### 1. CHANGELOG作成 ✅
+- **ファイル**: `CHANGELOG.md`
+- **完了**: 初回リリースの詳細な変更履歴を記載
+- **フォーマット**: Keep a Changelog準拠
+
+#### 2. バージョン更新 ✅
+- **ファイル**: `frontend/package.json`
+- **変更**: `0.0.0` → `1.0.0`
+
+#### 3. README更新 ✅
+- **追加**: バージョンバッジ、テストバッジ
+- **追加**: CHANGELOGへのリンク
+- **追加**: Cheapiano v2を対応キーボードリストに追加
+
+#### 4. Git作業 ✅
+- **Commit**: `7f85256` - Release v1.0.0
+- **Tag**: `v1.0.0` (アノテーション付き)
+- **Push**: ブランチとタグをリモートに送信
+
+#### 5. PRとレビュー ✅
+- **PR作成**: [#2](https://github.com/TomoTom0/Vial-Keyboard-Image-Generator/pull/2)
+- **Geminiレビュー**: 依頼完了
+
+---
+
 ## Gemini Code Review対応 第2ラウンド - 完了 ✅
 
 ### High Priority
