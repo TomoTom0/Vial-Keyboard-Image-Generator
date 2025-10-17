@@ -115,21 +115,6 @@ const settingsStore = useSettingsStore()
 const uiStore = useUiStore()
 const imagesStore = useImagesStore()
 
-// Debounced preview generation
-let generateTimeout: NodeJS.Timeout | null = null
-const debouncedGeneratePreview = () => {
-  if (generateTimeout) {
-    clearTimeout(generateTimeout)
-  }
-  generateTimeout = setTimeout(() => {
-    generatePreviewImages()
-  }, 100)
-}
-
-const generatePreviewImages = async () => {
-  await imagesStore.generatePreviewImages()
-}
-
 // Computed properties
 const selectedFile = computed(() => vialStore.selectedVialId || 'sample')
 
@@ -165,7 +150,7 @@ const cycleFormat = (direction: number) => {
   const currentIndex = formats.indexOf(settingsStore.outputFormat)
   const newIndex = (currentIndex + direction + formats.length) % formats.length
   settingsStore.outputFormat = formats[newIndex]
-  debouncedGeneratePreview()
+  uiStore.debouncedGeneratePreview()
 }
 
 const cycleHighlight = (direction: number) => {
@@ -173,17 +158,17 @@ const cycleHighlight = (direction: number) => {
   const currentIndex = levels.indexOf(settingsStore.highlightLevel)
   const newIndex = (currentIndex + direction + levels.length) % levels.length
   settingsStore.highlightLevel = levels[newIndex]
-  debouncedGeneratePreview()
+  uiStore.debouncedGeneratePreview()
 }
 
 const cycleDarkMode = () => {
   settingsStore.enableDarkMode = !settingsStore.enableDarkMode
-  debouncedGeneratePreview()
+  uiStore.debouncedGeneratePreview()
 }
 
 const cycleImageFormat = (direction: number) => {
   settingsStore.cycleImageFormat(direction)
-  debouncedGeneratePreview()
+  uiStore.debouncedGeneratePreview()
 }
 </script>
 

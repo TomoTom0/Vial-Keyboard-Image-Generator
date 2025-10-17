@@ -490,7 +490,8 @@ export const useImagesStore = defineStore('images', () => {
 
     const link = document.createElement('a')
     link.href = imageUrl
-    link.download = filename || `keyboard_layer${image.layer}_${image.format}_ytvil.png`
+    const ext = settingsStore.imageFormat === 'svg' ? 'svg' : 'png'
+    link.download = filename || `keyboard_layer${image.layer}_${image.format}_ytvil.${ext}`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

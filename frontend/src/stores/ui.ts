@@ -26,7 +26,6 @@ export const useUiStore = defineStore('ui', () => {
   
   // Debounced画像生成（imagesStoreとの連携）
   const debouncedGeneratePreview = () => {
-    console.log('🔄 Setting changed, regenerating in 100ms...')
     if (generateTimeout) {
       clearTimeout(generateTimeout)
     }
@@ -34,7 +33,7 @@ export const useUiStore = defineStore('ui', () => {
       // imagesStoreとvialStoreは静的にインポート済み
       const imagesStore = useImagesStore()
       const vialStore = useVialStore()
-      
+
       await imagesStore.generatePreviewImages()
     }, 100)
   }
